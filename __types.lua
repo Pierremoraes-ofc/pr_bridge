@@ -1,0 +1,184 @@
+---@class NotificationData
+---@field id? string | number
+---@field title? string
+---@field description? string
+---@field duration? number
+---@field showDuration? boolean
+---@field position? 'top' | 'top-right' | 'top-left' | 'bottom' | 'bottom-right' | 'bottom-left' | 'center-right' | 'center-left'
+---@field type? 'inform' | 'error' | 'success'
+---@field style? table;
+---@field icon? string | [string, string]
+---@field iconColor? string
+---@field iconAnimation? 'spin' | 'spinPulse' | 'spinReverse' | 'pulse' | 'beat' | 'fade' | 'beatFade' | 'bounce' | 'shake'
+---@field alignIcon? 'top' | 'center'
+---@field sound? { bank?: string; set: string; name: string }
+
+---@class PRDebug
+---@field isEnabled fun(): boolean
+---@field setEnabled fun(state: boolean): boolean
+---@field log fun(...: any)
+---@field info fun(...: any)
+---@field success fun(...: any)
+---@field warn fun(...: any)
+---@field warning fun(...: any)
+---@field error fun(...: any)
+
+---@class PRDatabase
+---@field driver string
+---@field resource string?
+---@field context string
+---@field isReady fun(): boolean
+---@field GetResourceName fun(): string?
+---@field query fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
+---@field read fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
+---@field fetch fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
+---@field fetchAll fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
+---@field single fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
+---@field scalar fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field execute fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field update fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field write fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field insert fun(query: string, parameters?: table, cb?: fun(result: number|nil)): number|nil
+---@field transaction fun(queries: table, parameters?: table, cb?: fun(result: boolean|nil)): boolean|nil
+---@field run fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field auto fun(query: string, parameters?: table, cb?: fun(result: any)): any
+
+---@class VehicleProperties
+---@field model? number
+---@field plate? string
+---@field plateIndex? number
+---@field lockState? number
+---@field bodyHealth? number
+---@field engineHealth? number
+---@field tankHealth? number
+---@field fuelLevel? number
+---@field oilLevel? number
+---@field dirtLevel? number
+---@field paintType1? number
+---@field paintType2? number
+---@field color1? number|number[]
+---@field color2? number|number[]
+---@field pearlescentColor? number
+---@field interiorColor? number
+---@field dashboardColor? number
+---@field wheelColor? number
+---@field wheelWidth? number
+---@field wheelSize? number
+---@field wheels? number
+---@field windowTint? number
+---@field xenonColor? number
+---@field neonEnabled? boolean[]
+---@field neonColor? number[]
+---@field extras? table<number|string, 0|1>
+---@field tyreSmokeColor? number[]
+---@field modSpoilers? number
+---@field modFrontBumper? number
+---@field modRearBumper? number
+---@field modSideSkirt? number
+---@field modExhaust? number
+---@field modFrame? number
+---@field modGrille? number
+---@field modHood? number
+---@field modFender? number
+---@field modRightFender? number
+---@field modRoof? number
+---@field modEngine? number
+---@field modBrakes? number
+---@field modTransmission? number
+---@field modHorns? number
+---@field modSuspension? number
+---@field modArmor? number
+---@field modNitrous? number
+---@field modTurbo? boolean
+---@field modSubwoofer? boolean
+---@field modSmokeEnabled? boolean
+---@field modHydraulics? boolean
+---@field modXenon? boolean
+---@field modFrontWheels? number
+---@field modBackWheels? number
+---@field modCustomTiresF? boolean
+---@field modCustomTiresR? boolean
+---@field modPlateHolder? number
+---@field modVanityPlate? number
+---@field modTrimA? number
+---@field modOrnaments? number
+---@field modDashboard? number
+---@field modDial? number
+---@field modDoorSpeaker? number
+---@field modSeats? number
+---@field modSteeringWheel? number
+---@field modShifterLeavers? number
+---@field modAPlate? number
+---@field modSpeakers? number
+---@field modTrunk? number
+---@field modHydrolic? number
+---@field modEngineBlock? number
+---@field modAirFilter? number
+---@field modStruts? number
+---@field modArchCover? number
+---@field modAerials? number
+---@field modTrimB? number
+---@field modTank? number
+---@field modWindows? number
+---@field modDoorR? number
+---@field modLivery? number
+---@field modRoofLivery? number
+---@field modLightbar? number
+---@field livery? number
+---@field windows? number[]
+---@field doors? number[]
+---@field tyres? table<number|string, 1|2>
+---@field bulletProofTyres? boolean
+---@field driftTyres? boolean
+
+---@class PRFivemVehicleProperties
+---@field get fun(vehicle: number): VehicleProperties?
+---@field set fun(vehicle: number, props: VehicleProperties, fixVehicle?: boolean): boolean
+---@field setNetId? fun(netId: number, props: VehicleProperties, target?: number, fixVehicle?: boolean): boolean
+
+---@class PRFivemNet
+---@field isValidNetId fun(netId: number): boolean
+---@field getNetId fun(entity: number): number?
+---@field getEntity fun(netId: number, timeout?: number): number?
+---@field getVehicle fun(netId: number, timeout?: number): number?
+---@field resolveVehicle fun(vehicleOrNetId: number, timeout?: number): number?, number?
+---@field getOwner fun(entityOrNetId: number, timeout?: number): number?
+
+---@class PRFivemVehicleCache
+---@field set fun(vehicleOrNetId: number, data: table): boolean
+---@field get fun(vehicleOrNetId: number): table?
+---@field getByPlate fun(plate: string): table?
+---@field clear fun(vehicleOrNetId: number)
+---@field clearAll fun()
+---@field getStateKey fun(name: string): string
+---@field setState fun(vehicle: number, name: string, value: any, replicated?: boolean): boolean
+---@field getState fun(vehicle: number, name: string): any
+---@field setPersistentMeta fun(vehicle: number, meta: table): boolean
+---@field getPersistentMeta fun(vehicle: number): table?
+
+---@class PRFivemVehicle
+---@field cache PRFivemVehicleCache
+---@field net PRFivemNet
+---@field getNetId fun(entity: number): number?
+---@field getEntity fun(netId: number, timeout?: number): number?
+---@field getVehicle fun(netId: number, timeout?: number): number?
+---@field resolve fun(vehicleOrNetId: number, timeout?: number): number?, number?
+---@field getOwner fun(entityOrNetId: number, timeout?: number): number?
+---@field getProperties fun(vehicle: number): VehicleProperties?
+---@field setProperties fun(vehicle: number, props: VehicleProperties, fixVehicle?: boolean): boolean
+
+---@class PRFivem
+---@field net PRFivemNet
+---@field vehicleCache PRFivemVehicleCache
+---@field vehicle PRFivemVehicle
+---@field vehicleProperties PRFivemVehicleProperties
+---@field getVehicleProperties fun(vehicle: number): VehicleProperties?
+---@field setVehicleProperties fun(vehicle: number, props: VehicleProperties, fixVehicle?: boolean): boolean
+
+---@class PRLib
+---@field debug PRDebug
+---@field database PRDatabase
+---@field db PRDatabase
+---@field sql PRDatabase
+---@field fivem PRFivem
+---@field vehicleProperties PRFivemVehicleProperties

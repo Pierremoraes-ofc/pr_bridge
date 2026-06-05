@@ -1,0 +1,264 @@
+local framework = {}
+if ActiveBridges["frameworks"] ~= "qbx" then return end
+
+local qbx_core = exports.qbx_core
+
+Debug('SUCCESS', Lang:t('Debug.FrameworkDetected', { framework = 'QBX Core' }))
+
+function framework.RegisterCallback(name, cb)
+    if PRCore and PRCore.callback then
+        PRCore.callback.register(name, cb)
+    end
+end
+
+function framework.GetWeapon(source, name)
+    if Bridge.inventory and Bridge.inventory.GetWeapon then return Bridge.inventory.GetWeapon(source, name) end
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return 0 end
+    local item = Player.Functions.GetItemByName(name)
+    return item and item.amount or 0
+end
+
+function framework.GetIdentifier(source)
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.PlayerData.citizenid or nil
+end
+
+-- Player Data
+function framework.getPlayerFromId(source)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then Player = qbx_core:GetPlayerByCitizenId(source) end
+    return Player
+end
+
+function framework.getPlayerSourceFromPlayer(Player)
+    return Player.PlayerData.source
+end
+
+function framework.getPlayerName(source)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return "Unknown" end
+    return Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname
+end
+
+function framework.getPlayerHeight(source)
+    return '/'
+end
+
+--- Retorna as coordenadas do player
+--- @param source number
+--- @param withHeading boolean incluir heading (rotação) ou não
+function framework.GetCoords(source, withHeading)
+    local ped = GetPlayerPed(source)
+    if withHeading then
+        local coords = GetEntityCoords(ped)
+        return vec4(coords.x, coords.y, coords.z, GetEntityHeading(ped))
+    else
+        return GetEntityCoords(ped)
+    end
+end
+
+function framework.getPlayerDOB(source)
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.PlayerData.charinfo.birthdate or nil
+end
+
+function framework.getPlayerSex(source)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return 'm' end
+    return Player.PlayerData.charinfo.gender == 0 and 'm' or 'f'
+end
+
+function framework.getPlayerMetadata(source, meta)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return nil end
+    return Player.PlayerData.metadata[meta]
+end
+
+function framework.setPlayerMetadata(source, meta, value)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return end
+    Player.Functions.SetMetaData(meta, value)
+end
+
+function framework.addSocietyBalance(job, amount)
+    if not exports['Renewed-Banking'] then return end
+    exports['Renewed-Banking']:addAccountMoney(job, amount)
+end
+
+function framework.removeSocietyBalance(job, amount)
+    if not exports['Renewed-Banking'] then return end
+    exports['Renewed-Banking']:removeAccountMoney(job, amount)
+end
+
+function framework.RegisterUsableItem(item, cb)
+    qbx_core:CreateUseableItem(item, cb)
+end
+
+function framework.GetPlayer(source)
+    return qbx_core:GetPlayer(source)
+end
+
+function framework.getItemByName(source, name)
+    if Bridge.inventory and Bridge.inventory.GetItem then
+        return Bridge.inventory.GetItem(source, name)
+    end
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return nil end
+    return Player.Functions.GetItemByName(name)
+end
+
+function framework.CreateWeaponData(source, data, weaponData)
+    if Bridge.inventory and Bridge.inventory.CreateWeaponData then return Bridge.inventory.CreateWeaponData(source, data, weaponData) end
+    return data
+end
+
+function framework.RemoveWeapon(source, data)
+    if Bridge.inventory and Bridge.inventory.RemoveWeapon then return Bridge.inventory.RemoveWeapon(source, data) end
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.Functions.RemoveItem(data.weapon, 1) or false
+end
+
+function framework.AddWeapon(source, data)
+    if Bridge.inventory and Bridge.inventory.AddWeapon then return Bridge.inventory.AddWeapon(source, data) end
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.Functions.AddItem(data.weapon, 1) or false
+end
+
+function framework.getPlayerGroup(source)
+    -- QBX uses permissions, returning 'user' by default if no perms found
+    -- This is a simplification
+    return "user"
+end
+
+function framework.getPlayerJob(source, dataType)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return nil end
+    local job = Player.PlayerData.job
+    if dataType == 'label' then
+        return job.label
+    elseif dataType == 'name' then
+        return job.name
+    elseif dataType == 'grade' then
+        return job.grade.level
+    elseif dataType == 'gradeLabel' then
+        return job.grade.name
+    end
+end
+
+function framework.getPlayerMoney(source, moneyWallet)
+    if moneyWallet == 'money' then moneyWallet = 'cash' end
+    if moneyWallet == 'black_money' then moneyWallet = 'blackmoney' end
+    return qbx_core:GetMoney(source, moneyWallet)
+end
+
+function framework.addPlayerMoney(source, moneyWallet, amount, reason)
+    if moneyWallet == 'money' then moneyWallet = 'cash' end
+    if moneyWallet == 'black_money' then moneyWallet = 'blackmoney' end
+    qbx_core:AddMoney(source, moneyWallet, amount, reason or "Unknown")
+end
+
+function framework.removePlayerMoney(source, moneyWallet, amount, reason)
+    if moneyWallet == 'money' then moneyWallet = 'cash' end
+    if moneyWallet == 'black_money' then moneyWallet = 'blackmoney' end
+    return qbx_core:RemoveMoney(source, moneyWallet, amount, reason or "Unknown")
+end
+
+function framework.InventoryManagement(source, data)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player then return end
+
+    if data.type == 'valid' then
+        -- This is a bit complex in QBX without QBCore.Shared.Items
+        return true
+    elseif data.type == 'label' then
+        return data.item
+    elseif data.type == 'count' then
+        local PlayerItem = Player.Functions.GetItemByName(data.item)
+        return PlayerItem and PlayerItem.amount or 0
+    elseif data.type == 'weight' then
+        return 0
+    elseif data.type == 'add' then
+        Player.Functions.AddItem(data.item, data.amount)
+    elseif data.type == 'remove' then
+        Player.Functions.RemoveItem(data.item, data.amount)
+    end
+end
+
+-- Vehicle functions
+function framework.GetOwnedVehicleOwner(plate)
+    local result = Bridge.db and Bridge.db.single('SELECT citizenid FROM player_vehicles WHERE plate = ?', { plate })
+    return result and result.citizenid or nil
+end
+
+function framework.GetOwnedVehicleData(plate)
+    local result = Bridge.db and Bridge.db.single('SELECT mods FROM player_vehicles WHERE plate = ?', { plate })
+    if result then
+        return {
+            props = json.decode(result.mods)
+        }
+    else
+        return nil
+    end
+end
+
+function framework.DeleteOwnedVehicle(plate)
+    if Bridge.db then
+        Bridge.db.execute('DELETE FROM player_vehicles WHERE plate = ?', { plate })
+    end
+end
+
+function framework.InsertOwnedVehicle(plate, owner, vehicle)
+    local Player = qbx_core:GetPlayer(owner)
+    if not Player then return end
+
+    local VehicleProps = json.decode(vehicle)
+    if not VehicleProps or not VehicleProps['plate'] or not VehicleProps['model'] then return end
+
+    if not Bridge.db then return end
+
+    Bridge.db.execute(
+        'INSERT INTO player_vehicles (license, citizenid, vehicle, hash, mods, plate, state) VALUES (@license, @citizenid, @vehicle, @hash, @mods, @plate, @state)',
+        {
+            ['@license'] = Player.PlayerData.license,
+            ['@citizenid'] = Player.PlayerData.citizenid,
+            ['@vehicle'] = VehicleProps['model'],
+            ['@hash'] = VehicleProps['model'],
+            ['@mods'] = vehicle,
+            ['@plate'] = VehicleProps['plate'],
+            ['@state'] = 0,
+        })
+end
+
+function framework.GetPlayerNameByIdentifier(identifier)
+    local Player = qbx_core:GetPlayerByCitizenId(identifier)
+    if Player then
+        return Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
+    else
+        local result = Bridge.db and Bridge.db.single('SELECT charinfo FROM players WHERE citizenid = ?', { identifier })
+        if result then
+            local charinfo = json.decode(result.charinfo)
+            return ('%s %s'):format(charinfo.firstname, charinfo.lastname)
+        end
+    end
+    return "Unknown"
+end
+
+-- Original exports converted to framework functions for consistency
+function framework.takeMoney(src, amount, reason)
+    if qbx_core:GetMoney(src, 'cash') >= amount then
+        qbx_core:RemoveMoney(src, 'cash', amount, reason)
+        return true
+    elseif qbx_core:GetMoney(src, 'bank') >= amount then
+        qbx_core:RemoveMoney(src, 'bank', amount, reason)
+        return true
+    else
+        return false
+    end
+end
+
+function framework.addMoney(src, amount, account, reason)
+    qbx_core:AddMoney(src, account, amount, reason)
+end
+
+return framework
