@@ -48,18 +48,19 @@ function inventory.weaponWheel(state)
 end
 
 function inventory.Search(search, item, metadata)
-    -- Standard implementation since no Search export was provided
-    -- Usually involves getting player items and counting
-    return 0
+    if search == "count" then
+        return inventory.GetItemCount(item, metadata)
+    end
+
+    return inventory.GetItemCount(item or search, metadata)
 end
 
 function inventory.GetItemCount(itemName, metadata, strict)
-    return inventory.Search(nil, itemName)
+    return origen_inventory:GetItemCount(itemName) or 0
 end
 
 function inventory.GetPlayerItems()
-    -- Not in provided docs
-    return {}
+    return origen_inventory:GetInventory() or {}
 end
 
 function inventory.GetPlayerWeight()

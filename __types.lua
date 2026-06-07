@@ -43,6 +43,45 @@
 ---@field run fun(query: string, parameters?: table, cb?: fun(result: any)): any
 ---@field auto fun(query: string, parameters?: table, cb?: fun(result: any)): any
 
+---@class PRCallback
+---@field register fun(name: string, cb: fun(source: number, ...: any): any)
+---@field trigger? fun(name: string, cb: fun(...: any), ...: any): string
+---@field await? fun(name: string, timeout?: number|boolean, ...: any): any
+---@field triggerClient? fun(target: number, name: string, cb: fun(...: any), ...: any): string
+---@field awaitClient? fun(target: number, name: string, timeout?: number|boolean, ...: any): any
+
+---@class PRInventory
+---@field RegisterUsableItem? fun(item: string, cb: fun(source: number, itemData: table): any, options?: table): boolean
+---@field AddItem? fun(inv: any, item: string, count?: number, metadata?: table, slot?: number, cb?: fun(success: boolean)): boolean
+---@field RemoveItem? fun(inv: any, item: string, count?: number, metadata?: table, slot?: number): boolean
+---@field HasItem? fun(inv: any, item: string|string[], amount?: number, metadata?: table, strict?: boolean): boolean
+---@field Items? fun(itemName?: string): table|nil
+---@field GetSlot? fun(inv: any, slot: number): table?
+---@field GetItemBySlot? fun(inv: any, slot: number): table?
+---@field GetItem? fun(inv: any, item: string, metadata?: table, returnsCount?: boolean): table|number|nil
+---@field GetItemCount? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): number
+---@field GetItemInfo? fun(itemName: string): table?
+---@field GetItemLabel? fun(itemName: string): string?
+---@field GetItemSlots? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): table
+---@field GetSlotForItem? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): number?
+---@field GetSlotIdWithItem? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): number?
+---@field GetSlotIdsWithItem? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): number[]
+---@field GetSlotWithItem? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): table?
+---@field GetSlotsWithItem? fun(inv: any, itemName: string, metadata?: table, strict?: boolean): table[]
+---@field GetInventory? fun(inv: any, owner?: any): table?
+---@field GetInventoryItems? fun(inv: any, owner?: any): table[]
+---@field Search? fun(inv: any, search: string, item?: string, metadata?: table): any
+---@field SetMetadata? fun(inv: any, slot: number, metadata: table): any
+---@field SetItemMetadata? fun(inv: any, slot: number, metadata: table): any
+
+---@class PRTarget
+---@field addModel? fun(models: string|string[]|number|number[], options: table)
+---@field removeModel? fun(models: string|string[]|number|number[], optionNames?: string|string[])
+---@field addEntity? fun(netIds: number|number[], options: table)
+---@field removeEntity? fun(netIds: number|number[], optionNames?: string|string[])
+---@field addLocalEntity? fun(entities: number|number[], options: table)
+---@field removeLocalEntity? fun(entities: number|number[], optionNames?: string|string[])
+
 ---@class VehicleProperties
 ---@field model? number
 ---@field plate? string
@@ -177,8 +216,13 @@
 
 ---@class PRLib
 ---@field debug PRDebug
+---@field callback PRCallback
 ---@field database PRDatabase
 ---@field db PRDatabase
 ---@field sql PRDatabase
+---@field inventory PRInventory
+---@field inventories PRInventory
+---@field target PRTarget
+---@field targets PRTarget
 ---@field fivem PRFivem
 ---@field vehicleProperties PRFivemVehicleProperties

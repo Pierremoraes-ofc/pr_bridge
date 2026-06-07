@@ -64,6 +64,7 @@ public.utils = PRCore.load("@pr_bridge/bridge/utils/shared", env) or {}
 local debugValue = GetResourceMetadata(resourceName, "pr_bridge_debug", 0)
 env.Config.Debug = debugValue == "true" or debugValue == "yes" or debugValue == "1"
 public.callback = PRCore.load(("@pr_bridge/bridge/callback/%s"):format(PRCore.context), env) or PRCore.callback
+local normalizeInventoryBridge = PRCore.load("@pr_bridge/bridge/inventory_normalizer", env)
 
 local activeAliases = {
     inventories = "inventory",
@@ -130,6 +131,7 @@ end
 
 loadBridgeModule("framework", "frameworks")
 loadBridgeModule("inventory", "inventories")
+if normalizeInventoryBridge then normalizeInventoryBridge(public.inventory, PRCore.context) end
 loadBridgeModule("notify", "notifications")
 loadBridgeModule("menus", "menus")
 loadBridgeModule("target", "targets")
@@ -144,6 +146,10 @@ else
 end
 loadBridgeModule("fuel", "fuel")
 loadBridgeModule("vehicle_key", "vehicle_key")
+
+if PRCore.context == "server" then
+    public.inventory = public.inventory or {}
+end
 
 PRCore.load("@pr_bridge/bridge/notifications/cl_events", env)
 

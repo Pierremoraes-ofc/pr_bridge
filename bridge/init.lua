@@ -100,12 +100,18 @@ Bridge.vehicleKey = Bridge.vehicle_key
 Bridge.vehicleKeys = Bridge.vehicle_key
 Bridge.fivem = PRCore.load(("bridge.fivem.%s"):format(PRCore.context)) or {}
 Bridge.vehicleProperties = Bridge.fivem.vehicleProperties
+local normalizeInventoryBridge = PRCore.load("bridge.inventory_normalizer")
 
 if PRCore.context == "server" then
     Bridge.database = PRCore.load(getBridge("database")) or {}
 else
     Bridge.database = PRCore.load("bridge.database.default.client") or {}
 end
+
+if PRCore.context == "server" then
+    Bridge.inventory = Bridge.inventory or {}
+end
+if normalizeInventoryBridge then normalizeInventoryBridge(Bridge.inventory, PRCore.context) end
 
 Bridge.db = Bridge.database
 Bridge.sql = Bridge.database

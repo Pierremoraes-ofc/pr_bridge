@@ -43,14 +43,32 @@ function inventory.GetItem(inv, item, metadata, returnsCount)
     if returnsCount then
         return codem_inventory:GetItemsTotalAmount(inv, item) or 0
     end
-    return codem_inventory:GetItemByName(inv, item)
+
+    local ok, result = pcall(function()
+        return codem_inventory:GetItemByName(inv, item)
+    end)
+
+    if ok and result then return result end
+
+    ok, result = pcall(function()
+        return codem_inventory:GetItemsByName(inv, item)
+    end)
+
+    if ok then return result end
 end
 
 function inventory.CanCarryItem(inv, item, count, metadata)
-    -- Documentation doesn't show a direct CanCarry check, 
-    -- but we can infer based on weight if needed. 
-    -- For now, returning true as per standard fallback.
-    return true
+    local ok, result = pcall(function()
+        return codem_inventory:CanCarryItem(inv, item, count, metadata)
+    end)
+
+    if ok then return result end
+
+    ok, result = pcall(function()
+        return codem_inventory:CanAddItem(inv, item, count, metadata)
+    end)
+
+    if ok then return result end
 end
 
 function inventory.GetItemCount(inv, itemName, metadata, strict)

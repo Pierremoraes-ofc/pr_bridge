@@ -133,12 +133,12 @@ local function tweakOptions(options)
         if option.canInteract then            
             option._canInteract = option.canInteract
             option.canInteract = function(entity, distance, data)
-                local nearby = option.distance <= distance
+                local nearby = distance <= option.distance
                 return nearby and option._canInteract(entity, distance, GetEntityCoords(cache.ped), option.name)
             end
         else
             option.canInteract = function(entity, distance, data)
-                return option.distance <= distance
+                return distance <= option.distance
             end
         end
     end

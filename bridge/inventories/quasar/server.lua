@@ -6,6 +6,34 @@ local qs_inventory = exports['qs-inventory']
 
 Debug('SUCCESS', Lang:t('Debug.InventoryDetected', { inventory = 'Quasar Inventory' }))
 
+local function debugUsable(options, level, message)
+    if options and options.debug then
+        print(("[pr_bridge][inventory:quasar][%s] %s"):format(level, message))
+        return
+    end
+
+    if Debug then
+        Debug(level, ("[inventory:quasar] %s"):format(message))
+    end
+end
+
+local function safeUseItemCallback(item, cb, source, itemData)
+    if type(itemData) ~= "table" then
+        itemData = { name = item }
+    elseif not itemData.name then
+        itemData.name = item
+    end
+
+    local ok, result = pcall(cb, source, itemData)
+    if ok then return result end
+
+    if Debug then
+        Debug("ERROR", ("qs-inventory usable item '%s' failed: %s"):format(tostring(item), tostring(result)))
+    end
+
+    return false
+end
+
 ---@param player number
 ---@param data table
 function inventory.setPlayerInventory(player, data)
@@ -84,8 +112,31 @@ function inventory.GetItemLabel(item)
     return qs_inventory:GetItemLabel(item)
 end
 
+function inventory.RegisterUsableItem(item, cb, options)
+    if type(item) ~= "string" or item == "" or type(cb) ~= "function" then return false end
+    options = options or {}
+
+    debugUsable(options, "INFO", ("register item=%s hasCreateUsableItem=%s"):format(item, tostring(qs_inventory.CreateUsableItem ~= nil)))
+
+    if not qs_inventory.CreateUsableItem then return false end
+
+    local ok = pcall(function()
+        qs_inventory:CreateUsableItem(item, function(source, itemData)
+            debugUsable(options, "INFO", ("callback item=%s source=%s slot=%s"):format(
+                item,
+                tostring(source),
+                tostring(type(itemData) == "table" and itemData.slot or nil)
+            ))
+            safeUseItemCallback(item, cb, source, itemData)
+        end)
+    end)
+
+    debugUsable(options, ok and "SUCCESS" or "WARNING", ("register result item=%s ok=%s"):format(item, tostring(ok)))
+    return ok
+end
+
 function inventory.CreateUsableItem(item, cb)
-    qs_inventory:CreateUsableItem(item, cb)
+    return inventory.RegisterUsableItem(item, cb)
 end
 
 function inventory.SetItemMetadata(source, slot, metadata)
