@@ -1,5 +1,5 @@
 -- bridge/version.lua  (carregado no shared_scripts)
-local CURRENT_VERSION = "1.0.2"
+local CURRENT_VERSION = "1.0.4"
 local REPO_OWNER      = "Pierremoraes-ofc"
 local REPO_NAME       = "pr_bridge"
 
@@ -41,34 +41,25 @@ if IsDuplicityVersion() and Config.VersionCheck then
             end
 
             local box = {
-                "^8--------------------------------------------------^0",
-                "^8|^0                                                ^8|^0",
-                "^8|^0" .. center("^5ffffff iii vv       vv eeeeeee mm    mm^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5ff     iii  vv     vv  ee      mmm  mmm^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5ffff   iii   vv   vv   eeeee   mmmmmmmm^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5ff     iii    vv vv    ee      mm mm mm^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5ff     iii     vvv     eeeeeee mm    mm^0", 48) .. "^8|^0",
-                "^8|^0                                                ^8|^0",
-                "^8|^0" .. center("^5bbbbbb  rrrrrr  iii ddddd     ggggg  eeeee^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5bb   bb rr   rr iii dd  dd   gg      ee   ^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5bbbbbb  rrrrrr  iii dd   dd gg  ggg  eeeee^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5bb   bb rr  rr  iii dd   dd  gg   gg ee   ^0", 48) .. "^8|^0",
-                "^8|^0" .. center("^5bbbbbb  rr   rr iii dddddd    ggggg  eeeee^0", 48) .. "^8|^0",
-                "^8|^0                                                ^8|^0",
-                "^8|^0" .. center(status, 48) .. "^8|^0",
-                "^8|^0" .. center(versionText, 48) .. "^8|^0",
+                "^8─────────────────────────────────────────────────────────^0",
+                "^8|^0                                                       ^8|^0",
+                "^8|^0" .. center("^5PR BRIDGE^0", 55) .. "^8|^0",
+                "^8|^0                                                       ^8|^0",
+                "^8|^0" .. center(status, 55) .. "^8|^0",
+                "^8|^0                                                       ^8|^0",
+                "^8|^0" .. center(("^7Version:^0 ^2%s^0"):format(CURRENT_VERSION), 55) .. "^8|^0",
+                "^8|^0" .. center("^7GitHub:^0 github.com/Pierremoraes-ofc", 55) .. "^8|^0",
+                "^8|^0" .. center("^7Discord:^0 discord.gg/pierremoraes", 55) .. "^8|^0",
             }
-            
+
             if not isUpToDate then
-                table.insert(box, "^8|^0                                                ^8|^0")
-                table.insert(box, "^8|^0" .. center("^3Please update your script!^0", 48) .. "^8|^0")
-                table.insert(box, "^8|^0                                                ^8|^0")
-                table.insert(box, "^8--------------------------------------------------^0")
-                table.insert(box, "" .. center(("^3https://github.com/%s/%s/releases/latest^0"):format(REPO_OWNER, REPO_NAME), 48) .. "")
-            else
-                table.insert(box, "^8|^0                                                ^8|^0")
-                table.insert(box, "^8--------------------------------------------------^0")
+                table.insert(box, "^8|^0                                                       ^8|^0")
+                table.insert(box, "^8|^0" .. center("^3A new version is available!^0", 55) .. "^8|^0")
+                table.insert(box, "^8|^0" .. center(("^3github.com/%s/%s/releases/latest^0"):format(REPO_OWNER, REPO_NAME), 55) .. "^8|^0")
             end
+
+            table.insert(box, "^8|^0                                                       ^8|^0")
+            table.insert(box, "^8─────────────────────────────────────────────────────────^0")
 
             Debug("INFO", "")
             for _, line in ipairs(box) do

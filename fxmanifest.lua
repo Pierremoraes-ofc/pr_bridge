@@ -1,6 +1,6 @@
 name          "pr_bridge"
 description   "Adicione compatibilidade com frameworks, targets, inventarios, notificacoes, telefones e mais."
-version       "1.0.2"
+version       "1.0.4"
 repository    "https://github.com/Pierremoraes-ofc/pr_bridge"
 author        "Pierremoraes-ofc"
 
