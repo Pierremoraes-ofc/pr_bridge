@@ -55,11 +55,12 @@ local env = setmetatable({
 })
 
 PRCore.load("@pr_bridge/bridge/locale", env)
+public.locale = env.Locale.init
 PRCore.load("@pr_bridge/bridge/config", env)
 public.debug = PRCore.load("@pr_bridge/bridge/debug", env)
-PRCore.load("@pr_bridge/bridge/locale/en-US", env, true)
-PRCore.load("@pr_bridge/bridge/locale/pt-br", env, true)
+env.Lang = env.Locale.init("pr_bridge")
 public.utils = PRCore.load("@pr_bridge/bridge/utils/shared", env) or {}
+public.translator = PRCore.load(("@pr_bridge/bridge/translator/%s"):format(PRCore.context), env, true) or {}
 
 local debugValue = GetResourceMetadata(resourceName, "pr_bridge_debug", 0)
 env.Config.Debug = debugValue == "true" or debugValue == "yes" or debugValue == "1"
@@ -168,6 +169,14 @@ public.vehicleKeys = public.vehicle_key
 public.db = public.database
 public.sql = public.database
 public.vehicleProperties = public.fivem.vehicleProperties
+public.addKeybind = public.fivem.addKeybind
+public.keybind = public.fivem.keybind
+public.keybinds = public.fivem.keybinds
+public.addCommand = public.fivem.addCommand
+public.command = public.fivem.command
+public.commands = public.fivem.commands
+public.ace = public.fivem.ace
+public.permissions = public.fivem.permissions
 public.drawtext = public.fivem.drawtext
 public.drawText = public.fivem.drawText
 public.textui = public.fivem.textui
@@ -317,3 +326,25 @@ if _G then
     _G.pr_lib = public
 end
 _ENV.pr_lib = public
+
+if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", "true") == "true" then
+    if public.notify and public.notify.Notify then
+        local originalNotify = public.notify.Notify
+        public.notify.Notify = function(data)
+            if data and (data.title or data.description) then
+                local targetLang = data.lang or data.locale or GetConvar("pr_bridge:locale", "en-us"):lower():sub(1, 2)
+                local strings = { data.title or "", data.description or "" }
+                local translated = public.translator.translateBatch(strings, targetLang)
+                if translated and #translated > 0 then
+                    if data.title and data.title ~= "" then
+                        data.title = translated[1]
+                    end
+                    if data.description and data.description ~= "" then
+                        data.description = translated[2]
+                    end
+                end
+            end
+            originalNotify(data)
+        end
+    end
+end
