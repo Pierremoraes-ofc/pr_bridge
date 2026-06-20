@@ -1,4 +1,5 @@
 ActiveBridges = {}
+Lang = Locale.init()
 
 if IsDuplicityVersion() then
     local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
