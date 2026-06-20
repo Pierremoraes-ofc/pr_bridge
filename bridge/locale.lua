@@ -103,3 +103,100 @@ function Locale:delete(phraseTarget, prefix)
         end
     end
 end
+
+function Locale.init(invokingResource)
+    local resource = invokingResource or GetInvokingResource() or GetCurrentResourceName()
+    local localeName = GetConvar("pr_bridge:locale", "en-us"):lower()
+    
+    local prefixes = { "", "bridge/" }
+    local formats = { "locale/%s.lua", "locales/%s.lua", "locale/%s.json", "locales/%s.json" }
+    local searchLocales = { localeName }
+    if localeName ~= "en-us" then table.insert(searchLocales, "en-us") table.insert(searchLocales, "en-US") end
+    if localeName ~= "pt-br" then table.insert(searchLocales, "pt-br") end
+
+    local chunk, foundPath
+    for _, loc in ipairs(searchLocales) do
+        for _, prefix in ipairs(prefixes) do
+            for _, fmt in ipairs(formats) do
+                local p = prefix .. fmt:format(loc)
+                chunk = LoadResourceFile(resource, p)
+                if chunk then
+                    foundPath = p
+                    break
+                end
+            end
+            if chunk then break end
+        end
+        if chunk then break end
+    end
+
+    if not chunk then
+        error(("^1[pr_bridge] Could not find any translation file for resource '%s' with locale '%s'^0"):format(resource, localeName), 2)
+    end
+
+    local phrases
+    if foundPath:match("%.json$") then
+        phrases = PRCore.loadJson(("@%s/%s"):format(resource, foundPath), true)
+    else
+        local env = setmetatable({ Locale = Locale }, { __index = _G })
+        local fn, err = load(chunk, ("@@%s/%s"):format(resource, foundPath), "t", env)
+        if not fn then
+            error(err, 2)
+        end
+        local result = fn()
+        phrases = type(result) == "table" and result or env.Translations or env.Phrases or env.Locales
+        if not phrases then
+            for k, v in pairs(env) do
+                if k ~= "Locale" and type(v) == "table" then
+                    phrases = v
+                    break
+                end
+            end
+        end
+
+        if type(phrases) == "table" and getmetatable(phrases) == Locale then
+            phrases = phrases.phrases
+        end
+    end
+
+    if not phrases then
+        error(("^1[pr_bridge] Translation file '%s' did not define a valid table^0"):format(foundPath), 2)
+    end
+
+    local localeObj = Locale:new({
+        phrases = phrases,
+        warnOnMissing = true
+    })
+
+    return setmetatable({
+        t = function(self, key, subs)
+            if type(self) == "string" then
+                return localeObj:t(self, key)
+            end
+            return localeObj:t(key, subs)
+        end,
+        has = function(self, key)
+            if type(self) == "string" then
+                return localeObj:has(self)
+            end
+            return localeObj:has(key)
+        end,
+        extend = function(_, newPhrases, prefix)
+            localeObj:extend(newPhrases, prefix)
+        end,
+        replace = function(_, newPhrases)
+            localeObj:replace(newPhrases)
+        end,
+        locale = function(_, newLoc)
+            return localeObj:locale(newLoc)
+        end,
+        delete = function(_, target, prefix)
+            localeObj:delete(target, prefix)
+        end
+    }, {
+        __call = function(_, key, subs)
+            return localeObj:t(key, subs)
+        end
+    })
+end
+

@@ -15,7 +15,6 @@ shared_scripts {
     "bridge/locale.lua",
     "bridge/config.lua",
     "bridge/debug.lua",
-    "bridge/locale/*.lua",
     "bridge/init.lua",
     "bridge/notifications/cl_events.lua",
 }
@@ -28,4 +27,5 @@ files {
     "init.lua",
     "bridge/**/*.lua",
     "bridge/**/**/*.lua",
+    "bridge/**/*.json",
 }

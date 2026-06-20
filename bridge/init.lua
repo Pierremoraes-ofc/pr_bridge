@@ -1,4 +1,5 @@
 ActiveBridges = {}
+Lang = Locale.init()
 
 local ActiveBridgeAliases = {
     inventories = "inventory",
@@ -80,6 +81,7 @@ Bridge.name = "pr_bridge"
 Bridge.context = PRCore.context
 Bridge.activeBridges = ActiveBridges
 Bridge.config = Config
+Bridge.locale = Locale.init
 Bridge.load = PRCore.load
 Bridge.loadFile = PRCore.loadFile
 Bridge.loadJson = PRCore.loadJson
@@ -88,6 +90,7 @@ Bridge.callback = PRCore.callback
 Bridge.debug = PRDebug
 Bridge.utils = PRCore.load("bridge.utils.shared") or {}
 Bridge.callback = PRCore.load(("bridge.callback.%s"):format(PRCore.context)) or PRCore.callback
+Bridge.translator = PRCore.load(("bridge.translator.%s"):format(PRCore.context), env, true) or {}
 
 Bridge.inventories = Bridge.inventory
 Bridge.notifications = Bridge.notify
@@ -261,6 +264,28 @@ Bridge.cache = bridgeCache
 pr_lib = Bridge
 if _G then
     _G.pr_lib = Bridge
+end
+
+if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", "true") == "true" then
+    if Bridge.notify and Bridge.notify.Notify then
+        local originalNotify = Bridge.notify.Notify
+        Bridge.notify.Notify = function(data)
+            if data and (data.title or data.description) then
+                local targetLang = data.lang or data.locale or GetConvar("pr_bridge:locale", "en-us"):lower():sub(1, 2)
+                local strings = { data.title or "", data.description or "" }
+                local translated = Bridge.translator.translateBatch(strings, targetLang)
+                if translated and #translated > 0 then
+                    if data.title and data.title ~= "" then
+                        data.title = translated[1]
+                    end
+                    if data.description and data.description ~= "" then
+                        data.description = translated[2]
+                    end
+                end
+            end
+            originalNotify(data)
+        end
+    end
 end
 
 exports("getLib", function()
