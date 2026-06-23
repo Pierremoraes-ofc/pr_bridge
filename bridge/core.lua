@@ -31,7 +31,7 @@ local function getModuleInfo(path)
 end
 
 function PRCore.loadFile(resource, fileName, env, optional)
-    fileName = fileName:find("%.lua$", 1, true) and fileName or ("%s.lua"):format(fileName)
+    fileName = fileName:sub(-4) == ".lua" and fileName or ("%s.lua"):format(fileName)
 
     local chunk = LoadResourceFile(resource, fileName)
     if not chunk then
@@ -67,7 +67,7 @@ function PRCore.loadJson(path, optional)
     end
 
     local resource, modulePath = getModuleInfo(normalizePath(path))
-    local fileName = modulePath:find("%.json$", 1, true) and modulePath or ("%s.json"):format(modulePath)
+    local fileName = modulePath:sub(-5) == ".json" and modulePath or ("%s.json"):format(modulePath)
     local content = LoadResourceFile(resource, fileName)
 
     if not content then
@@ -83,14 +83,17 @@ PRCore.callback = PRCore.callback or {}
 function PRCore.callback.register(name, cb)
     RegisterNetEvent(name, function(requestId, ...)
         local src = source
-        local result = table.pack(cb(src, ...))
+        local args = table.pack(...)
+        CreateThread(function()
+            local result = table.pack(cb(src, table.unpack(args, 1, args.n)))
 
-        if type(requestId) == "string" then
-            if PRCore.context == "server" then
-                TriggerClientEvent("pr_bridge:callback:response", src, requestId, table.unpack(result, 1, result.n))
-            else
-                TriggerServerEvent("pr_bridge:callback:response", requestId, table.unpack(result, 1, result.n))
+            if type(requestId) == "string" then
+                if PRCore.context == "server" then
+                    TriggerClientEvent("pr_bridge:callback:response", src, requestId, table.unpack(result, 1, result.n))
+                else
+                    TriggerServerEvent("pr_bridge:callback:response", requestId, table.unpack(result, 1, result.n))
+                end
             end
-        end
+        end)
     end)
 end
