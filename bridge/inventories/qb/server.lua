@@ -170,7 +170,6 @@ inventory.Old.ClearStash = function(id, _type)
     return false
 end
 
--- Helpers mantidos do convert.md original para garantir retrocompatibilidade completa:
 function inventory.GetResourceName()
     return "qb-inventory"
 end
@@ -247,6 +246,11 @@ end
 
 function inventory.OpenPlayerInventory(src, target)
     qbInventory:OpenInventory(src, target)
+end
+
+function inventory.getInventoryImg(image)
+    local resource = GetResourceState("qbx_inventory"):find("start") and "qbx_inventory" or "qb-inventory"
+    return ("nui://%s/html/images/%s"):format(resource, image)
 end
 
 return inventory

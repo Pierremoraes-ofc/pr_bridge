@@ -307,6 +307,17 @@ return function(inventory, context)
         inventory.getItemInfo = inventory.GetItemInfo
     end
 
+    if not inventory.getInventoryImg and inventory.GetInventoryImg then inventory.getInventoryImg = inventory.GetInventoryImg end
+    if not inventory.GetInventoryImg and inventory.getInventoryImg then inventory.GetInventoryImg = inventory.getInventoryImg end
+
+    if not inventory.getInventoryImg then
+        function inventory.getInventoryImg(image)
+            local path = GetConvar("inventory:imagepath", "nui://ox_inventory/web/images")
+            return ("%s/%s"):format(path:gsub("/+$", ""), image)
+        end
+        inventory.GetInventoryImg = inventory.getInventoryImg
+    end
+
     if context == "server" then
         addServerHelpers(inventory)
     else

@@ -1,6 +1,6 @@
 name          "pr_bridge"
 description   "Adicione compatibilidade com frameworks, targets, inventarios, notificacoes, telefones e mais."
-version       "1.0.4"
+version       "1.0.6"
 repository    "https://github.com/Pierremoraes-ofc/pr_bridge"
 author        "Pierremoraes-ofc"
 
@@ -15,7 +15,6 @@ shared_scripts {
     "bridge/locale.lua",
     "bridge/config.lua",
     "bridge/debug.lua",
-    "bridge/locale/*.lua",
     "bridge/init.lua",
     "bridge/notifications/cl_events.lua",
 }
@@ -28,4 +27,5 @@ files {
     "init.lua",
     "bridge/**/*.lua",
     "bridge/**/**/*.lua",
+    "bridge/**/*.json",
 }

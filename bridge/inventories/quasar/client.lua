@@ -116,4 +116,8 @@ function inventory.CheckIfInventoryBlocked()
     return qs_inventory:CheckIfInventoryBlocked()
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://qs-inventory/html/images/%s"):format(image)
+end
+
 return inventory
