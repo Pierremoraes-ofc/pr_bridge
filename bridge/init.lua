@@ -1,4 +1,37 @@
 ActiveBridges = {}
+Lang = Locale.init()
+
+if IsDuplicityVersion() then
+    local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
+
+    if type(bridgeLocale) == "string" and bridgeLocale ~= "" then
+        if GlobalState then
+            GlobalState.pr_bridge_locale = bridgeLocale
+        end
+
+        if SetConvarReplicated then
+            SetConvarReplicated("pr_bridge:locale", bridgeLocale)
+        end
+    end
+end
+
+Lang = Locale.init()
+
+if IsDuplicityVersion() then
+    local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
+
+    if type(bridgeLocale) == "string" and bridgeLocale ~= "" then
+        if GlobalState then
+            GlobalState.pr_bridge_locale = bridgeLocale
+        end
+
+        if SetConvarReplicated then
+            SetConvarReplicated("pr_bridge:locale", bridgeLocale)
+        end
+    end
+end
+
+Lang = Locale.init()
 
 if IsDuplicityVersion() then
     local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
