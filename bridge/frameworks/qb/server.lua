@@ -33,11 +33,12 @@ function framework.GetIdentifier(source)
 end
 
 -- Player Data
-local Player = nil
 function framework.getPlayerFromId(source)
-    Player = QBCore.Functions.GetPlayer(source)
-    if not Player then Player = QBCore.Functions.GetPlayerByCitizenId(source) end
-    return Player
+    return QBCore.Functions.GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return QBCore.Functions.GetPlayerByCitizenId(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)
@@ -130,7 +131,7 @@ end
 
 function framework.getPlayerGroup(source)
     local PlayerPerms = QBCore.Functions.GetPermission(source)
-    if framework.Object.length(PlayerPerms) > 0 then
+    if type(PlayerPerms) == "table" and next(PlayerPerms) then
         local PlayerPermsString = 'Unknown'
         for k, v in pairs(PlayerPerms) do
             if PlayerPermsString == 'Unknown' then

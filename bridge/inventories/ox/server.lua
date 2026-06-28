@@ -268,4 +268,8 @@ function inventory.SetMetadata(inv, slot, metadata)
     ox_inventory:SetMetadata(inv, slot, metadata)
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://ox_inventory/web/images/%s"):format(image)
+end
+
 return inventory

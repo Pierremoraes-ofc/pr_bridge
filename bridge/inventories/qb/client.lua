@@ -124,4 +124,8 @@ RegisterNetEvent('pr_bridge:client:qb-inventory:openStash', function(id, data)
     inventory.openInventory("stash", {id = id, weight = data.weight, slots = data.slots})
 end)
 
+function inventory.getInventoryImg(image)
+    return ("nui://qb-inventory/html/images/%s"):format(image)
+end
+
 return inventory

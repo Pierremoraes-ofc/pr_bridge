@@ -26,9 +26,11 @@ end
 
 -- Player Data
 function framework.getPlayerFromId(source)
-    local Player = qbx_core:GetPlayer(source)
-    if not Player then Player = qbx_core:GetPlayerByCitizenId(source) end
-    return Player
+    return qbx_core:GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return qbx_core:GetPlayerByCitizenId(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)
@@ -97,6 +99,14 @@ end
 
 function framework.GetPlayer(source)
     return qbx_core:GetPlayer(source)
+end
+
+function framework.HasPermission(source, permissions)
+    local ok, allowed = pcall(function()
+        return qbx_core:HasPermission(source, permissions)
+    end)
+
+    return ok and allowed == true
 end
 
 function framework.getItemByName(source, name)

@@ -132,4 +132,8 @@ function inventory.getItemInfo(item)
     return origen_inventory:Items(item)
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://origen_inventory/html/images/%s"):format(image)
+end
+
 return inventory

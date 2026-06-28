@@ -1,4 +1,4 @@
-local Translations = {
+return{
     Debug = {
         FrameworkDetected = "Framework detected: %{framework}",
         FuelDetected = "Fuel system detected: %{fuel}",
@@ -18,8 +18,3 @@ local Translations = {
         UpdateChecked = "Version %{oldversion} — you are updated!"
     },
 }
-
-Lang = Locale:new({
-    phrases = Translations,
-    warnOnMissing = true
-})

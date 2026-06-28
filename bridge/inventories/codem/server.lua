@@ -133,4 +133,8 @@ function inventory.SetItemMetadata(source, slot, metadata)
     codem_inventory:SetItemMetadata(source, slot, metadata)
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://codem-inventory/html/images/%s"):format(image)
+end
+
 return inventory
