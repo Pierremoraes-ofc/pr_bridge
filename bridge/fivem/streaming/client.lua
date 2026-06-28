@@ -425,10 +425,570 @@ function streaming.createEntity(placementType, model, coords, heading, options)
     return streaming.createObject(model, coords, options)
 end
 
+local vehicleAnchorAliases = {
+    bonnet = "hood",
+    front = "hood",
+    engine = "hood",
+    boot = "trunk",
+    rear = "trunk",
+    back = "trunk",
+    driver = "driverDoor",
+    driver_door = "driverDoor",
+    driverDoor = "driverDoor",
+    passenger = "passengerDoor",
+    passenger_door = "passengerDoor",
+    passengerDoor = "passengerDoor",
+    driverRearDoor = "driverRearDoor",
+    driver_rear_door = "driverRearDoor",
+    passengerRearDoor = "passengerRearDoor",
+    passenger_rear_door = "passengerRearDoor",
+}
+
+local vehicleAnchorBones = {
+    hood = "bonnet",
+    trunk = "boot",
+    driverDoor = "door_dside_f",
+    passengerDoor = "door_pside_f",
+    driverRearDoor = "door_dside_r",
+    passengerRearDoor = "door_pside_r",
+}
+
+local function vec3(value)
+    if not value then return nil end
+    if type(value) == "vector3" then return value end
+    if type(value) == "vector4" then return vector3(value.x, value.y, value.z) end
+    if type(value) == "table" then
+        local x = value.x or value[1]
+        local y = value.y or value[2]
+        local z = value.z or value[3]
+        if x and y and z then return vector3(x + 0.0, y + 0.0, z + 0.0) end
+    end
+
+    return nil
+end
+
+local function addVec3(a, b)
+    if not b then return a end
+    return vector3(a.x + b.x, a.y + b.y, a.z + b.z)
+end
+
+local function getHeadingToCoords(fromCoords, toCoords)
+    return GetHeadingFromVector_2d(toCoords.x - fromCoords.x, toCoords.y - fromCoords.y)
+end
+
+local function inferEntityType(entity)
+    if not entity or entity == 0 or not DoesEntityExist(entity) then return nil end
+    if IsEntityAVehicle(entity) then return "vehicle" end
+    if IsEntityAPed(entity) then return IsPedAPlayer(entity) and "player" or "ped" end
+    if IsEntityAnObject(entity) then return "object" end
+    return "entity"
+end
+
+local function resolveInteractionTarget(data)
+    local targetType = data.type or data.targetType or data.interactionType or data.withType
+    local target = data.target or data.entity or data.vehicle or data.object or data.ped or data.player or data.pickup or data.with
+
+    if targetType == "player" then
+        if data.serverId then
+            target = GetPlayerPed(GetPlayerFromServerId(data.serverId))
+        elseif target and not DoesEntityExist(target) then
+            target = GetPlayerPed(target)
+        elseif not target then
+            target = PlayerPedId()
+        end
+    elseif not target and targetType == "ped" then
+        target = PlayerPedId()
+    end
+
+    if targetType == "pickup" then
+        return target, targetType
+    end
+
+    if target and target ~= 0 and DoesEntityExist(target) then
+        return target, targetType or inferEntityType(target)
+    end
+
+    return nil, targetType
+end
+
+local function getVehicleAnchorOffset(entity, anchor, distance, zOffset)
+    anchor = vehicleAnchorAliases[anchor] or anchor or "hood"
+
+    local minDim, maxDim = streaming.getModelDimensions(GetEntityModel(entity), 1000)
+    local minX = minDim and minDim.x or -1.0
+    local maxX = maxDim and maxDim.x or 1.0
+    local minY = minDim and minDim.y or -2.0
+    local maxY = maxDim and maxDim.y or 2.0
+    local midFrontY = maxY * 0.35
+    local midRearY = minY * 0.35
+
+    if anchor == "trunk" then return vector3(0.0, minY - distance, zOffset) end
+    if anchor == "driverDoor" then return vector3(minX - distance, midFrontY, zOffset) end
+    if anchor == "passengerDoor" then return vector3(maxX + distance, midFrontY, zOffset) end
+    if anchor == "driverRearDoor" then return vector3(minX - distance, midRearY, zOffset) end
+    if anchor == "passengerRearDoor" then return vector3(maxX + distance, midRearY, zOffset) end
+    if anchor == "left" then return vector3(minX - distance, 0.0, zOffset) end
+    if anchor == "right" then return vector3(maxX + distance, 0.0, zOffset) end
+    if anchor == "center" then return vector3(0.0, 0.0, zOffset) end
+
+    return vector3(0.0, maxY + distance, zOffset)
+end
+
+local function getEntityBoneCoords(entity, bone)
+    if type(bone) ~= "string" or bone == "" then return nil end
+
+    local boneIndex = GetEntityBoneIndexByName(entity, bone)
+    if boneIndex == -1 then return nil end
+
+    return GetWorldPositionOfEntityBone(entity, boneIndex)
+end
+
+local function getInteractionCoords(entity, entityType, position)
+    position = position or {}
+
+    local coords = vec3(position.coords or position.coord)
+    local heading = tonumber(position.heading)
+    local lookAtCoords
+
+    if coords then
+        return coords, heading, coords
+    end
+
+    if entityType == "pickup" and entity and DoesPickupExist(entity) then
+        coords = GetPickupCoords(entity)
+        coords = addVec3(coords, vec3(position.offset))
+        return coords, heading, coords
+    end
+
+    if not entity or entity == 0 or not DoesEntityExist(entity) then
+        return nil, nil, nil
+    end
+
+    local anchor = position.anchor or position.point or position.bone
+    local distance = tonumber(position.distance or position.spacing) or 0.65
+    local zOffset = tonumber(position.zOffset) or 0.0
+    local offset = vec3(position.offset)
+
+    lookAtCoords = GetEntityCoords(entity)
+
+    if entityType == "vehicle" then
+        local normalizedAnchor = vehicleAnchorAliases[anchor] or anchor
+        local boneCoords = getEntityBoneCoords(entity, position.bone or vehicleAnchorBones[normalizedAnchor])
+        if boneCoords then lookAtCoords = boneCoords end
+
+        local localOffset = offset or getVehicleAnchorOffset(entity, normalizedAnchor, distance, zOffset)
+        coords = GetOffsetFromEntityInWorldCoords(entity, localOffset.x, localOffset.y, localOffset.z)
+    else
+        local boneCoords = getEntityBoneCoords(entity, position.bone)
+        if boneCoords then lookAtCoords = boneCoords end
+
+        if offset then
+            coords = GetOffsetFromEntityInWorldCoords(entity, offset.x, offset.y, offset.z)
+        else
+            coords = GetOffsetFromEntityInWorldCoords(entity, 0.0, -distance, zOffset)
+        end
+    end
+
+    if position.ground == true or position.groundZ == true then
+        local groundZ, groundCoords = streaming.findGroundZ(coords, {
+            ignoreEntity = entity,
+            includeWater = position.includeWater,
+        })
+
+        coords = groundCoords or vector3(coords.x, coords.y, groundZ)
+    end
+
+    if not heading and position.faceTarget ~= false then
+        heading = getHeadingToCoords(coords, lookAtCoords)
+    end
+
+    return coords, heading, lookAtCoords
+end
+
+local function movePedToInteractionCoords(ped, coords, heading, position)
+    position = position or {}
+    if position.moveTo == false then
+        if heading then SetEntityHeading(ped, heading) end
+        return true, 0.0
+    end
+
+    local arriveDistance = tonumber(position.arriveDistance or position.radius) or 0.65
+    local timeout = tonumber(position.timeout) or 4500
+    local speed = tonumber(position.speed) or 1.0
+    local distance = #(GetEntityCoords(ped) - coords)
+
+    if distance > arriveDistance then
+        local expires = GetGameTimer() + timeout
+        TaskGoStraightToCoord(ped, coords.x, coords.y, coords.z, speed, timeout, heading or GetEntityHeading(ped), 0.15)
+
+        while #(GetEntityCoords(ped) - coords) > arriveDistance and GetGameTimer() < expires do
+            Wait(50)
+        end
+    end
+
+    if position.clearBeforeAnim ~= false then
+        ClearPedTasks(ped)
+    end
+
+    if heading then SetEntityHeading(ped, heading) end
+    Wait(tonumber(position.settleTime) or 150)
+
+    local finalDistance = #(GetEntityCoords(ped) - coords)
+    local maxDistance = tonumber(position.maxDistance) or math.max(arriveDistance + 0.65, 1.25)
+
+    return finalDistance <= maxDistance or position.continueOnMoveTimeout == true, finalDistance
+end
+
+local function normalizeList(value)
+    if value == nil then return {} end
+    if type(value) == "table" then return value end
+    return { value }
+end
+
+local function setVehicleDoors(vehicle, doors, open, options)
+    options = options or {}
+
+    for _, door in pairs(normalizeList(doors)) do
+        door = tonumber(door)
+        if door then
+            if open then
+                SetVehicleDoorOpen(vehicle, door, options.loose == true, options.instantly == true)
+            else
+                SetVehicleDoorShut(vehicle, door, options.instantly == true)
+            end
+        end
+    end
+end
+
+local function getVehicleInteractionOptions(data)
+    local options = data.vehicleOptions or data.vehicleData or data.vehicleAction
+    if type(options) == "table" then return options end
+
+    if type(data.vehicle) == "table" then return data.vehicle end
+
+    return {}
+end
+
+local function prepareInteractionTarget(entity, entityType, data)
+    if entityType ~= "vehicle" or not entity or entity == 0 then return end
+
+    local vehicleOptions = getVehicleInteractionOptions(data)
+    local doors = vehicleOptions.doors or vehicleOptions.door
+    if doors and vehicleOptions.openDoor ~= false then
+        setVehicleDoors(entity, doors, true, vehicleOptions)
+        Wait(tonumber(vehicleOptions.waitAfterOpen) or 0)
+    end
+end
+
+local function cleanupInteractionTarget(entity, entityType, data)
+    if entityType ~= "vehicle" or not entity or entity == 0 then return end
+
+    local vehicleOptions = getVehicleInteractionOptions(data)
+    local doors = vehicleOptions.doors or vehicleOptions.door
+    if doors and vehicleOptions.closeDoor == true then
+        setVehicleDoors(entity, doors, false, vehicleOptions)
+    end
+end
+
+local function runInteractionCallback(callback, ...)
+    if type(callback) ~= "function" then return true end
+
+    local ok, result = pcall(callback, ...)
+    if not ok then
+        debug("warn", ("[pr_bridge] streaming.playInteraction callback falhou: %s"):format(tostring(result)))
+        return false
+    end
+
+    return result ~= false
+end
+
+local function getAnimConfig(anim, fallbackDuration)
+    if type(anim) ~= "table" then return false, "invalid_anim" end
+
+    local dict = anim.dict or anim.animDict or anim.dictionary
+    local clip = anim.clip or anim.name or anim.anim or anim.animName
+    if not dict or not clip then return false, "missing_anim" end
+
+    if not streaming.requestAnimDict(dict, anim.timeout or anim.dictTimeout or 5000) then
+        return false, "anim_timeout"
+    end
+
+    return true, {
+        dict = dict,
+        clip = clip,
+        duration = tonumber(anim.duration or fallbackDuration) or -1,
+        flags = tonumber(anim.flags) or 0,
+        blendIn = tonumber(anim.blendIn) or 8.0,
+        blendOut = tonumber(anim.blendOut) or -8.0,
+        playbackRate = tonumber(anim.playbackRate or anim.rate) or 0.0,
+        lockX = anim.lockX == true,
+        lockY = anim.lockY == true,
+        lockZ = anim.lockZ == true,
+    }
+end
+
+function streaming.playAnim(data, clip, duration, options)
+    local anim
+    local ped
+
+    if type(data) == "table" then
+        anim = data.anim or data.animation or data
+        ped = data.pedEntity or data.actor or data.ped or PlayerPedId()
+        duration = anim.duration or data.duration
+    else
+        options = options or {}
+        anim = {
+            dict = data,
+            clip = clip,
+            duration = duration,
+            flags = options.flags,
+            timeout = options.timeout,
+            dictTimeout = options.dictTimeout,
+            blendIn = options.blendIn,
+            blendOut = options.blendOut,
+            playbackRate = options.playbackRate,
+            lockX = options.lockX,
+            lockY = options.lockY,
+            lockZ = options.lockZ,
+        }
+        ped = options.pedEntity or options.actor or options.ped or PlayerPedId()
+    end
+
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return false, "invalid_ped" end
+
+    local ok, cfg = getAnimConfig(anim, duration)
+    if not ok then return false, cfg end
+
+    TaskPlayAnim(
+        ped,
+        cfg.dict,
+        cfg.clip,
+        cfg.blendIn,
+        cfg.blendOut,
+        cfg.duration,
+        cfg.flags,
+        cfg.playbackRate,
+        cfg.lockX,
+        cfg.lockY,
+        cfg.lockZ
+    )
+
+    if anim.wait ~= false and cfg.duration and cfg.duration > 0 then
+        Wait(cfg.duration)
+    end
+
+    local cleanup = anim.cleanup or {}
+    if cleanup.clearTasks == true or anim.clearTasks == true then
+        ClearPedTasks(ped)
+    end
+
+    if anim.releaseDict == true then
+        streaming.releaseAnimDict(cfg.dict)
+    end
+
+    return true, {
+        ped = ped,
+        dict = cfg.dict,
+        clip = cfg.clip,
+        duration = cfg.duration,
+        flags = cfg.flags,
+    }
+end
+
+local function playInteractionAnim(ped, anim, coords, heading, duration)
+    if type(anim) ~= "table" then return false, "invalid_anim" end
+
+    if anim.scenario then
+        if anim.atPosition == true and coords then
+            TaskStartScenarioAtPosition(ped, anim.scenario, coords.x, coords.y, coords.z, heading or GetEntityHeading(ped), duration or -1, anim.sitting == true, anim.teleport == true)
+        else
+            TaskStartScenarioInPlace(ped, anim.scenario, duration or -1, anim.playEnterAnim == true)
+        end
+
+        return true
+    end
+
+    local ok, cfg = getAnimConfig(anim, duration)
+    if not ok then return false, cfg end
+
+    if coords and anim.advanced ~= false then
+        TaskPlayAnimAdvanced(
+            ped,
+            cfg.dict,
+            cfg.clip,
+            coords.x,
+            coords.y,
+            coords.z,
+            tonumber(anim.rotX) or 0.0,
+            tonumber(anim.rotY) or 0.0,
+            tonumber(anim.rotZ or heading) or GetEntityHeading(ped),
+            cfg.blendIn,
+            cfg.blendOut,
+            cfg.duration,
+            cfg.flags,
+            cfg.playbackRate,
+            cfg.lockX,
+            cfg.lockY,
+            cfg.lockZ
+        )
+    else
+        TaskPlayAnim(ped, cfg.dict, cfg.clip, cfg.blendIn, cfg.blendOut, cfg.duration, cfg.flags, cfg.playbackRate, cfg.lockX, cfg.lockY, cfg.lockZ)
+    end
+
+    return true
+end
+
+function streaming.playInteraction(data)
+    if type(data) ~= "table" then return false, "invalid_data" end
+
+    local ped = data.pedEntity or data.actor or PlayerPedId()
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return false, "invalid_ped" end
+
+    local entity, entityType = resolveInteractionTarget(data)
+    local anim = data.anim or data.animation or {}
+    local position = data.position or data.coords or {}
+    if type(position) ~= "table" then position = { coords = position } end
+
+    local coords, heading = getInteractionCoords(entity, entityType, position)
+    if not coords and not anim.scenario then return false, "missing_target_coords" end
+
+    local duration = tonumber(anim.duration or data.duration) or -1
+
+    if not runInteractionCallback(data.onBeforeMove, ped, entity, coords, heading, entityType) then
+        return false, "before_move_cancelled"
+    end
+
+    if coords then
+        local moved, finalDistance = movePedToInteractionCoords(ped, coords, heading, position)
+        if not moved then
+            return false, ("move_timeout:%.2f"):format(finalDistance or -1.0)
+        end
+    end
+
+    if not runInteractionCallback(data.onBeforeStart, ped, entity, coords, heading, entityType) then
+        return false, "before_start_cancelled"
+    end
+
+    prepareInteractionTarget(entity, entityType, data)
+
+    local played, reason = playInteractionAnim(ped, anim, coords, heading, duration)
+    if not played then
+        cleanupInteractionTarget(entity, entityType, data)
+        return false, reason
+    end
+
+    runInteractionCallback(data.onStart, ped, entity, coords, heading, entityType)
+
+    if anim.wait ~= false and duration and duration > 0 then
+        Wait(duration)
+    end
+
+    local cleanup = data.cleanup or {}
+    if cleanup.clearTasks ~= false and duration and duration > 0 then
+        ClearPedTasks(ped)
+    end
+
+    cleanupInteractionTarget(entity, entityType, data)
+    runInteractionCallback(data.onFinish, ped, entity, coords, heading, entityType)
+
+    return true, {
+        entity = entity,
+        type = entityType,
+        coords = coords,
+        heading = heading,
+        duration = duration,
+    }
+end
+
+function streaming.requestAnimSet(animSet, timeout)
+    if type(animSet) ~= "string" or animSet == "" then return false end
+    if HasAnimSetLoaded(animSet) then return true end
+    RequestAnimSet(animSet)
+    local loaded = waitUntil(function() return HasAnimSetLoaded(animSet) end, timeout)
+    if not loaded then debug("warn", ("[pr_bridge] Timeout ao carregar animSet: %s"):format(animSet)) end
+    return loaded
+end
+
+function streaming.releaseAnimSet(animSet)
+    if type(animSet) == "string" and animSet ~= "" then RemoveAnimSet(animSet) end
+end
+
+function streaming.requestTextureDict(textureDict, timeout)
+    if type(textureDict) ~= "string" or textureDict == "" then return false end
+    if HasStreamedTextureDictLoaded(textureDict) then return true end
+    RequestStreamedTextureDict(textureDict, false)
+    local loaded = waitUntil(function() return HasStreamedTextureDictLoaded(textureDict) end, timeout)
+    if not loaded then debug("warn", ("[pr_bridge] Timeout ao carregar texture dict: %s"):format(textureDict)) end
+    return loaded
+end
+
+function streaming.releaseTextureDict(textureDict)
+    if type(textureDict) == "string" and textureDict ~= "" then SetStreamedTextureDictAsNoLongerNeeded(textureDict) end
+end
+
+function streaming.requestPtfxAsset(asset, timeout)
+    if type(asset) ~= "string" or asset == "" then return false end
+    if HasNamedPtfxAssetLoaded(asset) then return true end
+    RequestNamedPtfxAsset(asset)
+    local loaded = waitUntil(function() return HasNamedPtfxAssetLoaded(asset) end, timeout)
+    if not loaded then debug("warn", ("[pr_bridge] Timeout ao carregar ptfx asset: %s"):format(asset)) end
+    return loaded
+end
+
+function streaming.releasePtfxAsset(asset)
+    if type(asset) == "string" and asset ~= "" then RemoveNamedPtfxAsset(asset) end
+end
+
+function streaming.requestAudioBank(audioBank, timeout)
+    if type(audioBank) ~= "string" or audioBank == "" then return false end
+    local expires = GetGameTimer() + (timeout or 5000)
+    repeat
+        if RequestScriptAudioBank(audioBank, false) then return true, audioBank end
+        Wait(0)
+    until GetGameTimer() >= expires
+    debug("warn", ("[pr_bridge] Timeout ao carregar audio bank: %s"):format(audioBank))
+    return false, audioBank
+end
+
+function streaming.releaseAudioBank(audioBank)
+    if type(audioBank) == "string" and audioBank ~= "" then ReleaseNamedScriptAudioBank(audioBank) end
+end
+
+function streaming.requestScaleformMovie(name, timeout)
+    if type(name) ~= "string" or name == "" then return false, nil end
+    local handle = RequestScaleformMovie(name)
+    local loaded = waitUntil(function() return HasScaleformMovieLoaded(handle) end, timeout)
+    if not loaded then
+        debug("warn", ("[pr_bridge] Timeout ao carregar scaleform: %s"):format(name))
+        if handle and handle ~= 0 then SetScaleformMovieAsNoLongerNeeded(handle) end
+        return false, handle
+    end
+    return true, handle
+end
+
+function streaming.releaseScaleformMovie(handle)
+    if type(handle) == "number" and handle ~= 0 then SetScaleformMovieAsNoLongerNeeded(handle) end
+end
+
+function streaming.RequestModel(model, timeout) local ok, asset=streaming.requestModel(model,timeout); return ok and asset or false end
+function streaming.RequestAnimDict(asset, timeout) return streaming.requestAnimDict(asset,timeout) and asset or false end
+function streaming.RequestAnimSet(asset, timeout) return streaming.requestAnimSet(asset,timeout) and asset or false end
+function streaming.RequestStreamedTextureDict(asset, timeout) return streaming.requestTextureDict(asset,timeout) and asset or false end
+function streaming.RequestNamedPtfxAsset(asset, timeout) return streaming.requestPtfxAsset(asset,timeout) and asset or false end
+function streaming.RequestAudioBank(asset, timeout) local ok=streaming.requestAudioBank(asset,timeout); return ok and asset or false end
+function streaming.RequestScaleformMovie(asset, timeout) local ok,handle=streaming.requestScaleformMovie(asset,timeout); return ok and handle or false end
 streaming.loadModel = streaming.requestModel
 streaming.loadAnimDict = streaming.requestAnimDict
 streaming.loadWeaponAsset = streaming.requestWeaponAsset
 streaming.createProp = streaming.createObject
 streaming.delete = streaming.deleteEntity
+streaming.playAnimation = streaming.playAnim
+streaming.PlayAnim = streaming.playAnim
+streaming.PlayAnimation = streaming.playAnim
+streaming.performAction = streaming.playInteraction
+streaming.playAction = streaming.playInteraction
+streaming.PlayInteraction = streaming.playInteraction
+streaming.PerformAction = streaming.playInteraction
+streaming.PlayAction = streaming.playInteraction
 
 return streaming

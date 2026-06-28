@@ -25,7 +25,11 @@ end
 
 -- Player Data
 function framework.getPlayerFromId(source)
-    return ESX.GetPlayerFromId(source)
+    return ESX.GetPlayerFromId(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return ESX.GetPlayerFromIdentifier(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)

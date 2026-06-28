@@ -1,5 +1,21 @@
 ActiveBridges = {}
 
+if IsDuplicityVersion() then
+    local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
+
+    if type(bridgeLocale) == "string" and bridgeLocale ~= "" then
+        if GlobalState then
+            GlobalState.pr_bridge_locale = bridgeLocale
+        end
+
+        if SetConvarReplicated then
+            SetConvarReplicated("pr_bridge:locale", bridgeLocale)
+        end
+    end
+end
+
+Lang = Locale.init()
+
 local ActiveBridgeAliases = {
     inventories = "inventory",
     notifications = "notification",
@@ -29,6 +45,26 @@ local function getBridge(bridgeType)
         return fallback
     end
 
+    if bridgeType == "frameworks" then
+        local forced = Config.Framework
+        if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
+            if forced == "custom" then
+                setActiveBridge(bridgeType, "custom")
+                return ("bridge.frameworks.custom.%s"):format(context)
+            end
+
+            for i = 1, #bridge do
+                local info = bridge[i]
+                if info.resource == forced or info.folder == forced then
+                    if GetResourceState(info.resource):find("start") then
+                        setActiveBridge(bridgeType, info.folder)
+                        return ("bridge.frameworks.%s.%s"):format(info.folder, context)
+                    end
+                    break
+                end
+            end
+        end
+    end
     if bridgeType == "database" then
         local forced = Config.Database or Config.SQL
         if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
@@ -69,6 +105,8 @@ Bridge = {
     notify = PRCore.load(getBridge("notifications")),
     menus = PRCore.load(getBridge("menus")),
     target = PRCore.load(getBridge("targets")),
+    textuiAdapter = PRCore.load(getBridge("textui")),
+    banking = PRCore.load(getBridge("banking")),
     phone = PRCore.load(getBridge("phones")),
     progress = PRCore.load(getBridge("progressbar")),
     weather = PRCore.load(getBridge("weather")),
@@ -80,14 +118,26 @@ Bridge.name = "pr_bridge"
 Bridge.context = PRCore.context
 Bridge.activeBridges = ActiveBridges
 Bridge.config = Config
+Bridge.locale = Locale.init
 Bridge.load = PRCore.load
 Bridge.loadFile = PRCore.loadFile
 Bridge.loadJson = PRCore.loadJson
+Bridge.readJson = PRCore.readJson
+Bridge.saveJson = PRCore.saveJson
+Bridge.writeJson = PRCore.writeJson
+Bridge.updateJson = PRCore.updateJson
+Bridge.mergeJson = PRCore.mergeJson
+Bridge.deleteJson = PRCore.deleteJson
+Bridge.jsonExists = PRCore.jsonExists
 Bridge.loadModule = PRCore.loadModule
 Bridge.callback = PRCore.callback
 Bridge.debug = PRDebug
 Bridge.utils = PRCore.load("bridge.utils.shared") or {}
+Bridge.math = PRCore.load("bridge.utils.numbers") or {}
+Bridge.table = PRCore.load("bridge.utils.tables") or {}
+Bridge.ids = PRCore.load("bridge.utils.ids") or {}
 Bridge.callback = PRCore.load(("bridge.callback.%s"):format(PRCore.context)) or PRCore.callback
+Bridge.translator = PRCore.load(("bridge.translator.%s"):format(PRCore.context), env, true) or {}
 
 Bridge.inventories = Bridge.inventory
 Bridge.notifications = Bridge.notify
@@ -96,14 +146,36 @@ Bridge.menu = Bridge.menus
 Bridge.targets = Bridge.target
 Bridge.phones = Bridge.phone
 Bridge.progressbar = Bridge.progress
+Bridge.textUIAdapter = Bridge.textuiAdapter
+Bridge.textuiBridge = Bridge.textuiAdapter
+Bridge.textUIBridge = Bridge.textuiAdapter
+Bridge.bank = Bridge.banking
+Bridge.adapters = { framework=Bridge.framework, inventory=Bridge.inventory, notification=Bridge.notify, menu=Bridge.menus, target=Bridge.target, textui=Bridge.textuiAdapter, banking=Bridge.banking, phone=Bridge.phone, progress=Bridge.progress, weather=Bridge.weather }
 Bridge.vehicleKey = Bridge.vehicle_key
 Bridge.vehicleKeys = Bridge.vehicle_key
 Bridge.fivem = PRCore.load(("bridge.fivem.%s"):format(PRCore.context)) or {}
 Bridge.vehicleProperties = Bridge.fivem.vehicleProperties
+
+Bridge.github = PRCore.load(("bridge.github.%s"):format(PRCore.context)) or {}
+Bridge.versionCheck = Bridge.github.versionCheck
+Bridge.checkDependency = Bridge.github.checkDependency
+
+if PRCore.context == "server" then
+    Bridge.triggerClientEvent = PRCore.load("bridge.triggerClientEvent.server")
+end
+
 local normalizeInventoryBridge = PRCore.load("bridge.inventory_normalizer")
+local normalizeApi = PRCore.load("bridge.api_normalizer")
 
 if PRCore.context == "server" then
     Bridge.database = PRCore.load(getBridge("database")) or {}
+
+    local createBackupApi = PRCore.load("bridge.database.backup.server")
+    if createBackupApi then
+        Bridge.database.backup = createBackupApi(Bridge.database, GetCurrentResourceName())
+        Bridge.database.createBackup = Bridge.database.backup.create
+        Bridge.sqlBackup = Bridge.database.backup
+    end
 else
     Bridge.database = PRCore.load("bridge.database.default.client") or {}
 end
@@ -111,7 +183,10 @@ end
 if PRCore.context == "server" then
     Bridge.inventory = Bridge.inventory or {}
 end
-if normalizeInventoryBridge then normalizeInventoryBridge(Bridge.inventory, PRCore.context) end
+if normalizeInventoryBridge then normalizeInventoryBridge(Bridge.inventory, PRCore.context, ActiveBridges.inventories) end
+if normalizeApi then normalizeApi.target(Bridge.target, ActiveBridges.target); normalizeApi.textui(Bridge.textuiAdapter); normalizeApi.banking(Bridge.banking); normalizeApi.notification(Bridge.notify, PRCore.context, ActiveBridges.notification); normalizeApi.database(Bridge.database) end
+local normalizeFramework = PRCore.load("bridge.framework_normalizer")
+if normalizeFramework then normalizeFramework(Bridge.framework, PRCore.context, Bridge.inventory, Bridge.banking, Bridge.notify, Bridge.textuiAdapter, ActiveBridges.frameworks) end
 
 Bridge.db = Bridge.database
 Bridge.sql = Bridge.database
@@ -119,6 +194,10 @@ Bridge.drawtext = Bridge.fivem.drawtext
 Bridge.drawText = Bridge.fivem.drawText
 Bridge.textui = Bridge.fivem.textui
 Bridge.textUI = Bridge.fivem.textUI
+Bridge.dui = Bridge.fivem.dui
+Bridge.duis = Bridge.fivem.duis
+Bridge.raycast = Bridge.fivem.raycast
+Bridge.ui = Bridge.fivem.ui
 Bridge.editorCamera = Bridge.fivem.editorCamera
 Bridge.gizmo = Bridge.fivem.gizmo
 Bridge.devlaser = Bridge.fivem.devlaser
@@ -261,6 +340,28 @@ Bridge.cache = bridgeCache
 pr_lib = Bridge
 if _G then
     _G.pr_lib = Bridge
+end
+
+if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", "true") == "true" then
+    if Bridge.notify and Bridge.notify.Notify then
+        local originalNotify = Bridge.notify.Notify
+        Bridge.notify.Notify = function(data)
+            if data and (data.title or data.description) then
+                local targetLang = data.lang or data.locale or GetConvar("pr_bridge:locale", "en-us"):lower():sub(1, 2)
+                local strings = { data.title or "", data.description or "" }
+                local translated = Bridge.translator.translateBatch(strings, targetLang)
+                if translated and #translated > 0 then
+                    if data.title and data.title ~= "" then
+                        data.title = translated[1]
+                    end
+                    if data.description and data.description ~= "" then
+                        data.description = translated[2]
+                    end
+                end
+            end
+            originalNotify(data)
+        end
+    end
 end
 
 exports("getLib", function()

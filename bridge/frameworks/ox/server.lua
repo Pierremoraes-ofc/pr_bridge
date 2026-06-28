@@ -16,7 +16,16 @@ function framework.GetPlayer(source)
 end
 
 function framework.getPlayerFromId(source)
-    return Ox.GetPlayer(source)
+    return Ox.GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    for _, source in ipairs(GetPlayers()) do
+        local player = Ox.GetPlayer(tonumber(source))
+        if player and (player.charId == identifier or player.stateId == identifier) then
+            return player
+        end
+    end
 end
 
 function framework.GetIdentifier(source)
