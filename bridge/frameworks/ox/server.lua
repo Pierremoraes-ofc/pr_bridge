@@ -15,8 +15,21 @@ function framework.GetPlayer(source)
     return Ox.GetPlayer(source)
 end
 
-function framework.getPlayerFromId(source)
+function framework.GetPlayerData(source)
     return Ox.GetPlayer(source)
+end
+
+function framework.getPlayerFromId(source)
+    return Ox.GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    for _, source in ipairs(GetPlayers()) do
+        local player = Ox.GetPlayer(tonumber(source))
+        if player and (player.charId == identifier or player.stateId == identifier) then
+            return player
+        end
+    end
 end
 
 function framework.GetIdentifier(source)
@@ -77,6 +90,48 @@ function framework.getPlayerJob(source, dataType)
         return tostring(groupGrade)
     end
     return { name = groupName, grade = groupGrade }
+end
+
+function framework.GetPlayerJob(source)
+    local player = Ox.GetPlayer(source)
+    if not player then return nil end
+
+    local groupName, groupGrade = player.getGroupByType("job")
+    return { name = groupName or "", label = groupName or "", grade = groupGrade or 0, gradeLabel = tostring(groupGrade or 0) }
+end
+
+function framework.SetPlayerJob(source, jobName, grade)
+    local player = Ox.GetPlayer(source)
+    if not player then return false, 'invalid_player' end
+
+    local ok, result = pcall(function()
+        if player.setGroup then return player.setGroup(jobName, tonumber(grade) or 0) end
+        if player.addGroup then return player.addGroup(jobName, tonumber(grade) or 0) end
+        return false
+    end)
+
+    if not ok then return false, result end
+    return result ~= false, result
+end
+
+function framework.SetPlayerDuty(source, onDuty)
+    local player = Ox.GetPlayer(source)
+    if not player then return false, 'invalid_player' end
+
+    if player.set then
+        player.set('onduty', onDuty == true)
+        return true
+    end
+
+    return false, 'duty_unavailable'
+end
+
+function framework.PlayerHasJob(source, jobName, grade)
+    local job = framework.GetPlayerJob(source)
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    return (tonumber(job.grade) or 0) >= (tonumber(grade) or 0)
 end
 
 return framework

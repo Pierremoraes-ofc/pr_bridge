@@ -4,9 +4,17 @@ local net = PRCore.load("@pr_bridge/bridge/fivem/net/server", _ENV) or {}
 local vehicleCache = PRCore.load("@pr_bridge/bridge/fivem/vehicleCache/shared", _ENV) or {}
 local blips = PRCore.load("@pr_bridge/bridge/fivem/blips/shared", _ENV) or {}
 local streaming = PRCore.load("@pr_bridge/bridge/fivem/streaming/server", _ENV) or {}
+local ace = PRCore.load("@pr_bridge/bridge/ace/server", _ENV) or {}
+local identifiers = PRCore.load("@pr_bridge/bridge/fivem/identifiers/server", _ENV) or {}
+local addCommand = PRCore.load("@pr_bridge/bridge/addCommand/server", setmetatable({
+    PRAce = ace,
+}, {
+    __index = _ENV,
+}))
 local objects = PRCore.load("@pr_bridge/bridge/fivem/objects/server", _ENV) or {}
 local instructionalButtons = PRCore.load("@pr_bridge/bridge/fivem/instructionalButtons/server", _ENV) or {}
 local drawtext = PRCore.load("@pr_bridge/bridge/fivem/drawtext/server", _ENV) or {}
+local dui = PRCore.load("@pr_bridge/bridge/fivem/dui/server", _ENV) or {}
 local editorCamera = PRCore.load("@pr_bridge/bridge/fivem/editorCamera/server", _ENV) or {}
 local gizmo = PRCore.load("@pr_bridge/bridge/fivem/gizmo/server", _ENV) or {}
 local moduleEnv = setmetatable({
@@ -23,6 +31,13 @@ fivem.net = net
 fivem.vehicleCache = vehicleCache
 fivem.blips = blips
 fivem.streaming = streaming
+fivem.ace = ace
+fivem.permissions = ace
+fivem.identifiers = identifiers
+fivem.identifier = identifiers
+fivem.addCommand = addCommand
+fivem.command = addCommand
+fivem.commands = addCommand
 fivem.objects = objects
 fivem.instructionalButtons = instructionalButtons
 fivem.buttons = instructionalButtons
@@ -30,6 +45,8 @@ fivem.drawtext = drawtext
 fivem.drawText = drawtext
 fivem.textui = drawtext
 fivem.textUI = drawtext
+fivem.dui = dui
+fivem.duis = dui
 fivem.editorCamera = editorCamera
 fivem.editor_camera = editorCamera
 fivem.gizmo = gizmo
@@ -64,6 +81,7 @@ fivem.editor = {
     gizmo = gizmo,
     drawtext = drawtext,
     drawText = drawtext,
+    dui = dui,
 }
 
 return fivem

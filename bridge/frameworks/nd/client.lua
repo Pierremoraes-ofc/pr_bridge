@@ -50,6 +50,31 @@ function framework.GetJobInfo()
     }
 end
 
+function framework.GetPlayerData()
+    return NDCore:getPlayer()
+end
+
+function framework.GetPlayerJob()
+    local player = NDCore:getPlayer()
+    local jobInfo = player and player.jobInfo or {}
+
+    return {
+        name = player and player.job or "",
+        label = jobInfo.label or (player and player.job) or "",
+        grade = jobInfo.rank or jobInfo.grade or 0,
+        gradeLabel = jobInfo.rankName or jobInfo.gradeName or "",
+        onduty = jobInfo.onduty,
+    }
+end
+
+function framework.PlayerHasJob(jobName, grade)
+    local job = framework.GetPlayerJob()
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    return (tonumber(job.grade) or 0) >= (tonumber(grade) or 0)
+end
+
 ---@return boolean
 function framework.IsPlayerLoaded()
     return NDCore:getPlayer() ~= nil

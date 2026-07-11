@@ -244,6 +244,30 @@ function inventory.RegisterStash(id, label, slots, maxWeight, owner, groups, coo
     ox_inventory:RegisterStash(id, label, slots, maxWeight, owner, groups, coords)
 end
 
+function inventory.RegisterShop(shopTitle, invData, shopCoords, shopGroups)
+    invData = invData or {}
+    local groups = shopGroups or invData.groups
+    if type(groups) == "table" and not next(groups) then groups = nil end
+
+    local shopData = {
+        name = invData.name or shopTitle,
+        inventory = invData.inventory or invData.items or {},
+        slots = invData.slots,
+    }
+
+    if shopCoords then shopData.locations = shopCoords end
+    if groups then shopData.groups = groups end
+
+    ox_inventory:RegisterShop(shopTitle, shopData)
+
+    return true
+end
+
+function inventory.RegisterHook(event, callback, options)
+    if type(event) ~= "string" or type(callback) ~= "function" then return nil end
+    return ox_inventory:registerHook(event, callback, options)
+end
+
 function inventory.CreateTemporaryStash(properties)
     return ox_inventory:CreateTemporaryStash(properties)
 end
@@ -266,6 +290,10 @@ end
 
 function inventory.SetMetadata(inv, slot, metadata)
     ox_inventory:SetMetadata(inv, slot, metadata)
+end
+
+function inventory.getInventoryImg(image)
+    return ("nui://ox_inventory/web/images/%s"):format(image)
 end
 
 return inventory

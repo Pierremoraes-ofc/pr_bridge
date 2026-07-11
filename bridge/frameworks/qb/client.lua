@@ -19,6 +19,10 @@ function framework.GetPlayer()
     }
 end
 
+function framework.GetPlayerData()
+    return QBCore.Functions.GetPlayerData()
+end
+
 ---Get any money/accounts
 ---@param type string
 ---@return number
@@ -44,6 +48,21 @@ function framework.GetJobInfo()
         jobName = job.name,
         jobLabel = job.label
     }
+end
+
+function framework.GetPlayerJob()
+    local player = QBCore.Functions.GetPlayerData()
+    return player and player.job or nil
+end
+
+function framework.PlayerHasJob(jobName, grade)
+    local job = framework.GetPlayerJob()
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    local jobGrade = job.grade
+    local level = type(jobGrade) == 'table' and (jobGrade.level or jobGrade.grade or jobGrade.value) or jobGrade
+    return (tonumber(level) or 0) >= (tonumber(grade) or 0)
 end
 
 ---@return boolean

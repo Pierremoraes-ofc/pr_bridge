@@ -16,6 +16,10 @@ function framework.GetPlayer()
     }
 end
 
+function framework.GetPlayerData()
+    return ESX.PlayerData
+end
+
 ---Get any money/accounts
 ---@param type string
 ---@return number
@@ -40,6 +44,18 @@ function framework.GetJobInfo()
         jobName = player.job.name,
         jobLabel = player.job.label
     }
+end
+
+function framework.GetPlayerJob()
+    return ESX.PlayerData and ESX.PlayerData.job or nil
+end
+
+function framework.PlayerHasJob(jobName, grade)
+    local job = framework.GetPlayerJob()
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    return (tonumber(job.grade) or 0) >= (tonumber(grade) or 0)
 end
 
 ---@return boolean
