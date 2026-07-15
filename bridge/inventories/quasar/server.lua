@@ -168,4 +168,8 @@ function inventory.ClearOtherInventory(type, id)
     qs_inventory:ClearOtherInventory(type, id)
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://qs-inventory/html/images/%s"):format(image)
+end
+
 return inventory

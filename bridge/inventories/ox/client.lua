@@ -82,4 +82,8 @@ function inventory.GetSlotsWithItem(itemName, metadata, strict)
     return ox_inventory:GetSlotsWithItem(itemName, metadata, strict)
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://ox_inventory/web/images/%s"):format(image)
+end
+
 return inventory
