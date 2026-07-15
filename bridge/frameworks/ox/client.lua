@@ -18,6 +18,10 @@ function framework.GetPlayer()
     }
 end
 
+function framework.GetPlayerData()
+    return Ox.GetPlayer()
+end
+
 ---Get any money/accounts
 ---@param type string
 ---@return number
@@ -48,6 +52,22 @@ function framework.GetJobInfo()
         jobName = jobName,
         jobLabel = jobName
     }
+end
+
+function framework.GetPlayerJob()
+    local player = Ox.GetPlayer()
+    if not player then return nil end
+
+    local jobName, jobGrade = player.getGroupByType("job")
+    return { name = jobName or "", label = jobName or "", grade = jobGrade or 0, gradeLabel = tostring(jobGrade or 0) }
+end
+
+function framework.PlayerHasJob(jobName, grade)
+    local job = framework.GetPlayerJob()
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    return (tonumber(job.grade) or 0) >= (tonumber(grade) or 0)
 end
 
 ---@return boolean

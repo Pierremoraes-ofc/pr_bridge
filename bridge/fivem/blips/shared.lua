@@ -478,6 +478,7 @@ local spritesById = {}
 local spritesByName = {}
 
 local docsBaseUrl = "https://docs.fivem.net"
+local ragePropsBaseUrl = "https://cdn.rage.mp/public/odb/imgs"
 
 local function trim(value)
     if type(value) ~= "string" then return value end
@@ -489,7 +490,7 @@ local function normalizeAssetName(value)
     if type(value) ~= "string" then return nil end
 
     value = trim(value):lower()
-    value = value:gsub("", ""):gsub("\"", ""):gsub("'", "")
+    value = value:gsub("`", ""):gsub("\"", ""):gsub("'", "")
     value = value:gsub("%s+", "_")
 
     return value ~= "" and value or nil
@@ -516,6 +517,24 @@ local function buildUrl(kind, value, extension, transform)
     end
 
     return ("%s/%s/%s.%s"):format(docsBaseUrl, kind, name, extension)
+end
+
+local function getModelHash(value)
+    local name = normalizeAssetName(value)
+    if not name then return nil end
+
+    local hash
+    if type(GetHashKey) == "function" then
+        hash = GetHashKey(name)
+    elseif type(joaat) == "function" then
+        hash = joaat(name)
+    end
+
+    hash = tonumber(hash)
+    if not hash then return nil end
+    if hash < 0 then hash = hash + 4294967296 end
+
+    return math.floor(hash)
 end
 
 for i = 1, #sprites do
@@ -565,6 +584,12 @@ function blips.setDocsBaseUrl(url)
     end
 end
 
+function blips.setRagePropsBaseUrl(url)
+    if type(url) == "string" and url ~= "" then
+        ragePropsBaseUrl = url:gsub("/+$", "")
+    end
+end
+
 function blips.getBlipImageUrl(value)
     local name = blips.getSpriteName(value)
     return name and buildUrl("blips", name, "png") or nil
@@ -592,6 +617,20 @@ function blips.getWeaponImageUrl(model)
     return buildUrl("weapons", model, "png", "upper")
 end
 
+function blips.getPropHashId(model)
+    return getModelHash(model)
+end
+
+function blips.getPropImageUrl(model)
+    local name = normalizeAssetName(model)
+    local modelHash = getModelHash(name)
+    if not name or not modelHash then return nil end
+
+    return ("%s/%s-%s.jpg"):format(ragePropsBaseUrl, name, modelHash)
+end
+
+blips.getObjectImageUrl = blips.getPropImageUrl
+
 function blips.getAssetImageUrl(kind, value)
     kind = normalizeAssetName(kind)
     if kind == "blip" or kind == "blips" then return blips.getBlipImageUrl(value) end
@@ -600,6 +639,7 @@ function blips.getAssetImageUrl(kind, value)
     if kind == "checkpoint" or kind == "checkpoints" then return blips.getCheckpointImageUrl(value) end
     if kind == "marker" or kind == "markers" then return blips.getMarkerImageUrl(value) end
     if kind == "weapon" or kind == "weapons" then return blips.getWeaponImageUrl(value) end
+    if kind == "prop" or kind == "props" or kind == "object" or kind == "objects" then return blips.getPropImageUrl(value) end
 
     return nil
 end

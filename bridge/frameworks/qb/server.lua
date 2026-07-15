@@ -33,11 +33,12 @@ function framework.GetIdentifier(source)
 end
 
 -- Player Data
-local Player = nil
 function framework.getPlayerFromId(source)
-    Player = QBCore.Functions.GetPlayer(source)
-    if not Player then Player = QBCore.Functions.GetPlayerByCitizenId(source) end
-    return Player
+    return QBCore.Functions.GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return QBCore.Functions.GetPlayerByCitizenId(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)
@@ -107,6 +108,11 @@ function framework.GetPlayer(source)
     return QBCore.Functions.GetPlayer(source)
 end
 
+function framework.GetPlayerData(source)
+    local Player = QBCore.Functions.GetPlayer(source)
+    return Player and Player.PlayerData or nil
+end
+
 function framework.getItemByName(name)
     return xPlayer.Functions.GetItemByName(name)
 end
@@ -130,7 +136,7 @@ end
 
 function framework.getPlayerGroup(source)
     local PlayerPerms = QBCore.Functions.GetPermission(source)
-    if framework.Object.length(PlayerPerms) > 0 then
+    if type(PlayerPerms) == "table" and next(PlayerPerms) then
         local PlayerPermsString = 'Unknown'
         for k, v in pairs(PlayerPerms) do
             if PlayerPermsString == 'Unknown' then
@@ -147,6 +153,7 @@ end
 
 function framework.getPlayerJob(source, dataType)
     local Player = framework.getPlayerFromId(source)
+    if not Player or not Player.PlayerData or not Player.PlayerData.job then return nil end
     if dataType == 'label' then
         return Player.PlayerData.job.label
     elseif dataType == 'name' then
@@ -156,6 +163,45 @@ function framework.getPlayerJob(source, dataType)
     elseif dataType == 'gradeLabel' then
         return Player.PlayerData.job.grade.name
     end
+end
+
+function framework.GetPlayerJob(source)
+    local Player = framework.getPlayerFromId(source)
+    return Player and Player.PlayerData and Player.PlayerData.job or nil
+end
+
+function framework.SetPlayerJob(source, jobName, grade)
+    local Player = framework.getPlayerFromId(source)
+    if not Player or not Player.Functions or not Player.Functions.SetJob then return false, 'invalid_player' end
+
+    local ok, success, result = pcall(function()
+        return Player.Functions.SetJob(jobName, tonumber(grade) or 0)
+    end)
+
+    if not ok then return false, success end
+    return success ~= false, result
+end
+
+function framework.SetPlayerDuty(source, onDuty)
+    local Player = framework.getPlayerFromId(source)
+    if not Player or not Player.Functions or not Player.Functions.SetJobDuty then return false, 'invalid_player' end
+
+    local ok, result = pcall(function()
+        return Player.Functions.SetJobDuty(onDuty == true)
+    end)
+
+    if not ok then return false, result end
+    return result ~= false, result
+end
+
+function framework.PlayerHasJob(source, jobName, grade)
+    local job = framework.GetPlayerJob(source)
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    local jobGrade = job.grade
+    local level = type(jobGrade) == 'table' and (jobGrade.level or jobGrade.grade or jobGrade.value) or jobGrade
+    return (tonumber(level) or 0) >= (tonumber(grade) or 0)
 end
 
 function framework.getPlayerMoney(source, moneyWallet)

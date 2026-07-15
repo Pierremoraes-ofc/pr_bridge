@@ -26,9 +26,11 @@ end
 
 -- Player Data
 function framework.getPlayerFromId(source)
-    local Player = qbx_core:GetPlayer(source)
-    if not Player then Player = qbx_core:GetPlayerByCitizenId(source) end
-    return Player
+    return qbx_core:GetPlayer(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return qbx_core:GetPlayerByCitizenId(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)
@@ -99,6 +101,19 @@ function framework.GetPlayer(source)
     return qbx_core:GetPlayer(source)
 end
 
+function framework.GetPlayerData(source)
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.PlayerData or nil
+end
+
+function framework.HasPermission(source, permissions)
+    local ok, allowed = pcall(function()
+        return qbx_core:HasPermission(source, permissions)
+    end)
+
+    return ok and allowed == true
+end
+
 function framework.getItemByName(source, name)
     if Bridge.inventory and Bridge.inventory.GetItem then
         return Bridge.inventory.GetItem(source, name)
@@ -144,6 +159,102 @@ function framework.getPlayerJob(source, dataType)
     elseif dataType == 'gradeLabel' then
         return job.grade.name
     end
+end
+
+function framework.GetPlayerJob(source)
+    local Player = qbx_core:GetPlayer(source)
+    return Player and Player.PlayerData.job or nil
+end
+
+function framework.SetPlayerJob(source, jobName, grade)
+    local ok, success, result = pcall(function()
+        return qbx_core:SetJob(source, jobName, tonumber(grade) or 0)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.SetPlayerDuty(source, onDuty)
+    local ok, result = pcall(function()
+        return qbx_core:SetJobDuty(source, onDuty == true)
+    end)
+
+    if not ok then return false, result end
+    return result ~= false, result
+end
+
+function framework.AddPlayerToJob(citizenid, jobName, grade)
+    local ok, success, result = pcall(function()
+        return qbx_core:AddPlayerToJob(citizenid, jobName, tonumber(grade) or 0)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.RemovePlayerFromJob(citizenid, jobName)
+    local ok, success, result = pcall(function()
+        return qbx_core:RemovePlayerFromJob(citizenid, jobName)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.SetPlayerPrimaryJob(citizenid, jobName)
+    local ok, success, result = pcall(function()
+        return qbx_core:SetPlayerPrimaryJob(citizenid, jobName)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.AddPlayerToGang(citizenid, gangName, grade)
+    local ok, success, result = pcall(function()
+        return qbx_core:AddPlayerToGang(citizenid, gangName, tonumber(grade) or 0)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.RemovePlayerFromGang(citizenid, gangName)
+    local ok, success, result = pcall(function()
+        return qbx_core:RemovePlayerFromGang(citizenid, gangName)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.SetPlayerPrimaryGang(citizenid, gangName)
+    local ok, success, result = pcall(function()
+        return qbx_core:SetPlayerPrimaryGang(citizenid, gangName)
+    end)
+
+    if not ok then return false, success end
+    return success == true, result
+end
+
+function framework.PlayerHasJob(source, jobName, grade)
+    local Player = qbx_core:GetPlayer(source)
+    if not Player or not Player.PlayerData then return false end
+
+    jobName = tostring(jobName or ''):lower()
+    local jobs = Player.PlayerData.jobs or {}
+    local playerGrade = jobs[jobName]
+
+    if playerGrade == nil and Player.PlayerData.job and Player.PlayerData.job.name == jobName then
+        local currentGrade = Player.PlayerData.job.grade
+        playerGrade = type(currentGrade) == 'table' and (currentGrade.level or currentGrade.grade) or currentGrade
+    end
+
+    if playerGrade == nil then return false end
+    if grade == nil then return true end
+
+    return (tonumber(playerGrade) or 0) >= (tonumber(grade) or 0)
 end
 
 function framework.getPlayerMoney(source, moneyWallet)

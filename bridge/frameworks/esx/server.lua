@@ -25,7 +25,11 @@ end
 
 -- Player Data
 function framework.getPlayerFromId(source)
-    return ESX.GetPlayerFromId(source)
+    return ESX.GetPlayerFromId(tonumber(source))
+end
+
+function framework.GetPlayerFromIdentifier(identifier)
+    return ESX.GetPlayerFromIdentifier(identifier)
 end
 
 function framework.getPlayerSourceFromPlayer(Player)
@@ -69,6 +73,11 @@ function framework.GetPlayer(source)
     return ESX.GetPlayerFromId(source)
 end
 
+function framework.GetPlayerData(source)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    return xPlayer and xPlayer.get and xPlayer.get() or xPlayer
+end
+
 function framework.getPlayerJob(source, dataType)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then return nil end
@@ -83,6 +92,42 @@ function framework.getPlayerJob(source, dataType)
         return job.grade_label
     end
     return job
+end
+
+function framework.GetPlayerJob(source)
+    return framework.getPlayerJob(source)
+end
+
+function framework.SetPlayerJob(source, jobName, grade)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer or not xPlayer.setJob then return false, 'invalid_player' end
+
+    local ok, result = pcall(function()
+        return xPlayer.setJob(jobName, tonumber(grade) or 0)
+    end)
+
+    if not ok then return false, result end
+    return result ~= false, result
+end
+
+function framework.SetPlayerDuty(source, onDuty)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then return false, 'invalid_player' end
+
+    if xPlayer.set and type(xPlayer.set) == 'function' then
+        xPlayer.set('onduty', onDuty == true)
+        return true
+    end
+
+    return false, 'duty_unavailable'
+end
+
+function framework.PlayerHasJob(source, jobName, grade)
+    local job = framework.GetPlayerJob(source)
+    if not job or tostring(job.name or ''):lower() ~= tostring(jobName or ''):lower() then return false end
+    if grade == nil then return true end
+
+    return (tonumber(job.grade) or 0) >= (tonumber(grade) or 0)
 end
 
 function framework.getPlayerMoney(source, moneyWallet)
