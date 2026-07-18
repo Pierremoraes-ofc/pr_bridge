@@ -179,6 +179,11 @@ loadBridgeModule("banking", "banking")
 if normalizeApi then normalizeApi.target(public.target, env.ActiveBridges.target); normalizeApi.textui(public.textuiAdapter); normalizeApi.banking(public.banking); normalizeApi.notification(public.notify, PRCore.context, env.ActiveBridges.notification) end
 loadBridgeModule("phone", "phones")
 loadBridgeModule("progress", "progressbar")
+if PRCore.context == "client" then
+    loadBridgeModule("minigame", "minigames")
+else
+    public.minigame = {}
+end
 loadBridgeModule("weather", "weather")
 public.fivem = PRCore.load(("@pr_bridge/bridge/fivem/%s"):format(PRCore.context), env) or {}
 public.github = PRCore.load(("@pr_bridge/bridge/github/%s"):format(PRCore.context), env) or {}
@@ -254,6 +259,40 @@ public.devLaser = public.fivem.devLaser
 public.devtools = public.fivem.devtools
 public.devTools = public.fivem.devTools
 public.developerTools = public.fivem.developerTools
+
+
+if PRCore.context == "client" then
+    local UI = PRCore.load("@pr_bridge/interface/client/ui", env, true) or {
+        RegisterContext = public.menus and public.menus.RegisterContext,
+        ShowContext = public.menus and public.menus.ShowContext,
+        HideContext = public.menus and public.menus.HideContext,
+        GetOpenContextMenu = public.menus and public.menus.GetOpenContextMenu,
+        AlertDialog = public.menus and public.menus.AlertDialog,
+        InputDialog = public.menus and public.menus.InputDialog,
+        Notify = public.notify and public.notify.Notify,
+        ShowTextUI = public.textuiAdapter and public.textuiAdapter.Show,
+        HideTextUI = public.textuiAdapter and public.textuiAdapter.Hide,
+        IsTextUIOpen = function()
+            if GetResourceState("ox_lib"):find("start") then
+                return exports.ox_lib:isTextUIOpen()
+            end
+            return false
+        end,
+    }
+    if UI then
+        public.interface = UI
+        public.RegisterContext = UI.RegisterContext
+        public.ShowContext = UI.ShowContext
+        public.HideContext = UI.HideContext
+        public.GetOpenContextMenu = UI.GetOpenContextMenu
+        public.AlertDialog = UI.AlertDialog
+        public.InputDialog = UI.InputDialog
+        public.Notify = UI.Notify
+        public.ShowTextUI = UI.ShowTextUI
+        public.HideTextUI = UI.HideTextUI
+        public.IsTextUIOpen = UI.IsTextUIOpen
+    end
+end
 
 local cacheStore = {}
 local cacheEvents = {}

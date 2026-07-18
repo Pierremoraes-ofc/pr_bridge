@@ -208,6 +208,40 @@ Bridge.devtools = Bridge.fivem.devtools
 Bridge.devTools = Bridge.fivem.devTools
 Bridge.developerTools = Bridge.fivem.developerTools
 
+
+if PRCore.context == "client" then
+    local UI = PRCore.load("interface.client.ui", nil, true) or {
+        RegisterContext = Bridge.menus and Bridge.menus.RegisterContext,
+        ShowContext = Bridge.menus and Bridge.menus.ShowContext,
+        HideContext = Bridge.menus and Bridge.menus.HideContext,
+        GetOpenContextMenu = Bridge.menus and Bridge.menus.GetOpenContextMenu,
+        AlertDialog = Bridge.menus and Bridge.menus.AlertDialog,
+        InputDialog = Bridge.menus and Bridge.menus.InputDialog,
+        Notify = Bridge.notify and Bridge.notify.Notify,
+        ShowTextUI = Bridge.textuiAdapter and Bridge.textuiAdapter.Show,
+        HideTextUI = Bridge.textuiAdapter and Bridge.textuiAdapter.Hide,
+        IsTextUIOpen = function()
+            if GetResourceState("ox_lib"):find("start") then
+                return exports.ox_lib:isTextUIOpen()
+            end
+            return false
+        end,
+    }
+    if UI then
+        Bridge.interface = UI
+        Bridge.RegisterContext = UI.RegisterContext
+        Bridge.ShowContext = UI.ShowContext
+        Bridge.HideContext = UI.HideContext
+        Bridge.GetOpenContextMenu = UI.GetOpenContextMenu
+        Bridge.AlertDialog = UI.AlertDialog
+        Bridge.InputDialog = UI.InputDialog
+        Bridge.Notify = UI.Notify
+        Bridge.ShowTextUI = UI.ShowTextUI
+        Bridge.HideTextUI = UI.HideTextUI
+        Bridge.IsTextUIOpen = UI.IsTextUIOpen
+    end
+end
+
 local cacheStore = {}
 local cacheEvents = {}
 
