@@ -280,8 +280,10 @@ local function addClientHelpers(inventory)
     end
 end
 
-return function(inventory, context)
+return function(inventory, context, activeInventory)
     if type(inventory) ~= "table" then return inventory end
+    local resources = { ox="ox_inventory", qb="qb-inventory", quasar="qs-inventory", codem="codem-inventory", origen="origen_inventory", ak47="ak47_inventory", core="core_inventory", ps="ps-inventory", tgiann="tgiann-inventory", jaksam="jaksam_inventory", default="framework" }
+    if not inventory.GetResourceName then function inventory.GetResourceName() return resources[activeInventory] or activeInventory end end
 
     if not inventory.GetItemBySlot and inventory.GetSlot then inventory.GetItemBySlot = inventory.GetSlot end
     if not inventory.GetSlot and inventory.GetItemBySlot then inventory.GetSlot = inventory.GetItemBySlot end
@@ -307,6 +309,28 @@ return function(inventory, context)
         inventory.getItemInfo = inventory.GetItemInfo
     end
 
+    if not inventory.getInventoryImg and inventory.GetInventoryImg then inventory.getInventoryImg = inventory.GetInventoryImg end
+    if not inventory.GetInventoryImg and inventory.getInventoryImg then inventory.GetInventoryImg = inventory.getInventoryImg end
+
+    if not inventory.getInventoryImg then
+        function inventory.getInventoryImg(image)
+            local path = GetConvar("inventory:imagepath", "nui://ox_inventory/web/images")
+            return ("%s/%s"):format(path:gsub("/+$", ""), image)
+        end
+        inventory.GetInventoryImg = inventory.getInventoryImg
+    end
+
+    if not inventory.GetImagePath and inventory.getInventoryImg then inventory.GetImagePath = inventory.getInventoryImg end
+    if not inventory.GetPlayerInventory then inventory.GetPlayerInventory = inventory.GetInventoryItems or inventory.GetInventory or inventory.GetPlayerItems end
+    if not inventory.ClearPlayerInventory and inventory.ClearInventory then inventory.ClearPlayerInventory = inventory.ClearInventory end
+    if not inventory.GetItemByName and inventory.GetItem then inventory.GetItemByName = inventory.GetItem end
+
+    if context == "server" then
+        if not inventory.OpenStash and inventory.forceOpenInventory then function inventory.OpenStash(source, stashId) return inventory.forceOpenInventory(source, "stash", stashId) end end
+        if not inventory.AddStashItems and inventory.AddItem then function inventory.AddStashItems(stashId, items) local success=true; for _,item in pairs(items or {}) do success=inventory.AddItem(stashId,item.name or item.item,item.count or item.amount,item.metadata or item.info,item.slot) and success end; return success end end
+        if not inventory.GetStashItems then inventory.GetStashItems = inventory.GetInventoryItems or inventory.GetInventory end
+        if not inventory.ClearStash and inventory.ClearInventory then inventory.ClearStash = inventory.ClearInventory end
+    end
     if context == "server" then
         addServerHelpers(inventory)
     else

@@ -2,6 +2,7 @@ ConfigBridge = {
     ---Resources are checked sequentially. So if you want to prioritize a specific bridge then put it higher in the list.
 
     frameworks = {
+        { resource = "core", folder = "tmc" },
         { resource = "ND_Core", folder = "nd" },
         { resource = "ox_core", folder = "ox" },
         { resource = "es_extended", folder = "esx" },
@@ -12,14 +13,25 @@ ConfigBridge = {
 
     inventories = {
         { resource = "ox_inventory", folder = "ox" },
+        { resource = "tgiann-inventory", folder = "tgiann" },
+        { resource = "core_inventory", folder = "core" },
+        { resource = "ps-inventory", folder = "ps" },
+        { resource = "ak47_inventory", folder = "ak47" },
+        { resource = "jaksam_inventory", folder = "jaksam" },
         { resource = "qs-inventory", folder = "quasar" },
         { resource = "codem-inventory", folder = "codem" },
+        { resource = "minventory", folder = "codem" },
         { resource = "origen_inventory", folder = "origen" },
         { resource = "qb-inventory", folder = "qb" }
     },
 
     notifications = {
         { resource = "ox_lib", folder = "ox_lib" },
+        { resource = "okokNotify", folder = "okok" },
+        { resource = "mythic_notify", folder = "mythic" },
+        { resource = "pNotify", folder = "pnotify" },
+        { resource = "17mov_Hud", folder = "hud17" },
+        { resource = "codem-notification", folder = "codem_notification" },
         { resource = "es_extended", folder = "esx" },
         { resource = "qb-core", folder = "qb" }
     },
@@ -30,9 +42,28 @@ ConfigBridge = {
 
     targets = {
         { resource = "ox_target", folder = "ox" },
+        { resource = "core_focus", folder = "core_focus" },
         { resource = "qb-target", folder = "qb" }
     },
 
+
+    textui = {
+        { resource = "ox_lib", folder = "ox_lib" },
+        { resource = "jg-textui", folder = "jg" },
+        { resource = "okokTextUI", folder = "okok" },
+        { resource = "cd_drawtextui", folder = "cd" },
+        { resource = "codem-textui", folder = "codem" },
+        { resource = "brutal_textui", folder = "brutal" }
+    },
+
+    banking = {
+        { resource = "Renewed-Banking", folder = "renewed" },
+        { resource = "qb-banking", folder = "qb_banking" },
+        { resource = "okokBanking", folder = "okok" },
+        { resource = "tgiann-bank", folder = "tgiann" },
+        { resource = "kartik-banking", folder = "kartik" },
+        { resource = "fd_banking", folder = "fd" }
+    },
     phones = {
         { resource = "qs-smartphone-pro", folder = "qs_smartphone" },
         { resource = "lb-phone", folder = "lb_phone" },
@@ -44,6 +75,13 @@ ConfigBridge = {
         { resource = "ox_lib", folder = "qbx" }, -- Using qbx folder as it implements ox_lib progress
         { resource = "qb-core", folder = "qb" },
         { resource = "es_extended", folder = "esx" }
+    },
+
+    minigames = {
+        { resource = "glitch-minigames", folder = "glitch" },
+        { resource = "glitch-minigame", folder = "glitch" },
+        { resource = "mhacking", folder = "mhacking" },
+        { resource = "ox_lib", folder = "ox_lib" }
     },
 
     weather = {
@@ -76,8 +114,9 @@ ConfigBridge = {
 
 Config = {
     Debug = false,
+    Framework = "auto", -- auto | custom | resource/folder name
     Database = "auto",
-    VersionCheck = false,
+    VersionCheck = true,
     Fivem = {
         VehiclePropertiesStateBag = false,
         VehiclePropertiesBroadcastFallback = false,

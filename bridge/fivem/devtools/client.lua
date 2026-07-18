@@ -405,6 +405,38 @@ local function drawModelWireframeAtCoords(placementType, coords, heading, r, g, 
     end
 end
 
+function devtools.drawModelBoxAtCoords(options)
+    options = options or {}
+    local coords = options.coords or options.position
+    if type(coords) == "table" and coords.x and coords.y and coords.z and type(coords) ~= "vector3" then
+        coords = vector3(coords.x + 0.0, coords.y + 0.0, coords.z + 0.0)
+    end
+
+    drawModelWireframeAtCoords(
+        options.type or options.placementType or "object",
+        coords,
+        options.heading or options.rotation or 0.0,
+        options.r or options.red or 34,
+        options.g or options.green or 197,
+        options.b or options.blue or 94,
+        options.a or options.alpha or 230,
+        options.entityCentered,
+        options.model or options.modelHash
+    )
+
+    return true
+end
+
+function devtools.drawPedBox(coords, heading, model, options)
+    options = options or {}
+    options.coords = coords
+    options.heading = heading
+    options.model = model
+    options.type = "ped"
+    if options.entityCentered == nil then options.entityCentered = true end
+    return devtools.drawModelBoxAtCoords(options)
+end
+
 local function draw3DWall(p1, p2, height, r, g, b, a)
     local ax, ay, az = p1.x, p1.y, p1.z
     local bx, by, bz = p1.x, p1.y, p1.z + height
@@ -1013,6 +1045,7 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
     local previewEntities = {}
     local outlinedEntity = nil
     local ghostEntity = nil
+    local ignorePlacementEntity = options.ignoreEntity
     local buttonInstance = createButtons({
         { label = "Place", control = controlButton(24), controlId = 24, inputGroup = 0 },
         { label = "Undo", control = controlButton(25), controlId = 25, inputGroup = 0 },
@@ -1129,7 +1162,7 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
                 PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
             end
 
-            local aimCoords, surfaceHit, supportEntity = getPlacementHitFromCamera(cam, ghostEntity)
+            local aimCoords, surfaceHit, supportEntity = getPlacementHitFromCamera(cam, ghostEntity or ignorePlacementEntity)
             local selectedPlacementIndex = getPlacementIndexByEntity(sessionGhosts, supportEntity, previewEntities)
             if not selectedPlacementIndex then
                 selectedPlacementIndex = getClosestPlacementIndex(points, aimCoords, deleteAimDistance)
@@ -1157,9 +1190,9 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
             })
 
             if not previewMoved then
-                drawModelWireframeAtCoords(placementType, targetCoords, currentHeading, 34, 197, 94, 245, nil, modelHash)
+                drawModelWireframeAtCoords(placementType, targetCoords, currentHeading, 34, 197, 94, 245, isPedPlacement(placementType), modelHash)
             else
-                drawModelWireframeAtCoords(placementType, targetCoords, currentHeading, 34, 197, 94, 135, nil, modelHash)
+                drawModelWireframeAtCoords(placementType, targetCoords, currentHeading, 34, 197, 94, 135, isPedPlacement(placementType), modelHash)
             end
 
             if not selectedPlacementIndex and supportIsEntity then
@@ -1180,7 +1213,7 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
                     vector3(point.x, point.y, point.z),
                     point.heading,
                     r, g, b, a,
-                    nil,
+                    isPedPlacement(placementType),
                     modelHash
                 )
 
@@ -1294,10 +1327,14 @@ end
 
 devtools.DrawPolyzone3D = devtools.drawPolyzone3D
 devtools.DrawSphereZone3D = devtools.drawSphereZone3D
+devtools.DrawModelBoxAtCoords = devtools.drawModelBoxAtCoords
+devtools.DrawPedBox = devtools.drawPedBox
 devtools.StartEntityPlacement = devtools.startEntityPlacement
 devtools.createPolyzone = devtools.drawPolyzone3D
 devtools.createSphereZone = devtools.drawSphereZone3D
 devtools.drawSphereZone = devtools.drawSphereZone3D
+devtools.drawModelBox = devtools.drawModelBoxAtCoords
+devtools.drawPedWireframe = devtools.drawPedBox
 devtools.createPlacement = devtools.startEntityPlacement
 
 if _G then

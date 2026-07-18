@@ -63,4 +63,8 @@ function inventory.GetClientPlayerInventory()
     return codem_inventory:GetClientPlayerInventory()
 end
 
+function inventory.getInventoryImg(image)
+    return ("nui://codem-inventory/html/images/%s"):format(image)
+end
+
 return inventory
