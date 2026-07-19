@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { notifyTone } from '../lib/forgebox'
+import BootstrapIcon from '../components/BootstrapIcon.vue'
 
 const props = defineProps<{
   items: Array<{
@@ -53,6 +54,13 @@ onBeforeUnmount(() => {
 function tone(type?: string) {
   return notifyTone(type)
 }
+
+function notifyIcon(type?: string) {
+  if (type === 'success') return 'check-circle-fill'
+  if (type === 'error') return 'x-circle-fill'
+  if (type === 'warning') return 'exclamation-triangle-fill'
+  return 'info-circle-fill'
+}
 </script>
 
 <template>
@@ -68,7 +76,7 @@ function tone(type?: string) {
         }"
       >
         <span class="notify__icon" :style="{ color: tone(item.type).border }">
-          {{ tone(item.type).icon }}
+          <BootstrapIcon :name="notifyIcon(item.type)" />
         </span>
         <div class="notify__content">
           <strong v-if="item.title" class="notify__title">{{ item.title }}</strong>
@@ -107,20 +115,24 @@ function tone(type?: string) {
   border-radius: var(--fb-radius-md);
   border: 1px solid var(--fb-border);
   border-left-width: 4px;
-  background: var(--fb-bg-darker);
+  background: var(--fb-nui-surface);
   display: flex;
   gap: 12px;
   animation: fb-slide-in-right 0.3s cubic-bezier(0.1, 0.8, 0.25, 1);
 }
 
 .notify__icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-self: center;
   display: grid;
   place-items: center;
-  font-size: 14px;
-  font-weight: 700;
+}
+
+.notify__icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .notify__content {

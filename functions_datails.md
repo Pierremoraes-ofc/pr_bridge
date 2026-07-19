@@ -369,11 +369,13 @@ Ponte de comunicação abstrata para inventários como **ox_inventory, qb-invent
 
 ### Módulo de Menus (Client)
 - **`pr_lib.registerContext(context)` / `pr_lib.showContext(id)` / `pr_lib.hideContext(onExit)` / `pr_lib.getOpenContextMenu()`**: 
-  API nativa de contexto do `pr_bridge`, com estrutura 1:1 ao `ox_lib.registerContext`, mas renderizada pela NUI interna do bridge. Aceita campos como `id`, `title`, `position`, `menu`, `canClose`, `options`, `onExit` e `onBack`; cada opção pode usar `title`, `description`, `icon`, `iconColor`, `iconAnimation`, `disabled`, `readOnly`, `metadata`, `progress`, `colorScheme`, `image`, `arrow`, `event`, `serverEvent`, `command`, `args`, `menu` e `onSelect`. Funções `onSelect` ficam guardadas no runtime Lua e nunca são enviadas para a NUI.
+  API nativa de contexto do `pr_bridge`, com estrutura 1:1 ao `ox_lib.registerContext`, mas renderizada pela NUI interna do bridge. Aceita campos como `id`, `title`, `position`, `menu`, `canClose`, `searchPlaceholder`, `searchEmpty`, `options`, `onExit` e `onBack`; cada opção pode usar `title`, `description`, `icon`, `iconColor`, `iconAnimation`, `disabled`, `readOnly`, `metadata`, `progress`, `colorScheme`, `image`, `arrow`, `event`, `serverEvent`, `command`, `args`, `menu` e `onSelect`. Funções `onSelect` ficam guardadas no runtime Lua e nunca são enviadas para a NUI. A lupa do cabeçalho filtra a lista atual por título, descrição, badge, tecla e metadata sem alterar os índices dos callbacks.
   O campo `icon` usa Bootstrap Icons e aceita nomes como `person-fill`, `car-front-fill` ou `bi-geo-alt-fill`; aliases comuns do formato anterior continuam convertidos para preservar compatibilidade.
   O campo `image` da opção é exibido no balão lateral de metadata; imagens nunca expandem nem ocupam o card da opção.
 - **`pr_lib.inputDialog(heading, rows, options)` / `pr_lib.alertDialog(data, timeout)`**: 
   Atalhos da raiz para os diálogos nativos da interface do `pr_bridge`.
+  Linhas numéricas aceitam `step` e `precision`; quando nenhum passo é informado, o campo aceita livremente valores decimais em vez de restringir a inteiros.
+  O `inputDialog` aceita os tipos `input`, `number`, `checkbox`, `select`, `multi-select`, `slider`, `color`, `date`, `date-range`, `time` e `textarea`, incluindo senha, limites de texto, busca em dropdown, selecao multipla limitada, datas como timestamp ou string e tamanhos `xs` a `xl`.
 - **`pr_lib.Notify(data)` / `pr_lib.showTextUI(text, options)` / `pr_lib.hideTextUI()` / `pr_lib.isTextUIOpen()`**: 
   Atalhos da raiz para os módulos nativos de notificação e TextUI do `pr_bridge`, sem sobrescrever o adaptador legado `pr_lib.notify`.
 - **`pr_lib.menus.RegisterMenu(data, cb)`**: 
@@ -386,6 +388,11 @@ Ponte de comunicação abstrata para inventários como **ox_inventory, qb-invent
   Exibe uma caixa de diálogo na tela contendo formulários de entrada de dados (inputs, selects, etc.), retornando as respostas do usuário após o envio.
 - **`pr_lib.menus.AlertDialog(data, timeout)`**: 
   Exibe um modal pop-up de confirmação de tela cheia (ex: Sim/Não), aguardando e retornando a decisão do jogador.
+
+- **`pr_lib.openVisualAdminMenu(parentMenu)` / `pr_lib.getVisualConfig()`**:
+  Abre o painel administrativo global da interface e consulta sua configuração atual. A paleta, a opacidade e as posições de `registerContext`, metadata, `alertDialog`, `inputDialog`, `registerMenu`, notify, progress e TextUI ficam persistidas em `interface/data/config.json` e sincronizadas por state bag global. O comando `/pr_ui_admin` abre o mesmo painel; `parentMenu` pode apontar para um contexto pai e manter o botão de voltar.
+- **`pr_lib.registerMenu(data, cb)` / `pr_lib.showMenu(id, startIndex)` / `pr_lib.hideMenu(onExit)`**:
+  Atalhos diretos para o adaptador de menu. Quando `data.position` não for informado, `registerMenu` usa o lado definido no painel visual global.
 
 ### Módulo TextUI (Client)
 - **`pr_lib.textuiBridge.GetResourceName()`**: 

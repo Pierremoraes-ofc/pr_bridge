@@ -28,26 +28,103 @@ export function alphaColor(color: string, alpha: number): string {
 }
 
 const bootstrapIconAliases: Record<string, string> = {
+  'arrow-down-to-line': 'download',
   'arrow-left': 'arrow-left',
+  'arrows-to-dot': 'bounding-box-circles',
+  'arrow-up-from-line': 'upload',
   bars: 'list',
   bell: 'bell-fill',
+  'book-open': 'book-fill',
+  bolt: 'lightning-fill',
   box: 'box-seam-fill',
+  'box-open': 'box-seam-fill',
+  'box-select': 'bounding-box',
+  'boxes-stacked': 'boxes',
+  brain: 'activity',
   briefcase: 'briefcase-fill',
+  'briefcase-business': 'briefcase-fill',
+  'building-2': 'buildings-fill',
   car: 'car-front-fill',
+  'cart-shopping': 'cart-fill',
+  'chart-no-axes-combined': 'graph-up-arrow',
   check: 'check-lg',
   circle: 'circle-fill',
+  'circle-dollar-sign': 'currency-dollar',
+  'circle-dot': 'record-circle',
+  'circle-info': 'info-circle-fill',
+  'circle-question': 'question-circle-fill',
+  'clipboard-question': 'clipboard2-check-fill',
   close: 'x-lg',
+  crosshairs: 'crosshair',
+  crown: 'award-fill',
   cube: 'box-fill',
+  dolly: 'cart4',
+  'file-signature': 'file-earmark-text-fill',
+  'flag-checkered': 'flag-fill',
+  gauge: 'speedometer2',
   'heart-pulse': 'heart-pulse-fill',
+  hand: 'hand-index-thumb-fill',
+  'hourglass-half': 'hourglass-split',
+  'key-round': 'key-fill',
+  landmark: 'bank2',
+  'list-checks': 'list-check',
+  'list-ordered': 'list-ol',
+  'location-arrow': 'cursor-fill',
+  'location-crosshairs': 'crosshair',
+  'location-dot': 'geo-alt-fill',
+  'lock-open': 'unlock-fill',
+  'magnifying-glass': 'search',
   map: 'map-fill',
   'map-location-dot': 'geo-alt-fill',
+  'map-pin': 'geo-alt-fill',
+  'map-pinned': 'pin-map-fill',
+  'message-square': 'chat-square-fill',
+  'message-square-text': 'chat-square-text-fill',
+  'money-bill-wave': 'cash-stack',
+  'move-3d': 'arrows-move',
   'network-wired': 'diagram-3-fill',
+  package: 'box-seam-fill',
+  'pen-to-square': 'pencil-square',
+  'person-running': 'person-walking',
+  'plane-arrival': 'airplane-engines-fill',
   plug: 'plug-fill',
+  'refresh-cw': 'arrow-clockwise',
+  'right-left': 'arrow-left-right',
+  'rotate-ccw': 'arrow-counterclockwise',
+  route: 'signpost-split-fill',
+  scan: 'upc-scan',
+  seedling: 'flower1',
+  'server-cog': 'server',
+  settings: 'gear-fill',
   shield: 'shield-fill',
   'shield-alt': 'shield-lock-fill',
+  skull: 'emoji-dizzy-fill',
+  'sliders-horizontal': 'sliders',
+  snowflake: 'snow',
   spinner: 'arrow-repeat',
+  spotlight: 'lamp-fill',
+  store: 'shop',
+  toolbox: 'tools',
+  target: 'bullseye',
+  tractor: 'truck-front-fill',
+  'traffic-cone': 'cone-striped',
+  'trash-2': 'trash',
   user: 'person-fill',
+  'user-gear': 'person-gear',
+  'user-check': 'person-check-fill',
+  'user-lock': 'person-lock',
+  'user-minus': 'person-dash-fill',
+  'user-plus': 'person-plus-fill',
+  'user-x': 'person-x-fill',
+  'user-round': 'person-circle',
+  users: 'people-fill',
+  'users-gear': 'people-fill',
+  'users-round': 'people-fill',
+  vault: 'safe2-fill',
+  video: 'camera-video-fill',
   wallet: 'wallet2',
+  'wand-sparkles': 'magic',
+  warehouse: 'building-fill',
   wrench: 'wrench-adjustable',
 }
 
@@ -63,6 +140,7 @@ export function iconName(icon: unknown): string {
   const normalized = name
     .trim()
     .toLowerCase()
+    .replace(/^fa-(solid|regular|brands)\s+/, '')
     .replace(/^fa[srlbd]?\s+/, '')
     .replace(/^fa-/, '')
     .replace(/^bi\s+/, '')
@@ -113,12 +191,12 @@ export function metaItems(metadata: unknown): MetaItem[] {
 export function notifyTone(type?: string) {
   switch (type) {
     case 'success':
-      return { border: '#37e35c', glow: 'rgba(55, 227, 92, 0.15)', icon: '✓' }
+      return { border: 'var(--fb-success)', glow: 'var(--fb-success)', icon: 'check-circle-fill' }
     case 'error':
-      return { border: '#ff3b4f', glow: 'rgba(255, 59, 79, 0.15)', icon: '!' }
+      return { border: 'var(--fb-error)', glow: 'var(--fb-error)', icon: 'x-circle-fill' }
     case 'warning':
-      return { border: '#ff9500', glow: 'rgba(255, 149, 0, 0.15)', icon: '⚠' }
+      return { border: 'var(--fb-warning)', glow: 'var(--fb-warning)', icon: 'exclamation-triangle-fill' }
     default:
-      return { border: '#45e8ff', glow: 'rgba(69, 232, 255, 0.15)', icon: 'ℹ' }
+      return { border: 'var(--fb-info)', glow: 'var(--fb-info)', icon: 'info-circle-fill' }
   }
 }

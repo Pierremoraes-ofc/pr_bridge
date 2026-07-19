@@ -3,6 +3,14 @@
 local ownerResource = nil
 local focusCount = 0
 
+local function applyGlobalConfig(config)
+    if type(config) ~= "table" then return end
+    SendNUIMessage({
+        action = "theme:apply",
+        data = config,
+    })
+end
+
 local function payloadOwner(data)
     if type(data) == "table" then
         return data.__resource or data.resource or data.owner or ownerResource
@@ -116,5 +124,16 @@ RegisterNUICallback("input:close", function(data, cb)
         TriggerEvent("pr_bridge:ui:input:close", resource)
     end
 end)
+
+CreateThread(function()
+    while type(GlobalState.pr_bridge_ui_config) ~= "table" do Wait(100) end
+    applyGlobalConfig(GlobalState.pr_bridge_ui_config)
+end)
+
+AddStateBagChangeHandler("pr_bridge_ui_config", "global", function(_, _, value)
+    applyGlobalConfig(value)
+end)
+
+PRCore.load("@pr_bridge/interface/client/ui", _ENV)
 
 Bridge.debug.info("[pr_interface] NUI host pronto.")

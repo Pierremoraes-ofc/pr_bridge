@@ -24,6 +24,8 @@ return function(Renderer)
     ---@field title string
     ---@field menu? string
     ---@field canClose? boolean
+    ---@field searchPlaceholder? string
+    ---@field searchEmpty? string
     ---@field onExit? fun()
     ---@field onBack? fun()
     ---@field options ContextOption[]|table<string, ContextOption>
@@ -198,6 +200,8 @@ return function(Renderer)
                 menu = data.menu,
                 position = data.position,
                 canClose = data.canClose ~= false,
+                searchPlaceholder = data.searchPlaceholder,
+                searchEmpty = data.searchEmpty,
                 onExit = data.onExit,
                 onBack = data.onBack,
                 options = options,
@@ -240,6 +244,8 @@ return function(Renderer)
             position = ctx.position,
             canClose = ctx.canClose,
             hasParent = #stack > 0 or ctx.menu ~= nil,
+            searchPlaceholder = ctx.searchPlaceholder,
+            searchEmpty = ctx.searchEmpty,
             options = ctx.options,
         })
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { fetchNui } from '../nui/bridge'
+import BootstrapIcon from '../components/BootstrapIcon.vue'
 
 const props = defineProps<{
   data: {
@@ -28,7 +29,7 @@ function cancel() {
     @click.self="cancel"
   >
     <div class="alert fb-panel">
-      <div class="alert__icon">⚠</div>
+      <div class="alert__icon"><BootstrapIcon name="exclamation-triangle-fill" /></div>
       <h2 class="alert__header">{{ data.header }}</h2>
       <p class="alert__content">{{ data.content }}</p>
       <div class="alert__actions">
@@ -56,8 +57,9 @@ function cancel() {
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(0, 0, 0, 0.68);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   animation: fb-fade-in 0.2s ease;
 }
 
@@ -65,6 +67,7 @@ function cancel() {
   width: min(420px, 92vw);
   padding: 28px 24px 22px;
   text-align: center;
+  background: var(--fb-nui-surface);
   animation: fb-pop-in 0.24s cubic-bezier(0.1, 0.8, 0.25, 1);
 }
 
@@ -77,8 +80,13 @@ function cancel() {
   border-radius: 50%;
   font-size: 22px;
   color: var(--fb-orange);
-  background: rgba(255, 122, 26, 0.12);
-  border: 1px solid rgba(255, 122, 26, 0.3);
+  background: var(--fb-orange-subtle);
+  border: 1px solid var(--fb-orange-glow-light);
+}
+
+.alert__icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .alert__header {

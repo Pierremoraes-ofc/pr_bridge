@@ -6,7 +6,10 @@
   --fb-orange-glow: rgba(255, 122, 26, 0.45);
   --fb-orange-glow-light: rgba(255, 122, 26, 0.15);
   --fb-orange-subtle: rgba(255, 122, 26, 0.08);
+  --fb-orange-border: rgba(255, 122, 26, 0.32);
+  --fb-orange-strong: rgba(255, 122, 26, 0.72);
   --fb-nui-surface: rgba(12, 12, 15, 0.82);
+  --fb-nui-field: rgba(12, 12, 15, 0.9);
 
   --fb-bg-darkest: #0a0a0c;
   --fb-bg-darker: #121214;
@@ -138,7 +141,7 @@
   min-height: 38px;
   border-radius: 7px;
   border: 1px solid var(--fb-border);
-  background: rgba(5, 5, 7, 0.58);
+  background: var(--fb-nui-field);
   color: var(--fb-text);
   outline: none;
   padding: 9px 11px;
@@ -171,11 +174,11 @@
 
 .fb-panel {
   border-radius: 10px;
-  border: 1px solid rgba(255, 122, 26, 0.32);
-  background: linear-gradient(180deg, rgba(13, 13, 17, 0.96), rgba(8, 8, 10, 0.99));
+  border: 1px solid var(--fb-orange-glow-light);
+  background: var(--fb-nui-surface);
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.72),
-    0 0 0 1px rgba(255, 122, 26, 0.08),
+    0 0 0 1px var(--fb-orange-subtle),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }

@@ -314,15 +314,29 @@
 ### client
 - `pr_lib.registerContext(context)`
   - `options[].icon` usa nomes do Bootstrap Icons (`person-fill`, `car-front-fill`, `bi-geo-alt-fill`).
+  - `searchPlaceholder` e `searchEmpty` personalizam os textos da busca nativa do menu.
 - `pr_lib.showContext(id)`
 - `pr_lib.hideContext(onExit)`
 - `pr_lib.getOpenContextMenu()`
+- `pr_lib.registerMenu(data, cb)`
+- `pr_lib.showMenu(id, startIndex)`
+- `pr_lib.hideMenu(onExit)`
 - `pr_lib.inputDialog(heading, rows, options)`
+  - Linhas `number` aceitam `step` e `precision`; sem `step`, valores decimais permanecem validos.
+  - Tipos nativos: `input`, `number`, `checkbox`, `select`, `multi-select`, `slider`, `color`, `date`, `date-range`, `time` e `textarea`.
+  - Suporta `checked`, `password`, `clearable`, `searchable`, `maxSelectedValues`, `format`, `returnString`, `autosize`, `minLength` e `maxLength`.
+  - `options.allowCancel` controla o cancelamento e `options.size` aceita `xs`, `sm`, `md`, `lg` ou `xl`.
 - `pr_lib.alertDialog(data, timeout)`
 - `pr_lib.Notify(data)`
 - `pr_lib.showTextUI(text, options)`
 - `pr_lib.hideTextUI()`
 - `pr_lib.isTextUIOpen()`
+- `pr_lib.openVisualAdminMenu(parentMenu)`
+  - Abre a configuracao global de paleta, opacidade e posicoes. Restrito a administradores.
+- `pr_lib.getVisualConfig()`
+  - Retorna uma copia da configuracao visual sincronizada pelo servidor.
+- Comando admin: `/pr_ui_admin`
+- Persistencia: `interface/data/config.json`
 - `pr_lib.menus.RegisterMenu(data, cb)`
 - `pr_lib.menus.ShowMenu(id, startIndex)`
 - `pr_lib.menus.HideMenu(onExit)`

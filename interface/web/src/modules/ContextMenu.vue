@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { fetchNui } from '../nui/bridge'
 import { alphaColor, iconName, metaItems } from '../lib/forgebox'
 import BootstrapIcon from '../components/BootstrapIcon.vue'
+import forgeSymbol from '../assets/forge-symbol.webp'
 
 const props = defineProps<{
   data: {
@@ -12,6 +13,8 @@ const props = defineProps<{
     position?: string
     canClose?: boolean
     hasParent?: boolean
+    searchPlaceholder?: string
+    searchEmpty?: string
     options: Array<{
       index: number
       title: string
@@ -33,11 +36,14 @@ const props = defineProps<{
   }
 }>()
 
-const accent = '#ff7a1a'
 const hoveredOption = ref<any | null>(null)
 const tooltipRect = ref({ top: 0, left: 0 })
+const searchOpen = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
 
 const hoveredMetadata = computed(() => metaItems(hoveredOption.value?.metadata))
+const metadataOnLeft = computed(() => document.documentElement.dataset.metadataSide === 'left')
 const hoveredImage = computed(() => {
   const image = hoveredOption.value?.image
   return typeof image === 'string' ? image : ''
@@ -46,6 +52,62 @@ const tooltipStyle = computed(() => ({
   top: `${tooltipRect.value.top}px`,
   left: `${tooltipRect.value.left}px`,
 }))
+const filteredOptions = computed(() => {
+  const query = normalizeSearch(searchQuery.value)
+  if (!query) return props.data.options || []
+
+  return (props.data.options || []).filter((option) => {
+    const metadata = metaItems(option.metadata)
+      .map((item) => `${item.label || ''} ${item.value || ''}`)
+      .join(' ')
+    const searchable = [
+      option.title,
+      option.description,
+      option.badge,
+      option.keybind,
+      metadata,
+    ].join(' ')
+
+    return normalizeSearch(searchable).includes(query)
+  })
+})
+
+watch(
+  () => props.data.id,
+  () => {
+    searchOpen.value = false
+    searchQuery.value = ''
+    hoveredOption.value = null
+  },
+)
+
+watch(searchQuery, () => {
+  hoveredOption.value = null
+})
+
+function normalizeSearch(value: unknown): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+async function toggleSearch() {
+  searchOpen.value = !searchOpen.value
+  if (!searchOpen.value) {
+    searchQuery.value = ''
+    return
+  }
+
+  await nextTick()
+  searchInput.value?.focus()
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  searchQuery.value = ''
+}
 
 function onSelect(option: any, id: string) {
   if (option.disabled || option.readOnly) return
@@ -62,15 +124,24 @@ function onBack() {
 
 function optionColor(option: any): string {
   const map: Record<string, string> = {
-    orange: '#ff7a1a',
-    blue: '#3b82f6',
-    green: '#10b981',
-    yellow: '#f59e0b',
-    red: '#ef4444',
+    orange: 'var(--fb-orange)',
+    blue: 'var(--fb-info)',
+    green: 'var(--fb-success)',
+    yellow: 'var(--fb-warning)',
+    red: 'var(--fb-error)',
     purple: '#8b5cf6',
     cyan: '#06b6d4',
   }
-  return map[option.colorScheme] || accent
+  if (map[option.colorScheme]) return map[option.colorScheme]
+  return getComputedStyle(document.documentElement).getPropertyValue('--fb-orange').trim() || '#ff7a1a'
+}
+
+function hasOptionIcon(icon: unknown): boolean {
+  if (typeof icon === 'string') return icon.trim().length > 0
+  if (!icon || typeof icon !== 'object') return false
+
+  const name = (icon as Record<string, unknown>).name
+  return typeof name === 'string' && name.trim().length > 0
 }
 
 function positionClass(position?: string): string {
@@ -93,7 +164,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
   hoveredOption.value = option
   tooltipRect.value = {
     top: rect.top + rect.height / 2,
-    left: rect.right + 12,
+    left: metadataOnLeft.value ? rect.left - 12 : rect.right + 12,
   }
 }
 </script>
@@ -101,6 +172,10 @@ function onOptionEnter(option: any, event: MouseEvent) {
 <template>
   <div class="ctx-shell">
     <div class="ctx pr-interactive" :class="positionClass(data.position)">
+    <div class="ctx__brand" aria-hidden="true">
+      <img class="ctx__brand-image" :src="forgeSymbol" alt="" />
+    </div>
+
     <header class="ctx__header">
       <button
         v-if="data.hasParent"
@@ -117,32 +192,66 @@ function onOptionEnter(option: any, event: MouseEvent) {
         <h2 class="ctx__title">{{ data.title }}</h2>
       </div>
 
-      <button
-        v-if="data.canClose !== false"
-        class="ctx__nav ctx__nav--close"
-        type="button"
-        aria-label="Fechar"
-        @click="onClose"
-      >
-        <BootstrapIcon class="ctx__nav-icon" name="x-lg" />
-      </button>
-      <span v-else class="ctx__nav-spacer" />
+      <div class="ctx__actions">
+        <button
+          class="ctx__nav"
+          :class="{ 'is-active': searchOpen }"
+          type="button"
+          aria-label="Buscar"
+          @click="toggleSearch"
+        >
+          <BootstrapIcon class="ctx__nav-icon" name="search" />
+        </button>
+
+        <button
+          v-if="data.canClose !== false"
+          class="ctx__nav ctx__nav--close"
+          type="button"
+          aria-label="Fechar"
+          @click="onClose"
+        >
+          <BootstrapIcon class="ctx__nav-icon" name="x-lg" />
+        </button>
+      </div>
     </header>
+
+    <div v-if="searchOpen" class="ctx__search">
+      <BootstrapIcon class="ctx__search-icon" name="search" />
+      <input
+        ref="searchInput"
+        v-model="searchQuery"
+        class="ctx__search-input"
+        type="text"
+        :placeholder="data.searchPlaceholder || 'Buscar opcao...'"
+        autocomplete="off"
+        @keydown.esc.stop.prevent="closeSearch"
+      />
+      <button
+        v-if="searchQuery"
+        class="ctx__search-clear"
+        type="button"
+        aria-label="Limpar busca"
+        @click="searchQuery = ''"
+      >
+        <BootstrapIcon name="x-circle" />
+      </button>
+    </div>
 
     <ul class="ctx__list">
       <li
-        v-for="option in data.options"
+        v-for="option in filteredOptions"
         :key="option.index"
         class="ctx__item"
         :class="{
           'is-disabled': option.disabled,
           'is-readonly': option.readOnly,
+          'has-icon': hasOptionIcon(option.icon),
         }"
         @click="onSelect(option, data.id)"
         @mouseenter="onOptionEnter(option, $event)"
       >
         <BootstrapIcon
-          v-if="option.icon"
+          v-if="hasOptionIcon(option.icon)"
           class="ctx__icon"
           :class="{
             'is-spin': option.iconAnimation === 'spin',
@@ -180,10 +289,19 @@ function onOptionEnter(option: any, event: MouseEvent) {
           <BootstrapIcon v-if="option.arrow" class="ctx__arrow" name="chevron-right" />
         </div>
       </li>
+      <li v-if="filteredOptions.length === 0" class="ctx__empty">
+        <BootstrapIcon name="search" />
+        <span>{{ data.searchEmpty || 'Nenhuma opcao encontrada.' }}</span>
+      </li>
     </ul>
     </div>
 
-    <div v-if="hoveredMetadata.length || hoveredImage" class="ctx__tooltip pr-interactive" :style="tooltipStyle">
+    <div
+      v-if="hoveredMetadata.length || hoveredImage"
+      class="ctx__tooltip pr-interactive"
+      :class="{ 'is-left': metadataOnLeft }"
+      :style="tooltipStyle"
+    >
       <div class="ctx__tooltip-arrow" />
       <img v-if="hoveredImage" class="ctx__meta-preview" :src="hoveredImage" alt="" />
       <ul class="ctx__meta">
@@ -228,6 +346,25 @@ function onOptionEnter(option: any, event: MouseEvent) {
   animation: fb-slide-in-left 0.28s cubic-bezier(0.1, 0.8, 0.25, 1);
 }
 
+.ctx__brand {
+  position: absolute;
+  top: -70px;
+  left: 0;
+  width: 66px;
+  height: 66px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ctx__brand-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.45));
+}
+
 .ctx--top-right {
   top: 7%;
   right: 17%;
@@ -262,13 +399,20 @@ function onOptionEnter(option: any, event: MouseEvent) {
 
 .ctx__header {
   display: grid;
-  grid-template-columns: 36px 1fr 36px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 0;
   margin-bottom: 7px;
   border: 0;
   background: transparent;
+}
+
+.ctx__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .ctx__heading {
@@ -278,7 +422,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
   place-items: center;
   padding: 7px 12px;
   text-align: center;
-  border: 1px solid rgba(255, 122, 26, 0.2);
+  border: 1px solid var(--fb-orange-glow-light);
   border-radius: var(--fb-radius-md);
   background: var(--fb-nui-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
@@ -307,8 +451,13 @@ function onOptionEnter(option: any, event: MouseEvent) {
 
 .ctx__nav:hover {
   color: var(--fb-orange);
-  border-color: rgba(255, 122, 26, 0.35);
+  border-color: var(--fb-orange-border);
   background: var(--fb-nui-surface);
+}
+
+.ctx__nav.is-active {
+  color: var(--fb-orange);
+  border-color: var(--fb-orange-glow);
 }
 
 .ctx__nav-icon {
@@ -331,10 +480,65 @@ function onOptionEnter(option: any, event: MouseEvent) {
   gap: 6px;
 }
 
+.ctx__search {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+  padding: 0 11px;
+  border: 1px solid var(--fb-orange-border);
+  border-radius: var(--fb-radius-md);
+  background: var(--fb-nui-surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.ctx__search-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--fb-orange);
+}
+
+.ctx__search-input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fb-text);
+  font-size: 12px;
+}
+
+.ctx__search-input::placeholder {
+  color: var(--fb-text-muted);
+}
+
+.ctx__search-clear {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--fb-text-muted);
+  cursor: pointer;
+}
+
+.ctx__search-clear:hover {
+  color: var(--fb-orange);
+}
+
+.ctx__search-clear svg {
+  width: 13px;
+  height: 13px;
+}
+
 .ctx__item {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: flex-start;
   width: 100%;
@@ -349,10 +553,14 @@ function onOptionEnter(option: any, event: MouseEvent) {
 }
 
 .ctx__item:hover:not(.is-disabled):not(.is-readonly) {
-  border-color: rgba(255, 122, 26, 0.42);
+  border-color: var(--fb-orange-glow);
   background: var(--fb-nui-surface);
-  box-shadow: inset 3px 0 0 rgba(255, 122, 26, 0.72);
+  box-shadow: inset 3px 0 0 var(--fb-orange-strong);
   transform: translateY(-1px);
+}
+
+.ctx__item.has-icon {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .ctx__item.is-disabled {
@@ -374,8 +582,27 @@ function onOptionEnter(option: any, event: MouseEvent) {
   line-height: 1;
   padding: 7px;
   border-radius: var(--fb-radius-md);
-  background: rgba(255, 122, 26, 0.08);
-  border: 1px solid rgba(255, 122, 26, 0.15);
+  background: var(--fb-orange-subtle);
+  border: 1px solid var(--fb-orange-glow-light);
+}
+
+.ctx__empty {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--fb-radius-md);
+  background: var(--fb-nui-surface);
+  color: var(--fb-text-muted);
+  font-size: 12px;
+}
+
+.ctx__empty svg {
+  width: 14px;
+  height: 14px;
 }
 
 .ctx__icon.is-spin {
@@ -418,9 +645,9 @@ function onOptionEnter(option: any, event: MouseEvent) {
   letter-spacing: 0.5px;
   padding: 2px 8px;
   border-radius: var(--fb-radius-sm);
-  background: rgba(255, 122, 26, 0.1);
+  background: var(--fb-orange-subtle);
   color: var(--fb-orange);
-  border: 1px solid rgba(255, 122, 26, 0.2);
+  border: 1px solid var(--fb-orange-glow-light);
 }
 
 .ctx__desc {
@@ -443,11 +670,11 @@ function onOptionEnter(option: any, event: MouseEvent) {
   max-height: 300px;
   padding: 10px;
   border-radius: var(--fb-radius-md);
-  border: 1px solid rgba(255, 122, 26, 0.32);
+  border: 1px solid var(--fb-orange-border);
   background: var(--fb-nui-surface);
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.62),
-    0 0 0 1px rgba(255, 122, 26, 0.08);
+    0 0 0 1px var(--fb-orange-subtle);
   opacity: 0;
   pointer-events: none;
   transform: translate(8px, -50%);
@@ -456,14 +683,24 @@ function onOptionEnter(option: any, event: MouseEvent) {
   transform: translate(0, -50%);
 }
 
+.ctx__tooltip.is-left {
+  transform: translate(-100%, -50%);
+}
+
+.ctx__tooltip.is-left .ctx__tooltip-arrow {
+  left: auto;
+  right: -6px;
+  transform: translateY(-50%) rotate(225deg);
+}
+
 .ctx__tooltip-arrow {
   position: absolute;
   left: -6px;
   top: 50%;
   width: 10px;
   height: 10px;
-  border-left: 1px solid rgba(255, 122, 26, 0.32);
-  border-bottom: 1px solid rgba(255, 122, 26, 0.32);
+  border-left: 1px solid var(--fb-orange-border);
+  border-bottom: 1px solid var(--fb-orange-border);
   background: var(--fb-nui-surface);
   transform: translateY(-50%) rotate(45deg);
 }
@@ -554,8 +791,10 @@ function onOptionEnter(option: any, event: MouseEvent) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  align-self: stretch;
+  justify-content: center;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .ctx__check {
@@ -592,8 +831,11 @@ function onOptionEnter(option: any, event: MouseEvent) {
 }
 
 .ctx__arrow {
-  width: 14px;
-  height: 14px;
-  color: var(--fb-text-muted);
+  width: 17px;
+  height: 17px;
+  color: var(--fb-orange);
+  stroke: currentColor;
+  stroke-width: 0.6px;
+  paint-order: stroke fill;
 }
 </style>

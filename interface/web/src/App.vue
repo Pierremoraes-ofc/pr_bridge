@@ -6,6 +6,7 @@ import AlertDialog from './modules/AlertDialog.vue'
 import InputDialog from './modules/InputDialog.vue'
 import NotifyStack from './modules/NotifyStack.vue'
 import TextUI from './modules/TextUI.vue'
+import { applyVisualConfig } from './lib/theme'
 
 const context = ref<any>(null)
 const alert = ref<any>(null)
@@ -16,7 +17,11 @@ const notifies = ref<any[]>([])
 const unsubscribers: Array<() => void> = []
 
 onMounted(() => {
+  applyVisualConfig()
   unsubscribers.push(
+    onNuiMessage('theme:apply', (data) => {
+      applyVisualConfig(data)
+    }),
     onNuiMessage('context:open', (data) => {
       context.value = data
     }),
@@ -50,6 +55,7 @@ onMounted(() => {
     if (e.key !== 'Escape') return
 
     if (input.value) {
+      if (input.value.options?.allowCancel === false) return
       fetchNui('input:close', { __resource: input.value.__resource })
       return
     }

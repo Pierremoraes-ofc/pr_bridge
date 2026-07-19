@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { iconName } from '../lib/forgebox'
+import BootstrapIcon from '../components/BootstrapIcon.vue'
 
 const props = defineProps<{
   data: {
@@ -33,7 +35,7 @@ function parseKey(text: string): { key?: string; message: string } {
 
 <template>
   <div class="textui" :class="positionClass(data.position)">
-    <span v-if="data.icon" class="textui__icon">{{ data.icon }}</span>
+    <BootstrapIcon v-if="data.icon" class="textui__icon" :name="iconName(data.icon)" />
     <span v-if="parsed.key" class="textui__key">{{ parsed.key }}</span>
     <span class="textui__text">{{ parsed.message || data.text }}</span>
   </div>
@@ -47,7 +49,7 @@ function parseKey(text: string): { key?: string; message: string } {
   gap: 12px;
   padding: 12px 18px;
   border-radius: var(--fb-radius-md);
-  background: rgba(10, 10, 12, 0.95);
+  background: var(--fb-nui-surface);
   border: 1px solid var(--fb-border);
   border-left: 4px solid var(--fb-orange);
   box-shadow:
@@ -84,10 +86,10 @@ function parseKey(text: string): { key?: string; message: string } {
 }
 
 .textui__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   color: var(--fb-orange);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .textui__key {

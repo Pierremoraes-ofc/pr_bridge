@@ -246,6 +246,12 @@ if PRCore.context == "client" then
         Bridge.hideContext = UI.hideContext or UI.HideContext
         Bridge.GetOpenContextMenu = UI.GetOpenContextMenu
         Bridge.getOpenContextMenu = UI.getOpenContextMenu or UI.GetOpenContextMenu
+        Bridge.RegisterMenu = UI.RegisterMenu
+        Bridge.registerMenu = UI.registerMenu or UI.RegisterMenu
+        Bridge.ShowMenu = UI.ShowMenu
+        Bridge.showMenu = UI.showMenu or UI.ShowMenu
+        Bridge.HideMenu = UI.HideMenu
+        Bridge.hideMenu = UI.hideMenu or UI.HideMenu
         Bridge.AlertDialog = UI.AlertDialog
         Bridge.alertDialog = UI.alertDialog or UI.AlertDialog
         Bridge.InputDialog = UI.InputDialog
@@ -257,6 +263,10 @@ if PRCore.context == "client" then
         Bridge.hideTextUI = UI.hideTextUI or UI.HideTextUI
         Bridge.IsTextUIOpen = UI.IsTextUIOpen
         Bridge.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
+        Bridge.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
+        Bridge.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
+        Bridge.GetVisualConfig = UI.GetVisualConfig
+        Bridge.getVisualConfig = UI.getVisualConfig or UI.GetVisualConfig
     end
 end
 

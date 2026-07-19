@@ -33,6 +33,13 @@ input,
 select,
 textarea {
   font: inherit;
+  color-scheme: dark;
+}
+
+input::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  filter: invert(1) brightness(1.8);
+  cursor: pointer;
 }
 
 ::-webkit-scrollbar {
@@ -54,3 +61,40 @@ textarea {
   background: var(--fb-orange-hover);
   box-shadow: 0 0 8px var(--fb-orange-glow);
 }
+
+html[data-context-side='left'] .ctx {
+  left: 7% !important;
+  right: auto !important;
+}
+
+html[data-context-side='right'] .ctx {
+  left: auto !important;
+  right: 7% !important;
+}
+
+html[data-input-side='left'] .input-backdrop,
+html[data-alert-side='left'] .alert-backdrop {
+  justify-content: flex-start !important;
+}
+
+html[data-input-side='right'] .input-backdrop,
+html[data-alert-side='right'] .alert-backdrop {
+  justify-content: flex-end !important;
+}
+
+html[data-input-side='center'] .input-backdrop,
+html[data-alert-side='center'] .alert-backdrop {
+  justify-content: center !important;
+}
+
+html[data-notify-position^='top-'] .notify-stack { top: 16px !important; bottom: auto !important; transform: none; }
+html[data-notify-position^='bottom-'] .notify-stack { top: auto !important; bottom: 16px !important; transform: none; }
+html[data-notify-position$='-left'] .notify-stack { left: 16px !important; right: auto !important; }
+html[data-notify-position$='-right'] .notify-stack { left: auto !important; right: 16px !important; }
+html[data-notify-position$='-center'] .notify-stack { left: 50% !important; right: auto !important; transform: translateX(-50%); }
+html[data-notify-position^='center-'] .notify-stack { top: 50% !important; bottom: auto !important; transform: translateY(-50%); }
+
+html[data-textui-position='left-center'] .textui { left: 3% !important; right: auto !important; top: 50% !important; bottom: auto !important; transform: translateY(-50%) !important; }
+html[data-textui-position='right-center'] .textui { right: 3% !important; left: auto !important; top: 50% !important; bottom: auto !important; transform: translateY(-50%) !important; }
+html[data-textui-position='top-center'] .textui { top: 5% !important; bottom: auto !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; }
+html[data-textui-position='bottom-center'] .textui { bottom: 5% !important; top: auto !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; }

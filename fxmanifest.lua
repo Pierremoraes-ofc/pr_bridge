@@ -21,6 +21,7 @@ shared_scripts {
 
 server_scripts {
     "bridge/version.lua",
+    "interface/server/config.lua",
 }
 
 client_scripts {
@@ -35,8 +36,10 @@ files {
     "bridge/**/**/*.lua",
     "bridge/**/*.json",
     "interface/client/**/*.lua",
+    "interface/data/*.json",
     "interface/dist/index.html",
     "interface/dist/assets/*.js",
     "interface/dist/assets/*.css",
     "interface/dist/assets/*.svg",
+    "interface/dist/assets/*.webp",
 }

@@ -292,6 +292,12 @@ if PRCore.context == "client" then
         public.hideContext = UI.hideContext or UI.HideContext
         public.GetOpenContextMenu = UI.GetOpenContextMenu
         public.getOpenContextMenu = UI.getOpenContextMenu or UI.GetOpenContextMenu
+        public.RegisterMenu = UI.RegisterMenu
+        public.registerMenu = UI.registerMenu or UI.RegisterMenu
+        public.ShowMenu = UI.ShowMenu
+        public.showMenu = UI.showMenu or UI.ShowMenu
+        public.HideMenu = UI.HideMenu
+        public.hideMenu = UI.hideMenu or UI.HideMenu
         public.AlertDialog = UI.AlertDialog
         public.alertDialog = UI.alertDialog or UI.AlertDialog
         public.InputDialog = UI.InputDialog
@@ -303,6 +309,10 @@ if PRCore.context == "client" then
         public.hideTextUI = UI.hideTextUI or UI.HideTextUI
         public.IsTextUIOpen = UI.IsTextUIOpen
         public.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
+        public.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
+        public.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
+        public.GetVisualConfig = UI.GetVisualConfig
+        public.getVisualConfig = UI.getVisualConfig or UI.GetVisualConfig
     end
 end
 

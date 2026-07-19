@@ -14,9 +14,20 @@ return function(Renderer)
         "min",
         "max",
         "step",
+        "precision",
         "options",
         "password",
         "icon",
+        "iconColor",
+        "checked",
+        "autosize",
+        "format",
+        "returnString",
+        "clearable",
+        "searchable",
+        "maxSelectedValues",
+        "minLength",
+        "maxLength",
     }
 
     local function serializeRows(rows)
