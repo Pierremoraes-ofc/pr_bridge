@@ -105,6 +105,7 @@ ConfigBridge = {
 
     vehicle_key = {
         { resource = "mm_carkeys", folder = "mm_carkeys" },
+        { resource = "pr_carkeys", folder = "pr_carkeys" },
         { resource = "mri_Qcarkeys", folder = "mri_Qcarkeys" },
         { resource = "qb-vehiclekeys", folder = "qb-vehiclekeys" },
         { resource = "qbx_vehiclekeys", folder = "qbx_vehiclekeys" },
