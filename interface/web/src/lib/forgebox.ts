@@ -27,15 +27,58 @@ export function alphaColor(color: string, alpha: number): string {
   return resolved
 }
 
-export function iconLabel(icon: unknown): string {
-  if (typeof icon === 'string') return icon
-  if (icon && typeof icon === 'object' && 'name' in (icon as Record<string, unknown>)) {
-    return String((icon as Record<string, unknown>).name)
-  }
-  return ''
+const bootstrapIconAliases: Record<string, string> = {
+  'arrow-left': 'arrow-left',
+  bars: 'list',
+  bell: 'bell-fill',
+  box: 'box-seam-fill',
+  briefcase: 'briefcase-fill',
+  car: 'car-front-fill',
+  check: 'check-lg',
+  circle: 'circle-fill',
+  close: 'x-lg',
+  cube: 'box-fill',
+  'heart-pulse': 'heart-pulse-fill',
+  map: 'map-fill',
+  'map-location-dot': 'geo-alt-fill',
+  'network-wired': 'diagram-3-fill',
+  plug: 'plug-fill',
+  shield: 'shield-fill',
+  'shield-alt': 'shield-lock-fill',
+  spinner: 'arrow-repeat',
+  user: 'person-fill',
+  wallet: 'wallet2',
+  wrench: 'wrench-adjustable',
 }
 
-export type MetaItem = { label: string; value: string }
+export function iconName(icon: unknown): string {
+  let name = ''
+
+  if (typeof icon === 'string') {
+    name = icon
+  } else if (icon && typeof icon === 'object' && 'name' in (icon as Record<string, unknown>)) {
+    name = String((icon as Record<string, unknown>).name)
+  }
+
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .replace(/^fa[srlbd]?\s+/, '')
+    .replace(/^fa-/, '')
+    .replace(/^bi\s+/, '')
+    .replace(/^bi-/, '')
+
+  if (!normalized) return 'circle-fill'
+  return bootstrapIconAliases[normalized] || normalized
+}
+
+export type MetaItem = {
+  label: string
+  value: string
+  image?: string
+  progress?: number
+  colorScheme?: string
+}
 
 export function metaItems(metadata: unknown): MetaItem[] {
   if (!metadata) return []
@@ -47,7 +90,13 @@ export function metaItems(metadata: unknown): MetaItem[] {
         const obj = item as Record<string, unknown>
         const label = String(obj.label ?? obj.title ?? '')
         const value = String(obj.value ?? obj.description ?? '')
-        return { label, value }
+        return {
+          label,
+          value,
+          image: typeof obj.image === 'string' ? obj.image : undefined,
+          progress: typeof obj.progress === 'number' ? obj.progress : undefined,
+          colorScheme: typeof obj.colorScheme === 'string' ? obj.colorScheme : undefined,
+        }
       }
       return { label: '', value: String(item) }
     })

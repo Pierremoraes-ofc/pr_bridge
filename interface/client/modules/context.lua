@@ -37,13 +37,108 @@ return function(Renderer)
         "description",
         "icon",
         "iconColor",
+        "iconAnimation",
         "disabled",
         "readOnly",
         "metadata",
         "progress",
+        "colorScheme",
         "image",
         "arrow",
+        "badge",
+        "keybind",
+        "checked",
     }
+
+    local function cloneSerializable(value, seen)
+        local valueType = type(value)
+        if valueType == "function" or valueType == "thread" or valueType == "userdata" then
+            return nil
+        end
+
+        if valueType ~= "table" then
+            return value
+        end
+
+        seen = seen or {}
+        if seen[value] then return nil end
+        seen[value] = true
+
+        local copy = {}
+        for key, item in pairs(value) do
+            local safeKey = cloneSerializable(key, seen)
+            if safeKey ~= nil then
+                local safeValue = cloneSerializable(item, seen)
+                if safeValue ~= nil then
+                    copy[safeKey] = safeValue
+                end
+            end
+        end
+
+        seen[value] = nil
+        return copy
+    end
+
+    local function isOptionArray(options)
+        if type(options) ~= "table" then return false end
+        if options[1] ~= nil then return true end
+
+        local count = 0
+        local numeric = 0
+        for key in pairs(options) do
+            count = count + 1
+            if type(key) == "number" then numeric = numeric + 1 end
+        end
+
+        return count > 0 and count == numeric
+    end
+
+    local function normalizeTitle(option, key)
+        if type(option) == "string" then return option end
+        if type(option) ~= "table" then return tostring(key or "") end
+        return option.title or option.label or tostring(key or "")
+    end
+
+    local function normalizeOption(option, index, key)
+        if type(option) == "string" then
+            return {
+                index = index,
+                title = option,
+            }, {
+                disabled = false,
+                readOnly = false,
+            }
+        end
+
+        if type(option) ~= "table" then
+            return nil, nil
+        end
+
+        local item = {}
+        for _, field in ipairs(SERIALIZE_KEYS) do
+            item[field] = cloneSerializable(option[field])
+        end
+
+        item.index = index
+        item.key = key
+        item.title = normalizeTitle(option, key)
+        item.hasSubmenu = type(option.menu) == "string"
+
+        if item.arrow == nil and (item.hasSubmenu or option.event or option.serverEvent) then
+            item.arrow = true
+        end
+
+        return item, {
+            onSelect = option.onSelect,
+            event = option.event,
+            serverEvent = option.serverEvent,
+            command = option.command,
+            args = option.args,
+            menu = option.menu,
+            disabled = option.disabled == true,
+            readOnly = option.readOnly == true,
+        }
+    end
 
     ---@param options ContextOption[]|table<string, ContextOption>
     ---@return table[], table[]
@@ -55,58 +150,24 @@ return function(Renderer)
             return serializable, callbacks
         end
 
-        local isArray = options[1] ~= nil
+        local isArray = isOptionArray(options)
 
         if isArray then
             for i = 1, #options do
-                local opt = options[i]
-                local item = {}
-                for _, key in ipairs(SERIALIZE_KEYS) do
-                    item[key] = opt[key]
+                local item, callback = normalizeOption(options[i], i)
+                if item then
+                    serializable[#serializable + 1] = item
+                    callbacks[i] = callback
                 end
-                item.index = i
-                item.hasSubmenu = type(opt.menu) == "string"
-                if item.arrow == nil and item.hasSubmenu then
-                    item.arrow = true
-                end
-                serializable[#serializable + 1] = item
-                callbacks[i] = {
-                    onSelect = opt.onSelect,
-                    event = opt.event,
-                    serverEvent = opt.serverEvent,
-                    command = opt.command,
-                    args = opt.args,
-                    menu = opt.menu,
-                    disabled = opt.disabled == true,
-                    readOnly = opt.readOnly == true,
-                }
             end
         else
             local index = 0
             for key, opt in pairs(options) do
-                if type(opt) == "table" then
+                local item, callback = normalizeOption(opt, index + 1, key)
+                if item then
                     index = index + 1
-                    local item = {}
-                    for _, field in ipairs(SERIALIZE_KEYS) do
-                        item[field] = opt[field]
-                    end
-                    item.index = index
-                    item.key = key
-                    item.hasSubmenu = type(opt.menu) == "string"
-                    if item.arrow == nil and item.hasSubmenu then
-                        item.arrow = true
-                    end
                     serializable[#serializable + 1] = item
-                    callbacks[index] = {
-                        onSelect = opt.onSelect,
-                        event = opt.event,
-                        serverEvent = opt.serverEvent,
-                        command = opt.command,
-                        args = opt.args,
-                        menu = opt.menu,
-                        disabled = opt.disabled == true,
-                        readOnly = opt.readOnly == true,
-                    }
+                    callbacks[index] = callback
                 end
             end
         end
@@ -135,6 +196,7 @@ return function(Renderer)
                 id = data.id,
                 title = data.title or data.id,
                 menu = data.menu,
+                position = data.position,
                 canClose = data.canClose ~= false,
                 onExit = data.onExit,
                 onBack = data.onBack,
@@ -175,6 +237,7 @@ return function(Renderer)
         Renderer.send("context:open", {
             id = ctx.id,
             title = ctx.title,
+            position = ctx.position,
             canClose = ctx.canClose,
             hasParent = #stack > 0 or ctx.menu ~= nil,
             options = ctx.options,
@@ -188,6 +251,8 @@ return function(Renderer)
         return storeContext(data)
     end
 
+    Context.registerContext = Context.RegisterContext
+
     ---@param id string
     function Context.ShowContext(id)
         if type(id) ~= "string" or id == "" then
@@ -198,6 +263,8 @@ return function(Renderer)
         stack = {}
         return openContext(id, false)
     end
+
+    Context.showContext = Context.ShowContext
 
     ---@param onExit boolean|nil
     function Context.HideContext(onExit)
@@ -217,10 +284,14 @@ return function(Renderer)
         return true
     end
 
+    Context.hideContext = Context.HideContext
+
     ---@return string|nil
     function Context.GetOpenContextMenu()
         return openId
     end
+
+    Context.getOpenContextMenu = Context.GetOpenContextMenu
 
     ---@param id string
     ---@param index number

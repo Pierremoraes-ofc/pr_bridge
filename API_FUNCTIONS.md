@@ -312,15 +312,32 @@
 ## menu
 
 ### client
+- `pr_lib.registerContext(context)`
+  - `options[].icon` usa nomes do Bootstrap Icons (`person-fill`, `car-front-fill`, `bi-geo-alt-fill`).
+- `pr_lib.showContext(id)`
+- `pr_lib.hideContext(onExit)`
+- `pr_lib.getOpenContextMenu()`
+- `pr_lib.inputDialog(heading, rows, options)`
+- `pr_lib.alertDialog(data, timeout)`
+- `pr_lib.Notify(data)`
+- `pr_lib.showTextUI(text, options)`
+- `pr_lib.hideTextUI()`
+- `pr_lib.isTextUIOpen()`
 - `pr_lib.menus.RegisterMenu(data, cb)`
 - `pr_lib.menus.ShowMenu(id, startIndex)`
 - `pr_lib.menus.HideMenu(onExit)`
 - `pr_lib.menus.RegisterContext(context)`
+- `pr_lib.menus.registerContext(context)`
 - `pr_lib.menus.ShowContext(id)`
+- `pr_lib.menus.showContext(id)`
 - `pr_lib.menus.HideContext(onExit)`
+- `pr_lib.menus.hideContext(onExit)`
 - `pr_lib.menus.GetOpenContextMenu()`
+- `pr_lib.menus.getOpenContextMenu()`
 - `pr_lib.menus.InputDialog(heading, rows, options)`
+- `pr_lib.menus.inputDialog(heading, rows, options)`
 - `pr_lib.menus.AlertDialog(data, timeout)`
+- `pr_lib.menus.alertDialog(data, timeout)`
 
 ## target
 

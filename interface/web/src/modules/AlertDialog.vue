@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { fetchNui } from '../nui/bridge'
 
-defineProps<{
+const props = defineProps<{
   data: {
+    __resource?: string
     header: string
     content: string
     centered?: boolean
@@ -12,11 +13,11 @@ defineProps<{
 }>()
 
 function confirm() {
-  fetchNui('alert:result', { result: 'confirm' })
+  fetchNui('alert:result', { result: 'confirm', __resource: props.data.__resource })
 }
 
 function cancel() {
-  fetchNui('alert:result', { result: 'cancel' })
+  fetchNui('alert:result', { result: 'cancel', __resource: props.data.__resource })
 }
 </script>
 

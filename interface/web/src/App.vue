@@ -50,18 +50,18 @@ onMounted(() => {
     if (e.key !== 'Escape') return
 
     if (input.value) {
-      fetchNui('input:close')
+      fetchNui('input:close', { __resource: input.value.__resource })
       return
     }
     if (alert.value) {
-      fetchNui('alert:close')
+      fetchNui('alert:close', { __resource: alert.value.__resource })
       return
     }
     if (context.value) {
       if (context.value.hasParent) {
-        fetchNui('context:back')
+        fetchNui('context:back', { __resource: context.value.__resource })
       } else if (context.value.canClose !== false) {
-        fetchNui('context:close')
+        fetchNui('context:close', { __resource: context.value.__resource })
       }
     }
   }
@@ -209,6 +209,8 @@ function removeNotify(id: string | number) {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .pr-root :deep(.pr-interactive) {

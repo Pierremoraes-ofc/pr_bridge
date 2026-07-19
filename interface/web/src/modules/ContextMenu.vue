@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { fetchNui } from '../nui/bridge'
-import { alphaColor, iconLabel, metaItems } from '../lib/forgebox'
+import { alphaColor, iconName, metaItems } from '../lib/forgebox'
+import BootstrapIcon from '../components/BootstrapIcon.vue'
 
-defineProps<{
+const props = defineProps<{
   data: {
     id: string
+    __resource?: string
     title: string
+    position?: string
     canClose?: boolean
     hasParent?: boolean
     options: Array<{
@@ -14,6 +18,7 @@ defineProps<{
       description?: string
       icon?: string | Record<string, unknown>
       iconColor?: string
+      iconAnimation?: string
       disabled?: boolean
       readOnly?: boolean
       metadata?: string | Array<string | Record<string, unknown>> | Record<string, unknown>
@@ -29,18 +34,30 @@ defineProps<{
 }>()
 
 const accent = '#ff7a1a'
+const hoveredOption = ref<any | null>(null)
+const tooltipRect = ref({ top: 0, left: 0 })
+
+const hoveredMetadata = computed(() => metaItems(hoveredOption.value?.metadata))
+const hoveredImage = computed(() => {
+  const image = hoveredOption.value?.image
+  return typeof image === 'string' ? image : ''
+})
+const tooltipStyle = computed(() => ({
+  top: `${tooltipRect.value.top}px`,
+  left: `${tooltipRect.value.left}px`,
+}))
 
 function onSelect(option: any, id: string) {
   if (option.disabled || option.readOnly) return
-  fetchNui('context:select', { id, index: option.index })
+  fetchNui('context:select', { id, index: option.index, __resource: props.data.__resource })
 }
 
 function onClose() {
-  fetchNui('context:close')
+  fetchNui('context:close', { __resource: props.data.__resource })
 }
 
 function onBack() {
-  fetchNui('context:back')
+  fetchNui('context:back', { __resource: props.data.__resource })
 }
 
 function optionColor(option: any): string {
@@ -51,13 +68,39 @@ function optionColor(option: any): string {
     yellow: '#f59e0b',
     red: '#ef4444',
     purple: '#8b5cf6',
+    cyan: '#06b6d4',
   }
   return map[option.colorScheme] || accent
+}
+
+function positionClass(position?: string): string {
+  const normalized = String(position || 'top-right').toLowerCase()
+  if (normalized === 'top-left') return 'ctx--top-left'
+  if (normalized === 'bottom-left') return 'ctx--bottom-left'
+  if (normalized === 'bottom-right') return 'ctx--bottom-right'
+  if (normalized === 'center-left') return 'ctx--center-left'
+  if (normalized === 'center-right') return 'ctx--center-right'
+  return 'ctx--top-right'
+}
+
+function onOptionEnter(option: any, event: MouseEvent) {
+  if (!metaItems(option.metadata).length && !option.image) {
+    hoveredOption.value = null
+    return
+  }
+
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  hoveredOption.value = option
+  tooltipRect.value = {
+    top: rect.top + rect.height / 2,
+    left: rect.right + 12,
+  }
 }
 </script>
 
 <template>
-  <div class="ctx pr-interactive">
+  <div class="ctx-shell">
+    <div class="ctx pr-interactive" :class="positionClass(data.position)">
     <header class="ctx__header">
       <button
         v-if="data.hasParent"
@@ -66,7 +109,7 @@ function optionColor(option: any): string {
         aria-label="Voltar"
         @click="onBack"
       >
-        ‹
+        <BootstrapIcon class="ctx__nav-icon" name="chevron-left" />
       </button>
       <span v-else class="ctx__nav-spacer" />
 
@@ -81,7 +124,7 @@ function optionColor(option: any): string {
         aria-label="Fechar"
         @click="onClose"
       >
-        ×
+        <BootstrapIcon class="ctx__nav-icon" name="x-lg" />
       </button>
       <span v-else class="ctx__nav-spacer" />
     </header>
@@ -96,14 +139,18 @@ function optionColor(option: any): string {
           'is-readonly': option.readOnly,
         }"
         @click="onSelect(option, data.id)"
+        @mouseenter="onOptionEnter(option, $event)"
       >
-        <div
+        <BootstrapIcon
           v-if="option.icon"
           class="ctx__icon"
+          :class="{
+            'is-spin': option.iconAnimation === 'spin',
+            'is-pulse': option.iconAnimation === 'pulse' || option.iconAnimation === 'beat',
+          }"
+          :name="iconName(option.icon)"
           :style="{ color: option.iconColor || optionColor(option) }"
-        >
-          {{ iconLabel(option.icon) }}
-        </div>
+        />
 
         <div class="ctx__body">
           <div class="ctx__row">
@@ -112,13 +159,6 @@ function optionColor(option: any): string {
           </div>
 
           <p v-if="option.description" class="ctx__desc">{{ option.description }}</p>
-
-          <ul v-if="metaItems(option.metadata).length" class="ctx__meta">
-            <li v-for="(m, i) in metaItems(option.metadata)" :key="i">
-              <span v-if="m.label" class="ctx__meta-label">{{ m.label }}</span>
-              <span class="ctx__meta-value">{{ m.value }}</span>
-            </li>
-          </ul>
 
           <div v-if="option.progress != null" class="ctx__progress">
             <div
@@ -133,37 +173,91 @@ function optionColor(option: any): string {
         </div>
 
         <div class="ctx__aside">
-          <span v-if="option.checked !== undefined" class="ctx__check" :class="{ 'is-on': option.checked }">✓</span>
+          <span v-if="option.checked !== undefined" class="ctx__check" :class="{ 'is-on': option.checked }">
+            <BootstrapIcon name="check-lg" />
+          </span>
           <span v-if="option.keybind" class="ctx__keybind">{{ option.keybind }}</span>
-          <span v-if="option.arrow" class="ctx__arrow">›</span>
+          <BootstrapIcon v-if="option.arrow" class="ctx__arrow" name="chevron-right" />
         </div>
-
-        <img v-if="option.image" class="ctx__image" :src="option.image" alt="" />
       </li>
     </ul>
+    </div>
+
+    <div v-if="hoveredMetadata.length || hoveredImage" class="ctx__tooltip pr-interactive" :style="tooltipStyle">
+      <div class="ctx__tooltip-arrow" />
+      <img v-if="hoveredImage" class="ctx__meta-preview" :src="hoveredImage" alt="" />
+      <ul class="ctx__meta">
+        <li v-for="(m, i) in hoveredMetadata" :key="i" class="ctx__meta-item">
+          <img v-if="m.image" class="ctx__meta-image" :src="m.image" alt="" />
+          <div class="ctx__meta-content">
+            <span v-if="m.label" class="ctx__meta-label">{{ m.label }}</span>
+            <span class="ctx__meta-value">{{ m.value }}</span>
+            <span v-if="m.progress != null" class="ctx__meta-progress">
+              <span
+                :style="{
+                  width: `${Math.max(0, Math.min(100, m.progress))}%`,
+                  backgroundColor: optionColor(m),
+                }"
+              />
+            </span>
+          </div>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.ctx-shell {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: transparent !important;
+}
+
 .ctx {
   position: absolute;
-  top: 50%;
-  right: 4%;
-  transform: translateY(-50%);
-  width: min(380px, 92vw);
+  width: min(390px, 92vw);
   max-height: min(72vh, 680px);
   display: flex;
   flex-direction: column;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 122, 26, 0.16);
-  background: linear-gradient(180deg, rgba(13, 13, 17, 0.92), rgba(8, 8, 10, 0.95));
-  backdrop-filter: blur(18px);
-  box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.72),
-    0 0 0 1px rgba(255, 122, 26, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
   animation: fb-slide-in-left 0.28s cubic-bezier(0.1, 0.8, 0.25, 1);
+}
+
+.ctx--top-right {
+  top: 7%;
+  right: 17%;
+}
+
+.ctx--top-left {
+  top: 7%;
+  left: 7%;
+}
+
+.ctx--bottom-right {
+  right: 17%;
+  bottom: 7%;
+}
+
+.ctx--bottom-left {
+  left: 7%;
+  bottom: 7%;
+}
+
+.ctx--center-right {
+  top: 50%;
+  right: 4%;
+  transform: translateY(-50%);
+}
+
+.ctx--center-left {
+  top: 50%;
+  left: 4%;
+  transform: translateY(-50%);
 }
 
 .ctx__header {
@@ -171,13 +265,23 @@ function optionColor(option: any): string {
   grid-template-columns: 36px 1fr 36px;
   align-items: center;
   gap: 8px;
-  padding: 14px 12px 12px;
-  border-bottom: 1px solid var(--fb-border);
+  padding: 0;
+  margin-bottom: 7px;
+  border: 0;
+  background: transparent;
 }
 
 .ctx__heading {
   min-width: 0;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 7px 12px;
   text-align: center;
+  border: 1px solid rgba(255, 122, 26, 0.2);
+  border-radius: var(--fb-radius-md);
+  background: var(--fb-nui-surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .ctx__title {
@@ -193,7 +297,7 @@ function optionColor(option: any): string {
   height: 32px;
   border: 1px solid var(--fb-border);
   border-radius: var(--fb-radius-md);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fb-nui-surface);
   color: var(--fb-text-grey);
   font-size: 1.25rem;
   line-height: 1;
@@ -204,7 +308,12 @@ function optionColor(option: any): string {
 .ctx__nav:hover {
   color: var(--fb-orange);
   border-color: rgba(255, 122, 26, 0.35);
-  background: var(--fb-orange-subtle);
+  background: var(--fb-nui-surface);
+}
+
+.ctx__nav-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .ctx__nav-spacer {
@@ -215,29 +324,34 @@ function optionColor(option: any): string {
 .ctx__list {
   list-style: none;
   overflow-y: auto;
-  padding: 8px;
+  overflow-x: hidden;
+  padding: 0 4px 0 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .ctx__item {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
+  width: 100%;
   min-height: 58px;
+  height: auto;
   padding: 12px 13px;
   border-radius: var(--fb-radius-md);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--fb-nui-surface);
   cursor: pointer;
   transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
 .ctx__item:hover:not(.is-disabled):not(.is-readonly) {
   border-color: rgba(255, 122, 26, 0.42);
-  background: rgba(255, 122, 26, 0.09);
+  background: var(--fb-nui-surface);
+  box-shadow: inset 3px 0 0 rgba(255, 122, 26, 0.72);
   transform: translateY(-1px);
 }
 
@@ -251,20 +365,37 @@ function optionColor(option: any): string {
 }
 
 .ctx__icon {
+  margin-top: 2px;
   width: 30px;
   height: 30px;
   display: grid;
   place-items: center;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 7px;
   border-radius: var(--fb-radius-md);
   background: rgba(255, 122, 26, 0.08);
   border: 1px solid rgba(255, 122, 26, 0.15);
 }
 
+.ctx__icon.is-spin {
+  animation: fb-spin 1s linear infinite;
+}
+
+.ctx__icon.is-pulse {
+  animation: ctx-icon-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ctx-icon-pulse {
+  to { transform: scale(1.14); }
+}
+
 .ctx__body {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  overflow: hidden;
 }
 
 .ctx__row {
@@ -293,32 +424,116 @@ function optionColor(option: any): string {
 }
 
 .ctx__desc {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin-top: 4px;
   font-size: 12px;
   color: var(--fb-text-grey);
   line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ctx__tooltip {
+  position: absolute;
+  z-index: 30;
+  width: 270px;
+  max-height: 300px;
+  padding: 10px;
+  border-radius: var(--fb-radius-md);
+  border: 1px solid rgba(255, 122, 26, 0.32);
+  background: var(--fb-nui-surface);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(255, 122, 26, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(8px, -50%);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.ctx__tooltip-arrow {
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(255, 122, 26, 0.32);
+  border-bottom: 1px solid rgba(255, 122, 26, 0.32);
+  background: var(--fb-nui-surface);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .ctx__meta {
-  margin-top: 8px;
   list-style: none;
   display: grid;
-  gap: 4px;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.ctx__meta li {
+.ctx__meta-preview {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  margin-bottom: 9px;
+  object-fit: contain;
+  border-radius: var(--fb-radius-sm);
+  border: 1px solid var(--fb-border);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.ctx__meta-item {
   display: flex;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 11px;
+}
+
+.ctx__meta-image {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  object-fit: cover;
+  border-radius: var(--fb-radius-sm);
+  border: 1px solid var(--fb-border);
+}
+
+.ctx__meta-content {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
 .ctx__meta-label {
   color: var(--fb-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .ctx__meta-value {
   color: var(--fb-text-grey);
   font-family: var(--fb-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.ctx__meta-progress {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--fb-bg-dark);
+  overflow: hidden;
+}
+
+.ctx__meta-progress span {
+  display: block;
+  height: 100%;
 }
 
 .ctx__progress {
@@ -340,6 +555,7 @@ function optionColor(option: any): string {
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+  margin-top: 4px;
 }
 
 .ctx__check {
@@ -360,6 +576,11 @@ function optionColor(option: any): string {
   box-shadow: 0 0 8px var(--fb-orange-glow);
 }
 
+.ctx__check svg {
+  width: 12px;
+  height: 12px;
+}
+
 .ctx__keybind {
   font-size: 10px;
   color: var(--fb-text-muted);
@@ -371,16 +592,8 @@ function optionColor(option: any): string {
 }
 
 .ctx__arrow {
+  width: 14px;
+  height: 14px;
   color: var(--fb-text-muted);
-  font-size: 1.1rem;
-}
-
-.ctx__image {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-height: 120px;
-  object-fit: cover;
-  border-radius: var(--fb-radius-md);
-  margin-top: 4px;
 }
 </style>

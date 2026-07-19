@@ -3,6 +3,14 @@
 local ownerResource = nil
 local focusCount = 0
 
+local function payloadOwner(data)
+    if type(data) == "table" then
+        return data.__resource or data.resource or data.owner or ownerResource
+    end
+
+    return ownerResource
+end
+
 local function setFocus(keepInput)
     focusCount = focusCount + 1
     SetNuiFocus(true, true)
@@ -55,50 +63,57 @@ end)
 
 RegisterNUICallback("context:select", function(data, cb)
     cb(1)
-    if ownerResource and type(data) == "table" then
-        TriggerEvent("pr_bridge:ui:context:select", ownerResource, data.id, tonumber(data.index))
+    local resource = payloadOwner(data)
+    if resource and type(data) == "table" then
+        TriggerEvent("pr_bridge:ui:context:select", resource, data.id, tonumber(data.index))
     end
 end)
 
-RegisterNUICallback("context:close", function(_, cb)
+RegisterNUICallback("context:close", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:context:close", ownerResource)
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:context:close", resource)
     end
 end)
 
-RegisterNUICallback("context:back", function(_, cb)
+RegisterNUICallback("context:back", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:context:back", ownerResource)
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:context:back", resource)
     end
 end)
 
 RegisterNUICallback("alert:result", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:alert:result", ownerResource, data and data.result or "cancel")
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:alert:result", resource, data and data.result or "cancel")
     end
 end)
 
-RegisterNUICallback("alert:close", function(_, cb)
+RegisterNUICallback("alert:close", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:alert:close", ownerResource)
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:alert:close", resource)
     end
 end)
 
 RegisterNUICallback("input:submit", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:input:submit", ownerResource, data and data.values or nil)
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:input:submit", resource, data and data.values or nil)
     end
 end)
 
-RegisterNUICallback("input:close", function(_, cb)
+RegisterNUICallback("input:close", function(data, cb)
     cb(1)
-    if ownerResource then
-        TriggerEvent("pr_bridge:ui:input:close", ownerResource)
+    local resource = payloadOwner(data)
+    if resource then
+        TriggerEvent("pr_bridge:ui:input:close", resource)
     end
 end)
 

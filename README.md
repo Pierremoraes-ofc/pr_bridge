@@ -105,5 +105,3 @@ Use cache for heavy payloads and temporary work data. Use replicated statebags o
 
 
 corrigir:
-
-^1SCRIPT ERROR: @pr-wep/bridge/qb-core/client.lua:58: attempt to call a nil value (global 'OnJobChange')^7

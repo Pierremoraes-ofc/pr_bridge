@@ -16,6 +16,9 @@ end
 
 function Renderer.send(action, data)
     TriggerEvent("pr_bridge:ui:claim", resourceName)
+    if type(data) == "table" then
+        data.__resource = resourceName
+    end
     TriggerEvent("pr_bridge:ui:send", action, data)
 end
 

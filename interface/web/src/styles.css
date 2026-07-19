@@ -14,12 +14,18 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: transparent;
+  background: rgba(0, 0, 0, 0) !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  background-image: none !important;
   font-family: var(--fb-font-body);
   color: var(--fb-text);
   user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
 }
 
 button,
@@ -35,16 +41,16 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--fb-bg-darkest);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--fb-border);
+  background: var(--fb-orange);
   border-radius: var(--fb-radius-sm);
   transition: var(--fb-transition);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--fb-orange);
+  background: var(--fb-orange-hover);
   box-shadow: 0 0 8px var(--fb-orange-glow);
 }

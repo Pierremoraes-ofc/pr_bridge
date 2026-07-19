@@ -157,6 +157,12 @@ Bridge.vehicleKey = Bridge.vehicle_key
 Bridge.vehicleKeys = Bridge.vehicle_key
 Bridge.fivem = PRCore.load(("bridge.fivem.%s"):format(PRCore.context)) or {}
 Bridge.vehicleProperties = Bridge.fivem.vehicleProperties
+Bridge.addKeybind = Bridge.fivem.addKeybind
+Bridge.keybind = Bridge.fivem.keybind
+Bridge.keybinds = Bridge.fivem.keybinds
+Bridge.addCommand = Bridge.fivem.addCommand
+Bridge.command = Bridge.fivem.command
+Bridge.commands = Bridge.fivem.commands
 
 Bridge.github = PRCore.load(("bridge.github.%s"):format(PRCore.context)) or {}
 Bridge.versionCheck = Bridge.github.versionCheck
@@ -229,16 +235,28 @@ if PRCore.context == "client" then
     }
     if UI then
         Bridge.interface = UI
+        Bridge.menus = UI
+        Bridge.menu = UI
+        if Bridge.adapters then Bridge.adapters.menu = UI end
         Bridge.RegisterContext = UI.RegisterContext
+        Bridge.registerContext = UI.registerContext or UI.RegisterContext
         Bridge.ShowContext = UI.ShowContext
+        Bridge.showContext = UI.showContext or UI.ShowContext
         Bridge.HideContext = UI.HideContext
+        Bridge.hideContext = UI.hideContext or UI.HideContext
         Bridge.GetOpenContextMenu = UI.GetOpenContextMenu
+        Bridge.getOpenContextMenu = UI.getOpenContextMenu or UI.GetOpenContextMenu
         Bridge.AlertDialog = UI.AlertDialog
+        Bridge.alertDialog = UI.alertDialog or UI.AlertDialog
         Bridge.InputDialog = UI.InputDialog
+        Bridge.inputDialog = UI.inputDialog or UI.InputDialog
         Bridge.Notify = UI.Notify
         Bridge.ShowTextUI = UI.ShowTextUI
+        Bridge.showTextUI = UI.showTextUI or UI.ShowTextUI
         Bridge.HideTextUI = UI.HideTextUI
+        Bridge.hideTextUI = UI.hideTextUI or UI.HideTextUI
         Bridge.IsTextUIOpen = UI.IsTextUIOpen
+        Bridge.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
     end
 end
 

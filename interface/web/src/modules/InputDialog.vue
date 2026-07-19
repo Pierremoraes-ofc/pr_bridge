@@ -4,6 +4,7 @@ import { fetchNui } from '../nui/bridge'
 
 const props = defineProps<{
   data: {
+    __resource?: string
     heading: string
     rows: Array<{
       index: number
@@ -44,11 +45,11 @@ function submit() {
     }
     ordered.push(values[row.index])
   }
-  fetchNui('input:submit', { values: ordered })
+  fetchNui('input:submit', { values: ordered, __resource: props.data.__resource })
 }
 
 function close() {
-  fetchNui('input:close')
+  fetchNui('input:close', { __resource: props.data.__resource })
 }
 </script>
 

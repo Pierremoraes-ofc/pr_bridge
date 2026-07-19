@@ -368,6 +368,14 @@ Ponte de comunicação abstrata para inventários como **ox_inventory, qb-invent
   Envia uma notificação flutuante na tela. O parâmetro `data` pode ser uma string contendo a mensagem ou uma tabela com propriedades como `title`, `description`, `type`, `icon`, etc. `kind` e `duration` servem de fallback de tipo de notificação e tempo de duração (em ms).
 
 ### Módulo de Menus (Client)
+- **`pr_lib.registerContext(context)` / `pr_lib.showContext(id)` / `pr_lib.hideContext(onExit)` / `pr_lib.getOpenContextMenu()`**: 
+  API nativa de contexto do `pr_bridge`, com estrutura 1:1 ao `ox_lib.registerContext`, mas renderizada pela NUI interna do bridge. Aceita campos como `id`, `title`, `position`, `menu`, `canClose`, `options`, `onExit` e `onBack`; cada opção pode usar `title`, `description`, `icon`, `iconColor`, `iconAnimation`, `disabled`, `readOnly`, `metadata`, `progress`, `colorScheme`, `image`, `arrow`, `event`, `serverEvent`, `command`, `args`, `menu` e `onSelect`. Funções `onSelect` ficam guardadas no runtime Lua e nunca são enviadas para a NUI.
+  O campo `icon` usa Bootstrap Icons e aceita nomes como `person-fill`, `car-front-fill` ou `bi-geo-alt-fill`; aliases comuns do formato anterior continuam convertidos para preservar compatibilidade.
+  O campo `image` da opção é exibido no balão lateral de metadata; imagens nunca expandem nem ocupam o card da opção.
+- **`pr_lib.inputDialog(heading, rows, options)` / `pr_lib.alertDialog(data, timeout)`**: 
+  Atalhos da raiz para os diálogos nativos da interface do `pr_bridge`.
+- **`pr_lib.Notify(data)` / `pr_lib.showTextUI(text, options)` / `pr_lib.hideTextUI()` / `pr_lib.isTextUIOpen()`**: 
+  Atalhos da raiz para os módulos nativos de notificação e TextUI do `pr_bridge`, sem sobrescrever o adaptador legado `pr_lib.notify`.
 - **`pr_lib.menus.RegisterMenu(data, cb)`**: 
   Registra um menu contextual ou lista (baseado em ox_lib ou qb-menu). `data` descreve as opções e `cb` é acionado quando o menu é fechado ou atualizado.
 - **`pr_lib.menus.ShowMenu(id, startIndex)` / `pr_lib.menus.HideMenu(onExit)`**: 

@@ -21,16 +21,26 @@ local UI = {
     },
 
     RegisterContext = Context.RegisterContext,
+    registerContext = Context.registerContext,
     ShowContext = Context.ShowContext,
+    showContext = Context.showContext,
     HideContext = Context.HideContext,
+    hideContext = Context.hideContext,
     GetOpenContextMenu = Context.GetOpenContextMenu,
+    getOpenContextMenu = Context.getOpenContextMenu,
 
     AlertDialog = Alert.AlertDialog,
+    alertDialog = Alert.AlertDialog,
     InputDialog = Input.InputDialog,
+    inputDialog = Input.InputDialog,
     Notify = Notify.Notify,
+    notify = Notify.Notify,
     ShowTextUI = TextUI.ShowTextUI,
+    showTextUI = TextUI.ShowTextUI,
     HideTextUI = TextUI.HideTextUI,
+    hideTextUI = TextUI.HideTextUI,
     IsTextUIOpen = TextUI.IsTextUIOpen,
+    isTextUIOpen = TextUI.IsTextUIOpen,
 }
 
 AddEventHandler("pr_bridge:ui:context:select", function(owner, id, index)

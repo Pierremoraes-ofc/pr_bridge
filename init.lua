@@ -281,16 +281,28 @@ if PRCore.context == "client" then
     }
     if UI then
         public.interface = UI
+        public.menus = UI
+        public.menu = UI
+        if public.adapters then public.adapters.menu = UI end
         public.RegisterContext = UI.RegisterContext
+        public.registerContext = UI.registerContext or UI.RegisterContext
         public.ShowContext = UI.ShowContext
+        public.showContext = UI.showContext or UI.ShowContext
         public.HideContext = UI.HideContext
+        public.hideContext = UI.hideContext or UI.HideContext
         public.GetOpenContextMenu = UI.GetOpenContextMenu
+        public.getOpenContextMenu = UI.getOpenContextMenu or UI.GetOpenContextMenu
         public.AlertDialog = UI.AlertDialog
+        public.alertDialog = UI.alertDialog or UI.AlertDialog
         public.InputDialog = UI.InputDialog
+        public.inputDialog = UI.inputDialog or UI.InputDialog
         public.Notify = UI.Notify
         public.ShowTextUI = UI.ShowTextUI
+        public.showTextUI = UI.showTextUI or UI.ShowTextUI
         public.HideTextUI = UI.HideTextUI
+        public.hideTextUI = UI.hideTextUI or UI.HideTextUI
         public.IsTextUIOpen = UI.IsTextUIOpen
+        public.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
     end
 end
 

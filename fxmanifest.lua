@@ -23,9 +23,20 @@ server_scripts {
     "bridge/version.lua",
 }
 
+client_scripts {
+    "interface/client/host.lua",
+}
+
+ui_page "interface/dist/index.html"
+
 files {
     "init.lua",
     "bridge/**/*.lua",
     "bridge/**/**/*.lua",
     "bridge/**/*.json",
+    "interface/client/**/*.lua",
+    "interface/dist/index.html",
+    "interface/dist/assets/*.js",
+    "interface/dist/assets/*.css",
+    "interface/dist/assets/*.svg",
 }
