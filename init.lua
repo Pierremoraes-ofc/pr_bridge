@@ -342,6 +342,13 @@ if PRCore.context == "client" then
         public.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
         public.GetVisualConfig = UI.GetVisualConfig
         public.getVisualConfig = UI.getVisualConfig or UI.GetVisualConfig
+        public.addRadialItem = UI.AddRadialItem
+        public.removeRadialItem = UI.RemoveRadialItem
+        public.clearRadialItems = UI.ClearRadialItems
+        public.registerRadial = UI.RegisterRadial
+        public.hideRadial = UI.HideRadial
+        public.disableRadial = UI.DisableRadial
+        public.getCurrentRadialId = UI.GetCurrentRadialId
     end
 end
 

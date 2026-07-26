@@ -165,6 +165,93 @@ RegisterNUICallback("input:close", function(data, cb)
     end
 end)
 
+local radial = { items = {}, menus = {}, current = nil, history = {}, disabled = false, open = false }
+
+local function radialItems(resource, menuId)
+    if menuId then
+        local menu = radial.menus[resource .. ":" .. menuId]
+        return menu and menu.items or {}
+    end
+    return radial.items
+end
+
+local function showRadial(resource, menuId)
+    if radial.disabled then return end
+    local items = radialItems(resource, menuId)
+    if #items == 0 then return end
+    radial.current = { resource = resource, menuId = menuId, items = items }
+    radial.open = true
+    LocalPlayer.state:set("pr_bridge_radial_current", menuId, false)
+    SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(true)
+    SendNUIMessage({ action = "radial:open", data = { title = menuId or "MENU RAPIDO", menuId = menuId, items = items } })
+end
+
+local function hideRadial()
+    radial.open = false
+    radial.current = nil
+    radial.history = {}
+    LocalPlayer.state:set("pr_bridge_radial_current", nil, false)
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    SendNUIMessage({ action = "radial:close" })
+end
+
+AddEventHandler("pr_bridge:radial:add", function(resource, items, parentMenuId)
+    local target = radialItems(resource, parentMenuId)
+    for i = 1, #(items or {}) do
+        items[i].resource = resource
+        target[#target + 1] = items[i]
+    end
+end)
+AddEventHandler("pr_bridge:radial:register", function(resource, menu)
+    radial.menus[resource .. ":" .. menu.id] = menu
+end)
+AddEventHandler("pr_bridge:radial:remove", function(resource, id, parentMenuId)
+    local target = radialItems(resource, parentMenuId)
+    for i = #target, 1, -1 do if target[i].id == id then table.remove(target, i) end end
+end)
+AddEventHandler("pr_bridge:radial:clear", function()
+    radial.items = {}; radial.menus = {}; hideRadial()
+end)
+AddEventHandler("pr_bridge:radial:hide", hideRadial)
+AddEventHandler("pr_bridge:radial:disable", function(state) radial.disabled = state; if state then hideRadial() end end)
+
+local function toggleRadial()
+    if radial.open then hideRadial() else showRadial(GetCurrentResourceName(), nil) end
+end
+
+RegisterCommand("prradial", toggleRadial, false)
+CreateThread(function()
+    while true do
+        Wait(0)
+        if not radial.open and IsControlJustReleased(0, 288) then
+            toggleRadial()
+        end
+    end
+end)
+
+RegisterNUICallback("radial:close", function(_, cb) cb(1); hideRadial() end)
+RegisterNUICallback("radial:back", function(_, cb)
+    cb(1)
+    local previous = table.remove(radial.history)
+    if previous then return showRadial(previous.resource, previous.menuId) end
+    hideRadial()
+end)
+RegisterNUICallback("radial:select", function(data, cb)
+    cb(1)
+    local current = radial.current
+    local item = current and current.items[tonumber(data and data.index)]
+    if not item then return end
+    local itemResource = item.resource or current.resource
+    if item.menu then
+        radial.history[#radial.history + 1] = { resource = current.resource, menuId = current.menuId }
+        showRadial(itemResource, item.menu)
+        return
+    end
+    TriggerEvent("pr_bridge:radial:select", itemResource, current.menuId, item.id, tonumber(data.index))
+    if not item.keepOpen then hideRadial() end
+end)
 CreateThread(function()
     applyUiInterface()
 

@@ -8,6 +8,7 @@
   import NotifyStack from './modules/NotifyStack.svelte'
   import TextUI from './modules/TextUI.svelte'
   import ProgressBar from './modules/ProgressBar.svelte'
+  import RadialMenu from './modules/RadialMenu.svelte'
 
   let context: any = null
   let alert: any = null
@@ -15,6 +16,7 @@
   let textui: any = null
   let notifies: any[] = []
   let progress: any = null
+  let radial: any = null
 
   function removeNotify(id: string | number) {
     notifies = notifies.filter((n) => n.id !== id)
@@ -56,6 +58,8 @@
       onNuiMessage('textui:hide', hideTextUI),
       onNuiMessage('progress:show', (data) => (progress = data)),
       onNuiMessage('progress:hide', () => (progress = null)),
+      onNuiMessage('radial:open', (data) => (radial = data)),
+      onNuiMessage('radial:close', () => (radial = null)),
     ]
 
     window.parent.postMessage({ action: 'ui:frame-ready' }, '*')
@@ -106,6 +110,7 @@
   <NotifyStack items={notifies} on:remove={(event) => removeNotify(event.detail)} />
   {#if textui}<TextUI data={textui} />{/if}
   {#if progress}<ProgressBar data={progress} />{/if}
+  {#if radial}<RadialMenu data={radial} />{/if}
 </div>
 
 <style>

@@ -10,6 +10,7 @@ local Alert = PRCore.load("@pr_bridge/interface/client/modules/alert", _ENV)(Ren
 local Input = PRCore.load("@pr_bridge/interface/client/modules/input", _ENV)(Renderer)
 local Notify = PRCore.load("@pr_bridge/interface/client/modules/notify", _ENV)(Renderer)
 local TextUI = PRCore.load("@pr_bridge/interface/client/modules/textui", _ENV)(Renderer)
+local Radial = PRCore.load("@pr_bridge/interface/client/modules/radial", _ENV)(Renderer)
 
 local UI = {
     renderer = Renderer,
@@ -19,6 +20,7 @@ local UI = {
         input = Input,
         notify = Notify,
         textui = TextUI,
+        radial = Radial,
     },
 
     RegisterContext = Context.RegisterContext,
@@ -42,6 +44,13 @@ local UI = {
     hideTextUI = TextUI.HideTextUI,
     IsTextUIOpen = TextUI.IsTextUIOpen,
     isTextUIOpen = TextUI.IsTextUIOpen,
+    AddRadialItem = Radial.AddRadialItem, addRadialItem = Radial.AddRadialItem,
+    RemoveRadialItem = Radial.RemoveRadialItem, removeRadialItem = Radial.RemoveRadialItem,
+    ClearRadialItems = Radial.ClearRadialItems, clearRadialItems = Radial.ClearRadialItems,
+    RegisterRadial = Radial.RegisterRadial, registerRadial = Radial.RegisterRadial,
+    HideRadial = Radial.HideRadial, hideRadial = Radial.HideRadial,
+    DisableRadial = Radial.DisableRadial, disableRadial = Radial.DisableRadial,
+    GetCurrentRadialId = Radial.GetCurrentRadialId, getCurrentRadialId = Radial.GetCurrentRadialId,
 }
 
 local function clone(value)
