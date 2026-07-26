@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pr_bridge UI Loader</title>
+    <style>
+      html,
+      body,
+      #ui-frame {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: transparent !important;
+      }
+
+      #ui-frame {
+        display: block;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="ui-frame" title="pr_bridge interface" allow="clipboard-read; clipboard-write"></iframe>
+
+    <script>
+      const allowedInterfaces = new Set(['svelte', 'vue'])
+      const frame = document.getElementById('ui-frame')
+      const queue = []
+      let textuiState = null
+      let progressState = null
+      let activeInterface = ''
+      let ready = false
+
+      function normalizeInterface(value) {
+        const name = String(value || 'svelte').toLowerCase().trim()
+        return allowedInterfaces.has(name) ? name : 'svelte'
+      }
+
+      async function interfaceExists(name) {
+        try {
+          const response = await fetch(`../dist/${name}/index.html`, { cache: 'no-store' })
+          return response.ok
+        } catch {
+          return false
+        }
+      }
+
+      async function loadInterface(name) {
+        const next = normalizeInterface(name)
+        const target = (await interfaceExists(next)) ? next : 'vue'
+
+        if (activeInterface === target && frame.src) return
+
+        activeInterface = target
+        ready = false
+        frame.src = `../dist/${target}/index.html`
+      }
+
+      function forward(payload) {
+        if (!frame.contentWindow || !ready) {
+          queue.push(payload)
+          return
+        }
+
+        frame.contentWindow.postMessage(payload, '*')
+      }
+
+      function flushQueue() {
+        while (queue.length > 0) {
+          frame.contentWindow.postMessage(queue.shift(), '*')
+        }
+        if (textuiState) {
+          frame.contentWindow.postMessage(textuiState, '*')
+        }
+        if (progressState) {
+          frame.contentWindow.postMessage(progressState, '*')
+        }
+      }
+
+      frame.addEventListener('load', () => {
+        ready = activeInterface === 'vue'
+        if (ready) flushQueue()
+      })
+
+      window.addEventListener('message', (event) => {
+        const payload = event.data
+        if (!payload || typeof payload !== 'object') return
+
+        if (event.source === frame.contentWindow && payload.action === 'ui:frame-ready') {
+          ready = true
+          flushQueue()
+          return
+        }
+
+        if (payload.action === 'ui:load') {
+          void loadInterface(payload.data && payload.data.interface)
+          return
+        }
+
+        if (payload.action === 'textui:show') textuiState = payload
+        if (payload.action === 'textui:hide') textuiState = null
+        if (payload.action === 'progress:show') progressState = payload
+        if (payload.action === 'progress:hide') progressState = null
+
+        forward(payload)
+      })
+
+      void loadInterface('svelte')
+    </script>
+  </body>
+</html>

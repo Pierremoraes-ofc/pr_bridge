@@ -2,6 +2,33 @@
 
 local ownerResource = nil
 local focusCount = 0
+local textuiDebugEnabled = false
+
+local function getUiInterface()
+    local value = Config and Config.ui_interface or "svelte"
+
+    if type(value) ~= "string" then
+        return "svelte"
+    end
+
+    value = value:lower()
+
+    if value ~= "svelte" and value ~= "vue" then
+        Bridge.debug.warn(("[pr_interface] ui_interface '%s' invalida, usando svelte."):format(value))
+        return "svelte"
+    end
+
+    return value
+end
+
+local function applyUiInterface()
+    SendNUIMessage({
+        action = "ui:load",
+        data = {
+            interface = getUiInterface(),
+        },
+    })
+end
 
 local function applyGlobalConfig(config)
     if type(config) ~= "table" then return end
@@ -69,6 +96,19 @@ AddEventHandler("pr_bridge:ui:hasFocus", function(requestId)
     TriggerEvent("pr_bridge:ui:hasFocus:result", requestId, focusCount > 0)
 end)
 
+AddEventHandler("pr_bridge:ui:textuiDebug", function(enabled)
+    textuiDebugEnabled = enabled == true
+    print(("[pr_bridge:textui-debug] enabled=%s"):format(tostring(textuiDebugEnabled)))
+end)
+
+RegisterNUICallback("debug:textui", function(data, cb)
+    cb(1)
+    if not textuiDebugEnabled then return end
+
+    local ok, payload = pcall(json.encode, data or {})
+    print(("[pr_bridge:textui-debug] %s"):format(ok and payload or tostring(data)))
+end)
+
 RegisterNUICallback("context:select", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
@@ -126,6 +166,8 @@ RegisterNUICallback("input:close", function(data, cb)
 end)
 
 CreateThread(function()
+    applyUiInterface()
+
     while type(GlobalState.pr_bridge_ui_config) ~= "table" do Wait(100) end
     applyGlobalConfig(GlobalState.pr_bridge_ui_config)
 end)
@@ -134,6 +176,13 @@ AddStateBagChangeHandler("pr_bridge_ui_config", "global", function(_, _, value)
     applyGlobalConfig(value)
 end)
 
-PRCore.load("@pr_bridge/interface/client/ui", _ENV)
+local NativeUI = PRCore.load("@pr_bridge/interface/client/ui", _ENV)
+
+RegisterNUICallback("ui:ready", function(_, cb)
+    cb(1)
+    if NativeUI and NativeUI.modules and NativeUI.modules.textui then
+        NativeUI.modules.textui.Refresh()
+    end
+end)
 
 Bridge.debug.info("[pr_interface] NUI host pronto.")

@@ -28,7 +28,7 @@ client_scripts {
     "interface/client/host.lua",
 }
 
-ui_page "interface/dist/index.html"
+ui_page "interface/loader/index.html"
 
 files {
     "init.lua",
@@ -37,9 +37,15 @@ files {
     "bridge/**/*.json",
     "interface/client/**/*.lua",
     "interface/data/*.json",
-    "interface/dist/index.html",
-    "interface/dist/assets/*.js",
-    "interface/dist/assets/*.css",
-    "interface/dist/assets/*.svg",
-    "interface/dist/assets/*.webp",
+    "interface/loader/index.html",
+    "interface/dist/vue/index.html",
+    "interface/dist/vue/assets/*.js",
+    "interface/dist/vue/assets/*.css",
+    "interface/dist/vue/assets/*.svg",
+    "interface/dist/vue/assets/*.webp",
+    "interface/dist/svelte/index.html",
+    "interface/dist/svelte/assets/*.js",
+    "interface/dist/svelte/assets/*.css",
+    "interface/dist/svelte/assets/*.svg",
+    "interface/dist/svelte/assets/*.webp",
 }

@@ -263,6 +263,23 @@ if PRCore.context == "client" then
         Bridge.hideTextUI = UI.hideTextUI or UI.HideTextUI
         Bridge.IsTextUIOpen = UI.IsTextUIOpen
         Bridge.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
+        local NativeTextUI = {
+            Show = UI.ShowTextUI,
+            show = UI.showTextUI or UI.ShowTextUI,
+            Hide = UI.HideTextUI,
+            hide = UI.hideTextUI or UI.HideTextUI,
+            IsOpen = UI.IsTextUIOpen,
+            isOpen = UI.isTextUIOpen or UI.IsTextUIOpen,
+        }
+        Bridge.textuiAdapter = NativeTextUI
+        Bridge.textUIAdapter = NativeTextUI
+        Bridge.textuiBridge = NativeTextUI
+        Bridge.textUIBridge = NativeTextUI
+        if Bridge.adapters then Bridge.adapters.textui = NativeTextUI end
+        if Bridge.framework then
+            Bridge.framework.ShowTextUI = UI.ShowTextUI
+            Bridge.framework.HideTextUI = UI.HideTextUI
+        end
         Bridge.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
         Bridge.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
         Bridge.GetVisualConfig = UI.GetVisualConfig

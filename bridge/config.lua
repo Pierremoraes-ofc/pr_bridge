@@ -72,6 +72,7 @@ ConfigBridge = {
     },
 
     progressbar = {
+        { resource = "pr_bridge", folder = "native" }, -- Native Svelte progress; ox_lib-compatible API
         { resource = "ox_lib", folder = "qbx" }, -- Using qbx folder as it implements ox_lib progress
         { resource = "qb-core", folder = "qb" },
         { resource = "es_extended", folder = "esx" }
@@ -114,6 +115,7 @@ ConfigBridge = {
 }
 
 Config = {
+    ui_interface = 'svelte',  -- svelte | vue | alterne entre as interfaces desejada
     Debug = false,
     Framework = "auto", -- auto | custom | resource/folder name
     Database = "auto",

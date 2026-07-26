@@ -224,6 +224,18 @@ public.menu = public.menus
 public.targets = public.target
 public.phones = public.phone
 public.progressbar = public.progress
+if PRCore.context == "client" and type(public.progress) == "table" then
+    public.progressBar = public.progress.progressBar
+    public.progressCircle = public.progress.progressCircle
+    public.progressActive = public.progress.progressActive
+    public.cancelProgress = public.progress.cancelProgress
+
+    setmetatable(public.progressbar, {
+        __call = function(_, data)
+            return public.progress.progressBar(data)
+        end,
+    })
+end
 public.textUIAdapter = public.textuiAdapter
 public.textuiBridge = public.textuiAdapter
 public.textUIBridge = public.textuiAdapter
@@ -309,6 +321,23 @@ if PRCore.context == "client" then
         public.hideTextUI = UI.hideTextUI or UI.HideTextUI
         public.IsTextUIOpen = UI.IsTextUIOpen
         public.isTextUIOpen = UI.isTextUIOpen or UI.IsTextUIOpen
+        local NativeTextUI = {
+            Show = UI.ShowTextUI,
+            show = UI.showTextUI or UI.ShowTextUI,
+            Hide = UI.HideTextUI,
+            hide = UI.hideTextUI or UI.HideTextUI,
+            IsOpen = UI.IsTextUIOpen,
+            isOpen = UI.isTextUIOpen or UI.IsTextUIOpen,
+        }
+        public.textuiAdapter = NativeTextUI
+        public.textUIAdapter = NativeTextUI
+        public.textuiBridge = NativeTextUI
+        public.textUIBridge = NativeTextUI
+        if public.adapters then public.adapters.textui = NativeTextUI end
+        if public.framework then
+            public.framework.ShowTextUI = UI.ShowTextUI
+            public.framework.HideTextUI = UI.HideTextUI
+        end
         public.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
         public.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
         public.GetVisualConfig = UI.GetVisualConfig
