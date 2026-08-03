@@ -8,12 +8,17 @@ Locale = {}
 Locale.__index = Locale
 PRBridgeLocale = Locale
 
-local function translateKey(phrase, subs)
+local function translateKey(phrase, subs, ...)
     if type(phrase) ~= "string" then
         error("TypeError: translateKey function expects arg #1 to be a string")
     end
 
-    if not subs then return phrase end
+    if subs == nil then return phrase end
+
+    if type(subs) ~= "table" then
+        local ok, translated = pcall(string.format, phrase, subs, ...)
+        return ok and translated or phrase
+    end
 
     local result = phrase
     for key, value in pairs(subs) do
@@ -135,6 +140,10 @@ local function addLocaleCandidate(list, seen, localeName)
     end
 
     local normalized = normalizeLocaleName(localeName)
+    local baseLanguage = normalized:match("^([%a]+)%-")
+    if baseLanguage then
+        candidates[#candidates + 1] = baseLanguage
+    end
     if normalized == "en" or normalized == "en-us" then
         candidates[#candidates + 1] = "en-US"
         candidates[#candidates + 1] = "en-us"
@@ -248,11 +257,11 @@ function Locale.init(invokingResource)
         currentLocale = activeLocale,
         resource = resource,
         path = foundPath,
-        t = function(self, key, subs)
+        t = function(self, key, subs, ...)
             if type(self) == "string" then
-                return localeObj:t(self, key)
+                return localeObj:t(self, key, subs, ...)
             end
-            return localeObj:t(key, subs)
+            return localeObj:t(key, subs, ...)
         end,
         has = function(self, key)
             if type(self) == "string" then
@@ -283,12 +292,17 @@ function Locale.init(invokingResource)
         end,
         delete = function(_, target, prefix)
             localeObj:delete(target, prefix)
+        end,
+        getAll = function()
+            local phrases = {}
+            for key, value in pairs(localeObj.phrases) do phrases[key] = value end
+            return phrases
         end
     }
 
     return setmetatable(public, {
-        __call = function(_, key, subs)
-            return localeObj:t(key, subs)
+        __call = function(_, key, ...)
+            return localeObj:t(key, subs, ...)
         end,
         __tostring = function()
             return public.currentLocale or ""

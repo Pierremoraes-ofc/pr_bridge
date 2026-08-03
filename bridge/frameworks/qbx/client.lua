@@ -130,7 +130,8 @@ end
 
 ---@return boolean
 function framework.IsPlayerLoaded()
-    return QBX.PlayerData ~= nil
+    return type(QBX.PlayerData) == "table"
+        and next(QBX.PlayerData) ~= nil
 end
 
 -- Documentation implementation

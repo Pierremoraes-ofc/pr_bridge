@@ -766,15 +766,57 @@ function devtools.drawPolyzone3D(options, cb)
     local playerPed = PlayerPedId()
     local freezePlayer = options.freezePlayer ~= false
     local points = {}
+    local selectedIndex
+    local floorZ
+    local ceilingZ
+    local heightStep = tonumber(options.heightStep) or 0.25
+    local minimumHeight = tonumber(options.minimumHeight) or 0.5
+    local selectionRadius = tonumber(options.selectionRadius) or 0.65
+    local initialHeight = tonumber(options.wallHeight) or 2.5
     local buttonInstance = createButtons({
-        { label = "Add", control = controlButton(24), controlId = 24, inputGroup = 0 },
-        { label = "Undo", control = controlButton(25), controlId = 25, inputGroup = 0 },
-        { label = "Save", control = controlButton(191), controlId = 191, inputGroup = 0 },
-        { label = "Cancel", control = controlButton(177), controlId = 177, inputGroup = 0 },
-        { label = "Move", control = controlButton(32), controlId = 32, inputGroup = 0 },
-        { label = "Up", control = controlButton(38), controlId = 38, inputGroup = 0 },
-        { label = "Down", control = controlButton(44), controlId = 44, inputGroup = 0 },
+        { label = "Adicionar / editar", control = controlButton(24), controlId = 24, inputGroup = 0 },
+        { label = "Desfazer", control = controlButton(25), controlId = 25, inputGroup = 0 },
+        { label = "Subir teto", control = controlButton(241), controlId = 241, inputGroup = 0 },
+        { label = "Descer teto", control = controlButton(242), controlId = 242, inputGroup = 0 },
+        { label = "Subir piso", control = controlButton(172), controlId = 172, inputGroup = 0 },
+        { label = "Descer piso", control = controlButton(173), controlId = 173, inputGroup = 0 },
+        { label = "Salvar", control = controlButton(191), controlId = 191, inputGroup = 0 },
+        { label = "Cancelar", control = controlButton(177), controlId = 177, inputGroup = 0 },
     })
+
+    local function updatePointFloor()
+        if not floorZ then return end
+        for i = 1, #points do
+            points[i].z = round(floorZ, 2)
+        end
+    end
+
+    local function makePoint(coords)
+        local z = floorZ or coords.z
+        return {
+            x = round(coords.x, 2),
+            y = round(coords.y, 2),
+            z = round(z, 2),
+        }
+    end
+
+    local function closestPoint2D(coords)
+        local closestIndex
+        local closestDistance = selectionRadius
+
+        for i = 1, #points do
+            local point = points[i]
+            local dx = point.x - coords.x
+            local dy = point.y - coords.y
+            local distance = math.sqrt(dx * dx + dy * dy)
+            if distance <= closestDistance then
+                closestDistance = distance
+                closestIndex = i
+            end
+        end
+
+        return closestIndex
+    end
 
     if freezePlayer then FreezeEntityPosition(playerPed, true) end
 
@@ -787,7 +829,6 @@ function devtools.drawPolyzone3D(options, cb)
     end
 
     local moveSpeed = tonumber(options.moveSpeed) or 0.6
-    local wallHeight = tonumber(options.wallHeight) or 2.5
     local minPoints = tonumber(options.minPoints) or 3
 
     activeSession = { active = true, type = "polyzone" }
@@ -795,42 +836,75 @@ function devtools.drawPolyzone3D(options, cb)
 
     CreateThread(function()
         local result
+        local zoneBounds
 
         while activeSession and activeSession.active do
             Wait(0)
 
             rotX, rotZ = updateEditorCamera(cam, rotX, rotZ, moveSpeed)
             local targetCoords = getGroundCoordsFromCamera(cam)
+            local hoveredIndex = selectedIndex and nil or closestPoint2D(targetCoords)
+            local displayZ = floorZ or targetCoords.z
             local count = #points
+            local cursorR, cursorG, cursorB = 0, 255, 80
 
-            DrawMarker(28, targetCoords.x, targetCoords.y, targetCoords.z + 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 0, 255, 0, 180, false, false, 2, false, nil, nil, false)
+            if hoveredIndex then
+                cursorR, cursorG, cursorB = 255, 125, 35
+            elseif selectedIndex then
+                cursorR, cursorG, cursorB = 70, 190, 255
+            end
 
+            DrawMarker(28, targetCoords.x, targetCoords.y, displayZ + 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, cursorR, cursorG, cursorB, 220, false, false, 2, false, nil, nil, false)
+
+            local wallHeight = floorZ and ceilingZ and (ceilingZ - floorZ) or initialHeight
             for i = 1, count do
                 local point = points[i]
-                DrawMarker(28, point.x, point.y, point.z + 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 0, 255, 0, 200, false, false, 2, false, nil, nil, false)
+                local isHovered = hoveredIndex == i
+                local isSelected = selectedIndex == i
+                local pointR, pointG, pointB = 0, 255, 80
+
+                if isHovered then
+                    pointR, pointG, pointB = 255, 125, 35
+                elseif isSelected then
+                    pointR, pointG, pointB = 70, 190, 255
+                end
+
+                DrawMarker(28, point.x, point.y, point.z + 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, pointR, pointG, pointB, 230, false, false, 2, false, nil, nil, false)
 
                 local nextPoint = points[i + 1]
                 if not nextPoint and count >= minPoints then
                     nextPoint = points[1]
                 elseif not nextPoint then
-                    nextPoint = targetCoords
+                    nextPoint = makePoint(targetCoords)
                 end
 
                 if nextPoint then
-                    local r, g, b, a = 0, 255, 0, 150
-                    if nextPoint == targetCoords then
-                        r, g, b, a = 255, 0, 0, 100
+                    local r, g, b, a = 0, 255, 80, 125
+                    if isSelected or selectedIndex == (i + 1) then
+                        r, g, b, a = 70, 190, 255, 165
+                    elseif isHovered or hoveredIndex == (i + 1) then
+                        r, g, b, a = 255, 125, 35, 165
+                    elseif i == count and count < minPoints then
+                        r, g, b, a = 255, 90, 70, 105
                     end
 
                     draw3DWall(point, nextPoint, wallHeight, r, g, b, a)
-                    for h = 0, 3 do
-                        local offsetZ = (wallHeight / 3) * h
-                        DrawLine(point.x, point.y, point.z + offsetZ, nextPoint.x, nextPoint.y, nextPoint.z + offsetZ, r, g, b, 200)
-                    end
+                    DrawLine(point.x, point.y, point.z, nextPoint.x, nextPoint.y, nextPoint.z, r, g, b, 230)
+                    DrawLine(point.x, point.y, point.z + wallHeight, nextPoint.x, nextPoint.y, nextPoint.z + wallHeight, r, g, b, 230)
                 end
             end
 
-            drawStatus(("Polyzone points: %s | LMB add | RMB undo | ENTER save | BACKSPACE cancel"):format(count))
+            if selectedIndex and points[selectedIndex] then
+                local selected = points[selectedIndex]
+                DrawLine(selected.x, selected.y, selected.z + 0.15, targetCoords.x, targetCoords.y, displayZ + 0.15, 70, 190, 255, 210)
+            end
+
+            drawStatus(("PolyZone | Pontos: %s | Piso: %.2f | Teto: %.2f%s"):format(
+                count,
+                floorZ or targetCoords.z,
+                ceilingZ or (targetCoords.z + initialHeight),
+                selectedIndex and " | Clique para reposicionar o ponto selecionado" or (hoveredIndex and " | Clique para editar este ponto" or "")
+            ))
             if buttonInstance and buttonInstance.draw then buttonInstance:draw() end
 
             local leftClicked = IsDisabledControlJustPressed(0, 24)
@@ -838,19 +912,56 @@ function devtools.drawPolyzone3D(options, cb)
 
             if leftClicked then
                 PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
-                points[#points + 1] = {
-                    x = round(targetCoords.x, 2),
-                    y = round(targetCoords.y, 2),
-                    z = round(targetCoords.z, 2),
-                }
-            elseif rightClicked and #points > 0 then
+
+                if selectedIndex then
+                    points[selectedIndex] = makePoint(targetCoords)
+                    selectedIndex = nil
+                elseif hoveredIndex then
+                    selectedIndex = hoveredIndex
+                else
+                    if not floorZ then
+                        floorZ = round(targetCoords.z, 2)
+                        ceilingZ = round(floorZ + initialHeight, 2)
+                    end
+                    points[#points + 1] = makePoint(targetCoords)
+                end
+            elseif rightClicked then
                 PlaySoundFrontend(-1, "CANCEL", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
-                table.remove(points, #points)
+                if selectedIndex then
+                    selectedIndex = nil
+                elseif #points > 0 then
+                    table.remove(points, #points)
+                    if #points == 0 then
+                        floorZ = nil
+                        ceilingZ = nil
+                    end
+                end
+            end
+
+            if floorZ and ceilingZ then
+                if IsDisabledControlJustPressed(0, 241) then
+                    ceilingZ = round(ceilingZ + heightStep, 2)
+                elseif IsDisabledControlJustPressed(0, 242) then
+                    ceilingZ = round(math.max(floorZ + minimumHeight, ceilingZ - heightStep), 2)
+                end
+
+                if IsDisabledControlJustPressed(0, 172) then
+                    floorZ = round(math.min(ceilingZ - minimumHeight, floorZ + heightStep), 2)
+                    updatePointFloor()
+                elseif IsDisabledControlJustPressed(0, 173) then
+                    floorZ = round(floorZ - heightStep, 2)
+                    updatePointFloor()
+                end
             end
 
             if IsDisabledControlJustPressed(0, 191) and not leftClicked then
-                if #points >= minPoints then
+                if #points >= minPoints and floorZ and ceilingZ then
                     result = points
+                    zoneBounds = {
+                        minZ = round(floorZ, 2),
+                        maxZ = round(ceilingZ, 2),
+                        thickness = round(ceilingZ - floorZ, 2),
+                    }
                     PlaySoundFrontend(-1, "OK", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
                     activeSession.active = false
                 else
@@ -866,13 +977,12 @@ function devtools.drawPolyzone3D(options, cb)
         disposeButtons(buttonInstance)
         activeSession = nil
 
-        if cb then cb(result) end
+        if cb then cb(result, zoneBounds) end
         debug(result and "success" or "info", ("[pr_bridge:devtools] drawPolyzone3D finalizado. points=%s"):format(result and #result or 0))
     end)
 
     return true
 end
-
 function devtools.drawSphereZone3D(options, cb)
     if type(options) == "function" then
         cb = options
@@ -1016,6 +1126,19 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
 
     local playerPed = PlayerPedId()
     local freezePlayer = options.freezePlayer ~= false
+    local modelOptions = type(options.models) == "table" and options.models or nil
+    local modelIndex = 1
+    if modelOptions and #modelOptions > 0 then
+        modelName = modelOptions[1]
+    else
+        modelOptions = nil
+    end
+    local modelSelection = modelOptions and #modelOptions > 1 or false
+    local scrollAdjustsHeight = options.scrollAdjustsHeight == true
+    local modelCycleWithArrows = options.modelCycleWithArrows == true
+    local previousModelControl = modelCycleWithArrows and 172 or 44
+    local nextModelControl = modelCycleWithArrows and 173 or 38
+    local modelInputGroup = modelCycleWithArrows and 2 or 0
     local modelHash = type(modelName) == "number" and modelName or joaat(modelName)
     local previewEnabled = options.preview ~= false
 
@@ -1046,16 +1169,26 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
     local outlinedEntity = nil
     local ghostEntity = nil
     local ignorePlacementEntity = options.ignoreEntity
-    local buttonInstance = createButtons({
-        { label = "Place", control = controlButton(24), controlId = 24, inputGroup = 0 },
-        { label = "Undo", control = controlButton(25), controlId = 25, inputGroup = 0 },
-        { label = "Save", control = controlButton(191), controlId = 191, inputGroup = 0 },
+    local buttonDefinitions = {
+        { label = options.confirmOnPlace and "Confirm" or "Place", control = controlButton(24), controlId = 24, inputGroup = 0 },
         { label = "Cancel", control = controlButton(177), controlId = 177, inputGroup = 0 },
-        { label = "Z+", control = controlButton(172, 2), controlId = 172, inputGroup = 2 },
-        { label = "Z-", control = controlButton(173, 2), controlId = 173, inputGroup = 2 },
-        { label = "Ground", control = controlButton(47), controlId = 47, inputGroup = 0 },
-        { label = "Del Aim", control = controlButton(348), controlId = 348, inputGroup = 0 },
-    })
+    }
+    if modelSelection then
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Previous model", control = controlButton(previousModelControl, modelInputGroup), controlId = previousModelControl, inputGroup = modelInputGroup }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Next model", control = controlButton(nextModelControl, modelInputGroup), controlId = nextModelControl, inputGroup = modelInputGroup }
+    end
+    if scrollAdjustsHeight then
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Rotate left", control = controlButton(174, 2), controlId = 174, inputGroup = 2 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Rotate right", control = controlButton(175, 2), controlId = 175, inputGroup = 2 }
+    else
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Undo", control = controlButton(25), controlId = 25, inputGroup = 0 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Save", control = controlButton(191), controlId = 191, inputGroup = 0 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Z+", control = controlButton(172, 2), controlId = 172, inputGroup = 2 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Z-", control = controlButton(173, 2), controlId = 173, inputGroup = 2 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Ground", control = controlButton(47), controlId = 47, inputGroup = 0 }
+        buttonDefinitions[#buttonDefinitions + 1] = { label = "Del Aim", control = controlButton(348), controlId = 348, inputGroup = 0 }
+    end
+    local buttonInstance = createButtons(buttonDefinitions)
 
     if previewEnabled then
         ghostEntity = createPreviewEntity(placementType, modelName, spawnCoords, currentHeading, {
@@ -1072,6 +1205,26 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
         if not ghostEntity then
             debug("warn", ("[pr_bridge:devtools] Preview real indisponivel para model=%s. Usando wireframe."):format(tostring(modelName)))
         end
+    end
+
+    local function changePlacementModel(direction)
+        if not modelSelection then return false end
+        modelIndex = ((modelIndex - 1 + direction) % #modelOptions) + 1
+        modelName = modelOptions[modelIndex]
+        modelHash = type(modelName) == "number" and modelName or joaat(modelName)
+        deleteEntity(ghostEntity, previewEntities)
+        ghostEntity = createPreviewEntity(placementType, modelName, spawnCoords, currentHeading, {
+            alpha = options.previewAlpha or 150,
+            collision = false,
+            freeze = true,
+            invincible = true,
+            placeProperly = false,
+            modelTimeout = options.modelTimeout or 3000,
+            createCoords = ghostCreateCoords,
+        })
+        if ghostEntity then previewEntities[ghostEntity] = true end
+        PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+        return true
     end
 
     local function cleanup()
@@ -1142,24 +1295,44 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
 
             rotX, rotZ = updateEditorCamera(cam, rotX, rotZ, moveSpeed)
 
-            if IsDisabledControlJustPressed(0, 15) then
-                currentHeading = (currentHeading + 10.0) % 360.0
-            elseif IsDisabledControlJustPressed(0, 16) then
-                currentHeading = (currentHeading - 10.0) % 360.0
+            if modelSelection then
+                if IsDisabledControlJustPressed(modelInputGroup, previousModelControl) then
+                    changePlacementModel(-1)
+                elseif IsDisabledControlJustPressed(modelInputGroup, nextModelControl) then
+                    changePlacementModel(1)
+                end
             end
 
-            local heightUp
-            local heightDown
-            heightUp, nextHeightUpAt = consumeHoldControl(172, nextHeightUpAt, heightInitialDelay, heightRepeatDelay, { 0, 2 })
-            heightDown, nextHeightDownAt = consumeHoldControl(173, nextHeightDownAt, heightInitialDelay, heightRepeatDelay, { 0, 2 })
+            if scrollAdjustsHeight then
+                if IsDisabledControlJustPressed(0, 15) then
+                    heightOffset = heightOffset + heightStep
+                elseif IsDisabledControlJustPressed(0, 16) then
+                    heightOffset = heightOffset - heightStep
+                elseif IsDisabledControlJustPressed(2, 174) then
+                    currentHeading = (currentHeading - 5.0) % 360.0
+                elseif IsDisabledControlJustPressed(2, 175) then
+                    currentHeading = (currentHeading + 5.0) % 360.0
+                end
+            else
+                if IsDisabledControlJustPressed(0, 15) then
+                    currentHeading = (currentHeading + 10.0) % 360.0
+                elseif IsDisabledControlJustPressed(0, 16) then
+                    currentHeading = (currentHeading - 10.0) % 360.0
+                end
 
-            if heightUp and not heightDown then
-                heightOffset = heightOffset + heightStep
-            elseif heightDown and not heightUp then
-                heightOffset = heightOffset - heightStep
-            elseif IsDisabledControlJustPressed(0, 47) then
-                heightOffset = 0.0
-                PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+                local heightUp
+                local heightDown
+                heightUp, nextHeightUpAt = consumeHoldControl(172, nextHeightUpAt, heightInitialDelay, heightRepeatDelay, { 0, 2 })
+                heightDown, nextHeightDownAt = consumeHoldControl(173, nextHeightDownAt, heightInitialDelay, heightRepeatDelay, { 0, 2 })
+
+                if heightUp and not heightDown then
+                    heightOffset = heightOffset + heightStep
+                elseif heightDown and not heightUp then
+                    heightOffset = heightOffset - heightStep
+                elseif IsDisabledControlJustPressed(0, 47) then
+                    heightOffset = 0.0
+                    PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+                end
             end
 
             local aimCoords, surfaceHit, supportEntity = getPlacementHitFromCamera(cam, ghostEntity or ignorePlacementEntity)
@@ -1247,6 +1420,10 @@ function devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, o
 
                 local added, index, reason = addOrUpdatePlacement(placed, targetCoords, currentHeading)
                 if added then
+                    if singleSlot and options.confirmOnPlace then
+                        result = placed
+                        activeSession.active = false
+                    end
                     debugPlacementJson("item", {
                         action = reason,
                         index = index,

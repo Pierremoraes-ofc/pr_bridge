@@ -249,8 +249,21 @@ RegisterNUICallback("radial:select", function(data, cb)
         showRadial(itemResource, item.menu)
         return
     end
-    TriggerEvent("pr_bridge:radial:select", itemResource, current.menuId, item.id, tonumber(data.index))
-    if not item.keepOpen then hideRadial() end
+    local selectedMenuId = current.menuId
+    local selectedItemId = item.id
+    local selectedIndex = tonumber(data.index)
+
+    if item.keepOpen then
+        TriggerEvent("pr_bridge:radial:select", itemResource, selectedMenuId, selectedItemId, selectedIndex)
+        return
+    end
+
+    -- Libera o foco do radial antes do callback abrir outra interface.
+    -- Assim o fechamento do radial nao remove o foco adquirido pelo registerContext.
+    hideRadial()
+    SetTimeout(280, function()
+        TriggerEvent("pr_bridge:radial:select", itemResource, selectedMenuId, selectedItemId, selectedIndex)
+    end)
 end)
 CreateThread(function()
     applyUiInterface()

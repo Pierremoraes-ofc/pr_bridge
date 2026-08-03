@@ -81,33 +81,113 @@ end
 
 UI.getVisualConfig = UI.GetVisualConfig
 
+local openMenuId
+
 local function menuPosition()
     local layout = getGlobalConfig().layout or {}
     return layout.registerMenu == "left" and "top-left" or "top-right"
 end
 
 function UI.RegisterMenu(data, callback)
-    if not MenuAdapter or type(MenuAdapter.RegisterMenu) ~= "function" then return false end
+    if MenuAdapter and type(MenuAdapter.RegisterMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
+        local payload = clone(data or {})
+        payload.position = payload.position or menuPosition()
+        return MenuAdapter.RegisterMenu(payload, callback)
+    end
 
-    local payload = clone(data or {})
-    payload.position = payload.position or menuPosition()
-    return MenuAdapter.RegisterMenu(payload, callback)
+    if type(data) ~= "table" or not data.id then return false end
+
+    local contextOptions = {}
+    local menuOpts = data.options or {}
+
+    for i = 1, #menuOpts do
+        local opt = menuOpts[i]
+        if type(opt) == "table" then
+            if type(opt.values) == "table" and #opt.values > 0 then
+                local subId = data.id .. "_sub_" .. i
+                local subOptions = {}
+                for vIdx = 1, #opt.values do
+                    local val = opt.values[vIdx]
+                    local valTitle = type(val) == "table" and (val.label or val.title) or tostring(val)
+                    local valDesc = type(val) == "table" and val.description or nil
+                    subOptions[#subOptions + 1] = {
+                        title = valTitle,
+                        description = valDesc,
+                        icon = opt.icon,
+                        onSelect = function()
+                            if callback then callback(i, vIdx, opt.args) end
+                        end
+                    }
+                end
+                Context.RegisterContext({
+                    id = subId,
+                    title = opt.label or data.title,
+                    menu = data.id,
+                    options = subOptions
+                })
+                contextOptions[#contextOptions + 1] = {
+                    title = opt.label or opt.title or "",
+                    description = opt.description,
+                    icon = opt.icon,
+                    menu = subId,
+                    arrow = true
+                }
+            else
+                contextOptions[#contextOptions + 1] = {
+                    title = opt.label or opt.title or "",
+                    description = opt.description,
+                    icon = opt.icon,
+                    onSelect = function()
+                        if callback then callback(i, 1, opt.args) end
+                    end
+                }
+            end
+        end
+    end
+
+    return Context.RegisterContext({
+        id = data.id,
+        title = data.title or "",
+        position = data.position or menuPosition(),
+        onExit = data.onClose,
+        options = contextOptions
+    })
 end
 
 UI.registerMenu = UI.RegisterMenu
 
 function UI.ShowMenu(id, startIndex)
-    if not MenuAdapter or type(MenuAdapter.ShowMenu) ~= "function" then return false end
-    return MenuAdapter.ShowMenu(id, startIndex)
+    if MenuAdapter and type(MenuAdapter.ShowMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
+        local result = MenuAdapter.ShowMenu(id, startIndex)
+        if result ~= false then openMenuId = id end
+        return result
+    end
+
+    openMenuId = id
+    return Context.ShowContext(id)
 end
 
 UI.showMenu = UI.ShowMenu
 
 function UI.HideMenu(onExit)
-    if not MenuAdapter or type(MenuAdapter.HideMenu) ~= "function" then return false end
-    return MenuAdapter.HideMenu(onExit)
+    if MenuAdapter and type(MenuAdapter.HideMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
+        local result = MenuAdapter.HideMenu(onExit)
+        openMenuId = nil
+        return result
+    end
+
+    openMenuId = nil
+    return Context.HideContext(onExit)
 end
 
+function UI.GetOpenMenu()
+    if MenuAdapter and type(MenuAdapter.GetOpenContextMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
+        return MenuAdapter.GetOpenContextMenu() or openMenuId
+    end
+    return Context.GetOpenContextMenu() or openMenuId
+end
+
+UI.getOpenMenu = UI.GetOpenMenu
 UI.hideMenu = UI.HideMenu
 
 local function openPaletteEditor()

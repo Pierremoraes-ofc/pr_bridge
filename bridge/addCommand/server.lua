@@ -159,7 +159,7 @@ local function parseParams(source, args, raw, definitions)
         parsed[i] = definition
 
         if definition.name then
-            parsed[definition.name] = definition
+            parsed[definition.name] = value
             parsed.values[definition.name] = value
         end
     end

@@ -10,6 +10,7 @@ return function(Renderer)
     ---@param options table|nil
     function TextUI.ShowTextUI(text, options)
         options = options or {}
+        if SetNuiZIndex then SetNuiZIndex(1000) end
         visible = true
 
         current = {

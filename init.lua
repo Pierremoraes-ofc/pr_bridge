@@ -70,6 +70,9 @@ public.locale = function(invokingResource)
 
     return env.Locale.init(invokingResource)
 end
+public.getLocales = function(invokingResource)
+    return public.locale(invokingResource):getAll()
+end
 PRCore.load("@pr_bridge/bridge/config", env)
 public.debug = PRCore.load("@pr_bridge/bridge/debug", env)
 env.Lang = env.Locale.init("pr_bridge")
@@ -263,6 +266,54 @@ public.textUI = public.fivem.textUI
 public.dui = public.fivem.dui
 public.duis = public.fivem.duis
 public.raycast = public.fivem.raycast
+if PRCore.context == "client" then
+    public.requestModel = public.fivem.streaming.requestModel
+    public.requestAnimDict = public.fivem.streaming.requestAnimDict
+    public.requestAnimSet = public.fivem.streaming.requestAnimSet
+    public.requestNamedPtfxAsset = public.fivem.streaming.requestPtfxAsset
+    public.playAnim = public.fivem.streaming.playAnim
+    public.getClosestVehicle = function(coords, radius, includePlayers)
+        local options = type(includePlayers) == "table" and includePlayers or nil
+        local closest = public.fivem.objects.getClosestVehicle(coords, radius or 2.0, options)
+        return closest and closest.entity or nil, closest and closest.coords or nil
+    end
+    public.getClosestPlayer = function(coords, radius, includePlayer)
+        coords = coords or GetEntityCoords(PlayerPedId())
+        radius = tonumber(radius) or 2.0
+        local closestPlayer, closestPed, closestCoords, closestDistance
+        for _, playerId in ipairs(GetActivePlayers()) do
+            if playerId ~= PlayerId() and playerId ~= includePlayer then
+                local ped = GetPlayerPed(playerId)
+                local pedCoords = GetEntityCoords(ped)
+                local distance = #(coords - pedCoords)
+                if distance <= radius and (not closestDistance or distance < closestDistance) then
+                    closestPlayer, closestPed, closestCoords, closestDistance = playerId, ped, pedCoords, distance
+                end
+            end
+        end
+        return closestPlayer, closestPed, closestCoords
+    end
+    if public.raycast then
+        public.raycast.cam = function(flags, ignoreFlags, distance)
+            return public.raycast.fromCamera(distance or 10.0, flags, ignoreFlags, PlayerPedId())
+        end
+    end
+
+    local disabledControls = {}
+    local disableControls = {}
+    function disableControls:Add(controls)
+        for i = 1, #(controls or {}) do disabledControls[controls[i]] = true end
+    end
+    function disableControls:Remove(controls)
+        for i = 1, #(controls or {}) do disabledControls[controls[i]] = nil end
+    end
+    setmetatable(disableControls, {
+        __call = function()
+            for control in pairs(disabledControls) do DisableControlAction(0, control, true) end
+        end,
+    })
+    public.disableControls = disableControls
+end
 public.ui = public.fivem.ui
 public.editorCamera = public.fivem.editorCamera
 public.gizmo = public.fivem.gizmo
@@ -310,6 +361,8 @@ if PRCore.context == "client" then
         public.showMenu = UI.showMenu or UI.ShowMenu
         public.HideMenu = UI.HideMenu
         public.hideMenu = UI.hideMenu or UI.HideMenu
+        public.GetOpenMenu = UI.GetOpenMenu
+        public.getOpenMenu = UI.getOpenMenu or UI.GetOpenMenu
         public.AlertDialog = UI.AlertDialog
         public.alertDialog = UI.alertDialog or UI.AlertDialog
         public.InputDialog = UI.InputDialog
@@ -374,6 +427,7 @@ end
 
 function prCache.set(key, value)
     local oldValue = cacheStore[key]
+    if oldValue == value then return value end
     cacheStore[key] = value
     dispatchCacheEvent(key, value, oldValue)
     return value
@@ -480,9 +534,217 @@ setmetatable(prCache, {
     __call = function(_, key, callback, timeout)
         return prCache.remember(key, callback, timeout)
     end,
+    __index = function(_, key)
+        return cacheStore[key]
+    end,
 })
 
 public.cache = prCache
+public.onCache = prCache.onChange
+
+if PRCore.context == "client" then
+    local activePoints = {}
+    public.points = {}
+
+    function public.points.new(data)
+        local point = data or {}
+        point.distance = tonumber(point.distance) or 1.0
+        point.currentDistance = math.huge
+        point.inside = false
+        function point:remove()
+            self.removed = true
+            if self.inside and self.onExit then self:onExit() end
+            self.inside = false
+        end
+        activePoints[#activePoints + 1] = point
+        return point
+    end
+
+    function public.points.getAllPoints()
+        local points = {}
+        for i = 1, #activePoints do
+            if not activePoints[i].removed then points[#points + 1] = activePoints[i] end
+        end
+        return points
+    end
+    public.zones = {}
+    function public.zones.sphere(data)
+        data = data or {}
+        data.distance = tonumber(data.radius or data.distance) or 1.0
+        return public.points.new(data)
+    end
+
+    local function polygonContains(points, x, y)
+        local inside = false
+        local previous = #points
+
+        for current = 1, #points do
+            local a = points[current]
+            local b = points[previous]
+            local crosses = (a.y > y) ~= (b.y > y)
+
+            if crosses then
+                local edgeX = ((b.x - a.x) * (y - a.y) / (b.y - a.y)) + a.x
+                if x < edgeX then inside = not inside end
+            end
+
+            previous = current
+        end
+
+        return inside
+    end
+
+    function public.zones.poly(data)
+        data = data or {}
+        local points = data.points or {}
+        local thickness = tonumber(data.thickness) or 4.0
+        local explicitMinZ = tonumber(data.minZ)
+        local explicitMaxZ = tonumber(data.maxZ)
+        local minZ, maxZ = math.huge, -math.huge
+        local centerX, centerY, centerZ = 0.0, 0.0, 0.0
+
+        for i = 1, #points do
+            local point = points[i]
+            local z = tonumber(point.z) or 0.0
+            minZ = math.min(minZ, z)
+            maxZ = math.max(maxZ, z)
+            centerX = centerX + point.x
+            centerY = centerY + point.y
+            centerZ = centerZ + z
+        end
+
+        if #points == 0 then
+            minZ, maxZ = 0.0, 0.0
+        else
+            centerX = centerX / #points
+            centerY = centerY / #points
+            centerZ = centerZ / #points
+        end
+
+        local lowerZ = explicitMinZ or (minZ - thickness * 0.5)
+        local upperZ = explicitMaxZ or (maxZ + thickness * 0.5)
+        if lowerZ > upperZ then lowerZ, upperZ = upperZ, lowerZ end
+
+        data.minZ = lowerZ
+        data.maxZ = upperZ
+        data.coords = data.coords or vector3(centerX, centerY, (lowerZ + upperZ) * 0.5)
+        data.contains = function(_, coords)
+            local insideZ = coords.z >= lowerZ and coords.z <= upperZ
+            return insideZ and #points >= 3 and polygonContains(points, coords.x, coords.y)
+        end
+
+        return public.points.new(data)
+    end
+
+    function public.zones.box(data)
+        data = data or {}
+        local size = data.size or vector3(1.0, 1.0, 1.0)
+        local rotation = math.rad(tonumber(data.rotation) or 0.0)
+        local cosine, sine = math.cos(rotation), math.sin(rotation)
+
+        data.contains = function(self, coords)
+            local center = self.coords
+            local dx, dy, dz = coords.x - center.x, coords.y - center.y, coords.z - center.z
+            local localX = dx * cosine + dy * sine
+            local localY = -dx * sine + dy * cosine
+
+            return math.abs(localX) <= size.x * 0.5
+                and math.abs(localY) <= size.y * 0.5
+                and math.abs(dz) <= size.z * 0.5
+        end
+
+        return public.points.new(data)
+    end
+
+    CreateThread(function()
+        while true do
+            local coords = GetEntityCoords(PlayerPedId())
+            for i = #activePoints, 1, -1 do
+                local point = activePoints[i]
+                if point.removed then
+                    table.remove(activePoints, i)
+                elseif point.coords then
+                    point.currentDistance = #(coords - vector3(point.coords.x, point.coords.y, point.coords.z))
+                    local inside
+                    if point.contains then
+                        inside = point:contains(coords)
+                    else
+                        inside = point.currentDistance <= point.distance
+                    end
+                    if inside and not point.inside then
+                        point.inside = true
+                        if point.onEnter then point:onEnter() end
+                    elseif not inside and point.inside then
+                        point.inside = false
+                        if point.onExit then point:onExit() end
+                    elseif inside and point.nearby then
+                        point:nearby()
+                    end
+                end
+            end
+            Wait(250)
+        end
+    end)
+end
+
+if PRCore.context == "client" then
+    CreateThread(function()
+        while true do
+            local playerId = PlayerId()
+            local ped = PlayerPedId()
+            local vehicle = GetVehiclePedIsIn(ped, false)
+            if vehicle == 0 then vehicle = nil end
+
+            local seat
+            if vehicle then
+                for index = -2, GetVehicleMaxNumberOfPassengers(vehicle) do
+                    if GetPedInVehicleSeat(vehicle, index) == ped then
+                        seat = index
+                        break
+                    end
+                end
+            end
+
+            local playerData = public.framework.GetPlayerData and public.framework.GetPlayerData() or {}
+            if type(playerData) ~= "table" then playerData = {} end
+
+            local loaded = next(playerData) ~= nil
+            if public.framework.IsPlayerLoaded then
+                local ok, result = pcall(public.framework.IsPlayerLoaded)
+                if ok then loaded = result == true end
+            end
+
+            local metadata = type(playerData.metadata) == "table" and playerData.metadata or {}
+            local money = type(playerData.money) == "table" and playerData.money or {}
+            local function account(name)
+                if public.framework.GetMoney then
+                    local ok, value = pcall(public.framework.GetMoney, name)
+                    if ok and value ~= nil then return tonumber(value) or 0 end
+                end
+                return tonumber(money[name]) or 0
+            end
+
+            prCache.set("resource", resourceName)
+            prCache.set("playerId", playerId)
+            prCache.set("serverId", GetPlayerServerId(playerId))
+            prCache.set("ped", ped)
+            prCache.set("vehicle", vehicle)
+            prCache.set("seat", seat)
+            prCache.set("playerLoaded", loaded)
+            prCache.set("playerData", playerData)
+            prCache.set("job", playerData.job)
+            prCache.set("gang", playerData.gang)
+            prCache.set("cash", account("cash"))
+            prCache.set("bank", account("bank"))
+            prCache.set("dirtyMoney", account("black"))
+            prCache.set("hunger", tonumber(metadata.hunger) or 0)
+            prCache.set("thirst", tonumber(metadata.thirst) or 0)
+            prCache.set("stress", tonumber(metadata.stress) or 0)
+            prCache.set("isDead", IsEntityDead(ped) or metadata.isdead == true or metadata.inlaststand == true)
+            Wait(100)
+        end
+    end)
+end
 
 pr_lib = public
 if _G then

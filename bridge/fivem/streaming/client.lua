@@ -727,11 +727,28 @@ local function getAnimConfig(anim, fallbackDuration)
     }
 end
 
-function streaming.playAnim(data, clip, duration, options)
+function streaming.playAnim(data, clip, duration, options, ...)
     local anim
     local ped
 
-    if type(data) == "table" then
+    if type(data) == "number" then
+        local animName, blendIn, blendOut, animDuration, flags, playbackRate, lockX, lockY, lockZ = duration, options, ...
+        ped = data
+        anim = {
+            dict = clip,
+            clip = animName,
+            blendIn = blendIn,
+            blendOut = blendOut,
+            duration = animDuration,
+            flags = flags,
+            playbackRate = playbackRate,
+            lockX = lockX,
+            lockY = lockY,
+            lockZ = lockZ,
+            wait = false,
+        }
+        duration = animDuration
+    elseif type(data) == "table" then
         anim = data.anim or data.animation or data
         ped = data.pedEntity or data.actor or data.ped or PlayerPedId()
         duration = anim.duration or data.duration

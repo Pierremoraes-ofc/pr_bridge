@@ -50,5 +50,5 @@ end
 
 function tables.count(source) local count=0; for _ in pairs(source or {}) do count=count+1 end; return count end
 
-tables.Contains=tables.contains; tables.Matches=tables.matches; tables.Merge=tables.merge; tables.DeepClone=tables.clone; tables.Shuffle=tables.shuffle; tables.Map=tables.map; tables.Count=tables.count
+tables.Contains=tables.contains; tables.Matches=tables.matches; tables.Merge=tables.merge; tables.deepclone=tables.clone; tables.DeepClone=tables.clone; tables.Shuffle=tables.shuffle; tables.Map=tables.map; tables.Count=tables.count
 return tables
