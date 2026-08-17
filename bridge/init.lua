@@ -65,6 +65,21 @@ local function getBridge(bridgeType)
             end
         end
     end
+    if bridgeType == "targets" then
+        local forced = Config.Target
+        if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
+            for i = 1, #bridge do
+                local info = bridge[i]
+                if info.resource == forced or info.folder == forced then
+                    if GetResourceState(info.resource):find("start") then
+                        setActiveBridge(bridgeType, info.folder)
+                        return ("bridge.%s.%s.%s"):format(bridgeType, info.folder, context)
+                    end
+                    break
+                end
+            end
+        end
+    end
     if bridgeType == "database" then
         local forced = Config.Database or Config.SQL
         if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
@@ -136,10 +151,27 @@ Bridge.debug = PRDebug
 Bridge.utils = PRCore.load("bridge.utils.shared") or {}
 Bridge.math = PRCore.load("bridge.utils.numbers") or {}
 Bridge.table = PRCore.load("bridge.utils.tables") or {}
+Bridge.string = PRCore.load("bridge.utils.strings") or {}
+Bridge.timer = PRCore.load("bridge.utils.timer")
 Bridge.ids = PRCore.load("bridge.utils.ids") or {}
 Bridge.callback = PRCore.load(("bridge.callback.%s"):format(PRCore.context)) or PRCore.callback
+if GetConvar("pr_bridge:callback:secure", "false") == "true" then
+    Bridge.callback = PRCore.load(("bridge.callback.secure_%s"):format(PRCore.context)) or Bridge.callback
+end
 Bridge.translator = PRCore.load(("bridge.translator.%s"):format(PRCore.context), env, true) or {}
 
+
+if PRCore.context == "client" then
+    function Bridge.setClipboard(value)
+        assert(type(value) == "string", "clipboard value must be a string")
+        TriggerEvent("pr_bridge:ui:send", "setClipboard", value)
+        return true
+    end
+else
+    function Bridge.setClipboard()
+        return false, "client_only"
+    end
+end
 Bridge.inventories = Bridge.inventory
 Bridge.notifications = Bridge.notify
 Bridge.notification = Bridge.notify
@@ -418,6 +450,19 @@ setmetatable(bridgeCache, {
 })
 
 Bridge.cache = bridgeCache
+local createAutomaticCache = PRCore.load("bridge.cache.shared")
+if createAutomaticCache then
+    bridgeCache = createAutomaticCache(Bridge, ActiveBridges)
+    local centralizeCache = PRCore.load("bridge.cache.central")
+    if centralizeCache then centralizeCache(bridgeCache) end
+    Bridge.cache = bridgeCache
+    Bridge.onCache = bridgeCache.onChange
+    Bridge.getCacheMetrics = bridgeCache.getMetrics
+end
+if PRCore.context == "client" then
+    local normalizeEntities = PRCore.load("bridge.compat.entities_client")
+    if normalizeEntities then normalizeEntities(Bridge) end
+end
 pr_lib = Bridge
 if _G then
     _G.pr_lib = Bridge
@@ -444,6 +489,18 @@ if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", 
         end
     end
 end
+
+exports("getCacheSnapshot", function()
+    return Bridge.cache and Bridge.cache.getSnapshot and Bridge.cache.getSnapshot() or {}
+end)
+
+exports("getCachedEntity", function(identifier)
+    return Bridge.cache and Bridge.cache.getEntitySnapshot and Bridge.cache.getEntitySnapshot(identifier) or nil
+end)
+
+exports("getCachedEntities", function(kind)
+    return Bridge.cache and Bridge.cache.getEntities and Bridge.cache.getEntities(kind) or {}
+end)
 
 exports("getLib", function()
     return Bridge

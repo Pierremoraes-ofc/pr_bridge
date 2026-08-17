@@ -17,8 +17,16 @@ function raycast.fromCoords(origin, destination, flags, ignoreFlags, ignoreEntit
     return hit == 1 or hit == true, entity or 0, endCoords, normal, material
 end
 function raycast.fromCamera(distance, flags, ignoreFlags, ignoreEntity)
-    local origin = GetFinalRenderedCamCoord()
-    return raycast.fromCoords(origin, origin + forwardVector() * (tonumber(distance) or 10.0), flags, ignoreFlags, ignoreEntity)
+    local origin, normal
+
+    if type(GetWorldCoordFromScreenCoord) == "function" then
+        origin, normal = GetWorldCoordFromScreenCoord(0.5, 0.5)
+    end
+
+    origin = origin or GetFinalRenderedCamCoord()
+    normal = normal or forwardVector()
+    local destination = origin + normal * (tonumber(distance) or 10.0)
+    return raycast.fromCoords(origin, destination, flags, ignoreFlags, ignoreEntity)
 end
 raycast.FromCoords=raycast.fromCoords; raycast.FromCamera=raycast.fromCamera
 return raycast

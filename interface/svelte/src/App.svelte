@@ -9,6 +9,8 @@
   import TextUI from './modules/TextUI.svelte'
   import ProgressBar from './modules/ProgressBar.svelte'
   import RadialMenu from './modules/RadialMenu.svelte'
+  import TargetEye from './modules/TargetEye.svelte'
+  import WorldInteract from './modules/WorldInteract.svelte'
 
   let context: any = null
   let alert: any = null
@@ -17,9 +19,18 @@
   let notifies: any[] = []
   let progress: any = null
   let radial: any = null
+  let target: any = { visible: false, groups: [], zones: [], markers: [] }
+  let interact: any = { entries: [] }
+  let visualConfig: any = {}
+  let notifySequence = 0
 
-  function removeNotify(id: string | number) {
-    notifies = notifies.filter((n) => n.id !== id)
+  function pushNotify(data: any) {
+    notifySequence += 1
+    notifies = [...notifies, { ...(data || {}), __renderId: `notify:${notifySequence}` }]
+  }
+
+  function removeNotify(renderId: string) {
+    notifies = notifies.filter((n) => n.__renderId !== renderId)
   }
 
   function reportTextUIDebug(stage: string, data?: any) {
@@ -42,24 +53,44 @@
     textui = null
   }
 
+  function applyTheme(data?: any) {
+    visualConfig = data || {}
+    applyVisualConfig(data)
+  }
+
   onMount(() => {
-    applyVisualConfig()
+    applyTheme()
 
     const unsubscribers = [
-      onNuiMessage('theme:apply', (data) => applyVisualConfig(data)),
+      onNuiMessage('theme:apply', applyTheme),
       onNuiMessage('context:open', (data) => (context = data)),
       onNuiMessage('context:close', () => (context = null)),
       onNuiMessage('alert:open', (data) => (alert = data)),
       onNuiMessage('alert:close', () => (alert = null)),
       onNuiMessage('input:open', (data) => (input = data)),
       onNuiMessage('input:close', () => (input = null)),
-      onNuiMessage('notify:push', (data) => (notifies = [...notifies, data])),
+      onNuiMessage('notify:push', pushNotify),
       onNuiMessage('textui:show', showTextUI),
       onNuiMessage('textui:hide', hideTextUI),
       onNuiMessage('progress:show', (data) => (progress = data)),
       onNuiMessage('progress:hide', () => (progress = null)),
       onNuiMessage('radial:open', (data) => (radial = data)),
       onNuiMessage('radial:close', () => (radial = null)),
+      onNuiMessage('target:visible', (data) => {
+        target = { ...target, visible: data?.state === true }
+        if (!data?.state) target = { visible: false, groups: [], zones: [], markers: [] }
+      }),
+      onNuiMessage('target:set', (data) => {
+        target = { ...target, visible: true, groups: data?.groups || [], zones: data?.zones || [] }
+      }),
+      onNuiMessage('target:markers', (data) => {
+        target = { ...target, markers: Array.isArray(data?.markers) ? data.markers : [] }
+      }),
+      onNuiMessage('target:left', () => {
+        target = { ...target, groups: [], zones: [] }
+      }),
+      onNuiMessage('interact:set', (data) => (interact = { entries: Array.isArray(data?.entries) ? data.entries : [], key: String(data?.key || 'E') })),
+      onNuiMessage('interact:clear', () => (interact = { entries: [] })),
     ]
 
     window.parent.postMessage({ action: 'ui:frame-ready' }, '*')
@@ -92,7 +123,7 @@
     if (isEnvBrowser()) {
       ;(window as any).__prUiDebug = {
         openNotify: () => {
-          notifies = [...notifies, { id: Date.now(), title: 'Forgebox UI', description: 'Notificacao Svelte ativa.', type: 'success', duration: 5000 }]
+          pushNotify({ id: Date.now(), title: 'Forgebox UI', description: 'Notificacao Svelte ativa.', type: 'success', duration: 5000 })
         },
         openTextUI: () => (textui = { text: '[E] Interagir com o veiculo', position: 'right-center' }),
         closeTextUI: () => (textui = null),
@@ -111,6 +142,8 @@
   {#if textui}<TextUI data={textui} />{/if}
   {#if progress}<ProgressBar data={progress} />{/if}
   {#if radial}<RadialMenu data={radial} />{/if}
+  <TargetEye data={target} eyeIcon={visualConfig?.target?.eyeIcon || 'fa-solid fa-eye'} visual={visualConfig?.target || {}} />
+  <WorldInteract data={interact} visual={visualConfig?.interact || {}} />
 </div>
 
 <style>

@@ -115,7 +115,7 @@
     {/if}
 
     <ul class="ctx__list">
-      {#each filteredOptions as option (option.index)}
+      {#each filteredOptions as option}
         <li class:has-icon={hasOptionIcon(option.icon)} class:is-disabled={option.disabled} class:is-readonly={option.readOnly} class="ctx__item" on:click={() => onSelect(option)} on:mouseenter={(event) => onOptionEnter(option, event)}>
           {#if hasOptionIcon(option.icon)}
             <span class="ctx__option-icon" style:color={option.iconColor || undefined}>

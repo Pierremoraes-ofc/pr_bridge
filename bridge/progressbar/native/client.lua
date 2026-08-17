@@ -91,6 +91,10 @@ function progress.progressBar(data)
     return complete
 end
 
+function progress.progressCircle(data)
+    return progress.progressBar(data)
+end
+
 function progress.doProgressbar(duration, label, anim)
     return progress.progressBar({ duration = duration, label = label, canCancel = true, disable = { move = true }, anim = { dict = anim and anim[1], clip = anim and anim[2] } })
 end

@@ -169,12 +169,14 @@ local function callHandler(bind, handler)
 
     local ok, err = pcall(handler, bind)
     if not ok then
-        debug("warn", ("[pr_bridge] addKeybind '%s' falhou: %s"):format(bind.name or "unknown", tostring(err)))
+        local message = ("[pr_bridge] addKeybind '%s' falhou: %s"):format(bind.name or "unknown", tostring(err))
+        print(("^1%s^0"):format(message))
+        debug("warn", message)
     end
 end
 
 local function pressPart(bind, comboIndex, keyIndex)
-    if bind.disabled or IsPauseMenuActive() then return end
+    if bind.disabled or (IsPauseMenuActive() and not bind.allowInPauseMenu) then return end
 
     local combo = bind.combos[comboIndex]
     if not combo then return end
@@ -212,7 +214,23 @@ end
 
 function keybind_mt:getCurrentKey()
     local combo = self.combos[self.currentCombo or 1]
-    return combo and combo.label or self.defaultKey or ""
+    if not combo then return self.defaultKey or "" end
+
+    local labels = {}
+    for index = 1, #combo.keys do
+        local hash = combo.hashes[index]
+        local label = hash and GetControlInstructionalButton(0, hash, true)
+
+        if type(label) == "string" and #label > 2 then
+            label = label:sub(3)
+        else
+            label = combo.keys[index]
+        end
+
+        labels[index] = label
+    end
+
+    return comboToString(labels)
 end
 
 function keybind_mt:isControlPressed()
@@ -221,6 +239,18 @@ end
 
 function keybind_mt:disable(toggle)
     self.disabled = toggle == true
+
+    if self.disabled then
+        self.isPressed = false
+        self.currentCombo = nil
+
+        for comboIndex = 1, #self.combos do
+            local combo = self.combos[comboIndex]
+            for keyIndex = 1, #combo.pressed do
+                combo.pressed[keyIndex] = false
+            end
+        end
+    end
 end
 
 function keybind_mt:destroy()
@@ -228,17 +258,31 @@ function keybind_mt:destroy()
     keybinds[self.name] = nil
 end
 
+local function mappingCommandName(bind, comboIndex, keyIndex, keyCount)
+    -- O caminho comum replica o contrato nativo/ox_lib. Nomes longos e
+    -- prefixados impediam o FiveM de listar alguns mappings no menu.
+    if comboIndex == 1 and keyCount == 1 then
+        return bind.safeName
+    end
+
+    local seed = ("%s:%d:%d"):format(bind.name, comboIndex, keyIndex)
+    local hash = joaat(seed) & 0xffffffff
+    return ("prk_%08x_%d_%d"):format(hash, comboIndex, keyIndex)
+end
+
 local function registerCombo(bind, comboIndex, keys, mapper)
     local combo = {
         keys = keys,
         label = comboToString(keys),
         pressed = {},
+        hashes = {},
     }
 
     bind.combos[comboIndex] = combo
 
     for keyIndex = 1, #keys do
-        local commandName = ("pr_bridge_keybind_%s_%s_%s"):format(bind.safeName, comboIndex, keyIndex)
+        local commandName = mappingCommandName(bind, comboIndex, keyIndex, #keys)
+        combo.hashes[keyIndex] = joaat("+" .. commandName) | 0x80000000
         local description = keyIndex == #keys and bind.description or ("%s [%s]"):format(bind.description, combo.label)
 
         RegisterCommand("+" .. commandName, function()

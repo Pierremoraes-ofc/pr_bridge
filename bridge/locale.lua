@@ -75,7 +75,7 @@ function Locale:locale(newLocale)
     return self.currentLocale
 end
 
-function Locale:t(key, subs)
+function Locale:t(key, subs, ...)
     local phrase = self.phrases[key]
 
     if type(phrase) ~= "string" then
@@ -87,13 +87,13 @@ function Locale:t(key, subs)
         end
 
         if self.fallback then
-            return self.fallback:t(key, subs)
+            return self.fallback:t(key, subs, ...)
         end
 
         return key
     end
 
-    return translateKey(phrase, subs or {})
+    return translateKey(phrase, subs, ...)
 end
 
 function Locale:has(key)
@@ -302,7 +302,7 @@ function Locale.init(invokingResource)
 
     return setmetatable(public, {
         __call = function(_, key, ...)
-            return localeObj:t(key, subs, ...)
+            return localeObj:t(key, ...)
         end,
         __tostring = function()
             return public.currentLocale or ""

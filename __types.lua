@@ -77,6 +77,7 @@
 ---@class PRTarget
 ---@field addModel? fun(models: string|string[]|number|number[], options: table)
 ---@field removeModel? fun(models: string|string[]|number|number[], optionNames?: string|string[])
+---@field inspectModels? fun(models: string|string[]|number|number[]): table[]
 ---@field addEntity? fun(netIds: number|number[], options: table)
 ---@field removeEntity? fun(netIds: number|number[], optionNames?: string|string[])
 ---@field addLocalEntity? fun(entities: number|number[], options: table)

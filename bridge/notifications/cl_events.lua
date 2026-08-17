@@ -17,7 +17,9 @@ if IsDuplicityVersion() then
     end
 else
     RegisterNetEvent("bridge:notify", function(data)
-        if Bridge.notify and Bridge.notify.Notify then
+        if pr_lib and pr_lib.Notify then
+            pr_lib.Notify(data)
+        elseif Bridge.notify and Bridge.notify.Notify then
             Bridge.notify.Notify(data)
         end
     end)

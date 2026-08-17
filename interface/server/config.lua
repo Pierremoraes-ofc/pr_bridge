@@ -24,7 +24,58 @@ local defaults = {
         progressBar = "bottom-center",
         showTextUI = "right-center",
     },
+    target = {
+        x = 50.0,
+        y = 50.0,
+        optionsY = 48.4,
+        offsetX = 24.0,
+        width = 200.0,
+        height = 29.33,
+        eyeSize = 36.0,
+        eyeScale = 1.0,
+        eyeIcon = "fa-solid fa-eye",
+        scale = 1.0,
+        fontSize = 14.67,
+        color = "#cfd2da",
+        hoverColor = "#ffffff",
+        eyeColor = "#000000",
+        background = "#141414",
+        hoverBackground = "#1e1e1e",
+        backgroundOpacity = 0.70,
+        backgroundFade = 0.60,
+        markerColor = "#9b9b9b",
+        markerHoverColor = "#6287ec",
+        markerOpacity = 0.69,
+        markerIcon = "bi bi-circle",
+        markerTargetIcon = "bi bi-record-circle",
+        markerChangeOnTarget = true,
+        markerDistance = 5.0,
+        markerSize = 30.0,
+        markerScale = 1.0,
+        markerTargetScale = 1.0,
+        markerEffect = "pulse-glow",
+        markerEffectSpeed = 1.2,
+        markerEffectStrength = 1.25,
+        wallDetection = true,
+        wallRayFlags = 277,
+    },
+    interact = {
+        style = "obtaizen_ui",
+        scale = 1.0, pinSize = 32.0, keySize = 38.0, bulletSize = 17.0,
+        optionWidth = 180.0, optionHeight = 30.0, optionGap = 3.0, fontSize = 14.0,
+        pinColor = "#7656ff", keyColor = "#7656ff", selectedColor = "#7656ff",
+        unselectedColor = "#777777", textColor = "#ffffff", backgroundOpacity = 0.92,
+        wallDetection = true, wallRayFlags = 277,
+        showUI = true,
+        disableOnDeath = true, disableOnNuiFocus = true, disableInVehicle = true, disableWhenCuffed = true,
+    },
 }
+
+local allowedInteractStyles = {
+    blue_circle = true, gold_circle = true, green_square = true, glitch = true,
+    obtaizen_ui = true,
+}
+
 
 local allowedLayout = {
     registerContext = { left = true, right = true },
@@ -42,6 +93,26 @@ local allowedLayout = {
         ["left-center"] = true, ["right-center"] = true,
         ["top-center"] = true, ["bottom-center"] = true,
     },
+}
+
+local allowedTargetIcons = {
+    ["fa-solid fa-eye"] = true,
+    ["fa-solid fa-crosshairs"] = true,
+    ["fa-solid fa-bullseye"] = true,
+    ["fa-solid fa-location-crosshairs"] = true,
+    ["fa-solid fa-hand-pointer"] = true,
+    ["fa-solid fa-circle-dot"] = true,
+}
+
+local allowedMarkerIcons = {
+    ["bi bi-circle"] = true, ["bi bi-record-circle"] = true,
+    ["bi bi-crosshair"] = true, ["bi bi-bullseye"] = true,
+    ["bi bi-geo-alt-fill"] = true, ["bi bi-cursor-fill"] = true,
+    ["bi bi-diamond"] = true,
+}
+
+local allowedMarkerEffects = {
+    none = true, pulse = true, ["pulse-glow"] = true, spin = true, breathe = true,
 }
 
 local function clone(value)
@@ -73,6 +144,59 @@ local function sanitize(input)
         local value = tostring(layout[key] or fallback)
         output.layout[key] = allowedLayout[key][value] and value or fallback
     end
+
+    local target = type(input.target) == "table" and input.target or {}
+    local ranges = {
+        x = { 0, 100 }, y = { 0, 100 }, optionsY = { 0, 100 }, offsetX = { -500, 500 },
+        width = { 80, 800 }, height = { 18, 100 }, eyeSize = { 12, 120 }, eyeScale = { 0.25, 3 },
+        scale = { 0.25, 3 }, fontSize = { 8, 40 }, backgroundOpacity = { 0, 1 },
+        backgroundFade = { 0, 1 }, markerOpacity = { 0, 1 }, markerDistance = { 1, 25 },
+        markerSize = { 12, 96 }, markerScale = { 0.25, 3 }, markerTargetScale = { 0.25, 3 },
+        markerEffectSpeed = { 0.25, 5 }, markerEffectStrength = { 1, 2 }, wallRayFlags = { 1, 511 },
+    }
+    for key, range in pairs(ranges) do
+        local value = tonumber(target[key]) or defaults.target[key]
+        output.target[key] = math.max(range[1], math.min(range[2], value))
+    end
+    local eyeIcon = tostring(target.eyeIcon or defaults.target.eyeIcon)
+    output.target.eyeIcon = allowedTargetIcons[eyeIcon] and eyeIcon or defaults.target.eyeIcon
+    local markerIcon = tostring(target.markerIcon or defaults.target.markerIcon)
+    local markerTargetIcon = tostring(target.markerTargetIcon or defaults.target.markerTargetIcon)
+    local markerEffect = tostring(target.markerEffect or defaults.target.markerEffect)
+    output.target.markerIcon = allowedMarkerIcons[markerIcon] and markerIcon or defaults.target.markerIcon
+    output.target.markerTargetIcon = allowedMarkerIcons[markerTargetIcon] and markerTargetIcon or defaults.target.markerTargetIcon
+    output.target.markerEffect = allowedMarkerEffects[markerEffect] and markerEffect or defaults.target.markerEffect
+    output.target.markerChangeOnTarget = target.markerChangeOnTarget ~= false
+    output.target.wallDetection = target.wallDetection ~= false
+    local colors = {
+        "color", "hoverColor", "eyeColor", "background", "hoverBackground",
+        "markerColor", "markerHoverColor",
+    }
+    for i = 1, #colors do
+        local key = colors[i]
+        output.target[key] = validColor(target[key]) and target[key]:lower() or defaults.target[key]
+    end
+
+    local interact = type(input.interact) == "table" and input.interact or {}
+    local interactRanges = {
+        scale = { 0.25, 3 }, pinSize = { 10, 120 }, keySize = { 10, 120 }, bulletSize = { 8, 60 },
+        optionWidth = { 80, 600 }, optionHeight = { 18, 80 }, optionGap = { 0, 30 }, fontSize = { 8, 36 },
+        backgroundOpacity = { 0, 1 }, wallRayFlags = { 1, 511 },
+    }
+    for key, range in pairs(interactRanges) do
+        local value = tonumber(interact[key]) or defaults.interact[key]
+        output.interact[key] = math.max(range[1], math.min(range[2], value))
+    end
+    local style = tostring(interact.style or defaults.interact.style)
+    if style == "green_obtaizen" then style = "obtaizen_ui" end
+    output.interact.style = allowedInteractStyles[style] and style or defaults.interact.style
+    for _, key in ipairs({ "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor" }) do
+        output.interact[key] = validColor(interact[key]) and interact[key]:lower() or defaults.interact[key]
+    end
+    for _, key in ipairs({ "wallDetection", "showUI", "disableOnDeath", "disableOnNuiFocus", "disableInVehicle", "disableWhenCuffed" }) do
+        output.interact[key] = interact[key] ~= false
+    end
+
 
     return output
 end

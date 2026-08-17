@@ -79,6 +79,22 @@
           frame.contentWindow.postMessage(progressState, '*')
         }
       }
+      async function writeClipboard(value) {
+        const text = String(value ?? '')
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch {
+          const input = document.createElement('textarea')
+          input.value = text
+          input.style.position = 'fixed'
+          input.style.opacity = '0'
+          document.body.appendChild(input)
+          input.select()
+          document.execCommand('copy')
+          input.remove()
+        }
+      }
+
 
       frame.addEventListener('load', () => {
         ready = activeInterface === 'vue'
@@ -88,6 +104,11 @@
       window.addEventListener('message', (event) => {
         const payload = event.data
         if (!payload || typeof payload !== 'object') return
+        if (payload.action === 'setClipboard') {
+          void writeClipboard(payload.data)
+          return
+        }
+
 
         if (event.source === frame.contentWindow && payload.action === 'ui:frame-ready') {
           ready = true

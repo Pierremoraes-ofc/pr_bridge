@@ -23,6 +23,13 @@ function numbers.toHex(value, upper)
     return (upper and "0x%X" or "0x%x"):format(number(value))
 end
 
+function numbers.groupdigits(value, separator)
+    local input = tostring(value)
+    local left, digits, right = input:match("^([^%d]*%d)(%d*)(.-)$")
+    if not left then return input end
+    return left .. (digits:reverse():gsub("(%d%d%d)", "%1" .. (separator or ",")):reverse()) .. right
+end
+
 function numbers.hexToRGBA(value)
     if type(value) ~= "string" then error("value must be a string", 2) end
     local hex = value:gsub("#", "")

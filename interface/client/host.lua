@@ -222,14 +222,22 @@ local function toggleRadial()
 end
 
 RegisterCommand("prradial", toggleRadial, false)
-CreateThread(function()
-    while true do
-        Wait(0)
-        if not radial.open and IsControlJustReleased(0, 288) then
-            toggleRadial()
-        end
-    end
-end)
+
+local radialKeybind, radialKeybindError = Bridge.addKeybind({
+    name = "pr_bridge_radial",
+    description = "Menu radial",
+    defaultMapper = "keyboard",
+    defaultKey = GetConvar("pr_bridge:radial:defaultKey", "F1"),
+    onPressed = function()
+        toggleRadial()
+    end,
+})
+
+if not radialKeybind then
+    print(("^1[pr_bridge:radial] Falha ao registrar keybind: %s^0"):format(tostring(radialKeybindError)))
+else
+    print("^2[pr_bridge:radial] Keybind '(pr_bridge) Menu radial' registrado.^0")
+end
 
 RegisterNUICallback("radial:close", function(_, cb) cb(1); hideRadial() end)
 RegisterNUICallback("radial:back", function(_, cb)

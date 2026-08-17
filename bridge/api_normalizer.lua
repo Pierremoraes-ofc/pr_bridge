@@ -5,8 +5,13 @@ function normalizer.target(target, activeTarget)
     local resources={ox="ox_target",qb="qb-target",core_focus="core_focus",default="standalone"}
     target.GetResourceName=target.GetResourceName or function() return resources[activeTarget] or activeTarget end
     target.FixOptions=target.FixOptions or function(options) return options end
-    local aliases={GetResourceName="getResourceName",DisableTargeting="disableTargeting",AddGlobalObject="addGlobalObject",RemoveGlobalObject="removeGlobalObject",AddGlobalPed="addGlobalPed",RemoveGlobalPed="removeGlobalPed",AddGlobalPlayer="addGlobalPlayer",RemoveGlobalPlayer="removeGlobalPlayer",AddGlobalVehicle="addGlobalVehicle",RemoveGlobalVehicle="removeGlobalVehicle",AddModel="addModel",RemoveModel="removeModel",AddEntity="addEntity",RemoveEntity="removeEntity",AddLocalEntity="addLocalEntity",RemoveLocalEntity="removeLocalEntity",RemoveZone="removeZone"}
+    local aliases={GetResourceName="getResourceName",DisableTargeting="disableTargeting",AddGlobalObject="addGlobalObject",RemoveGlobalObject="removeGlobalObject",AddGlobalPed="addGlobalPed",RemoveGlobalPed="removeGlobalPed",AddGlobalPlayer="addGlobalPlayer",RemoveGlobalPlayer="removeGlobalPlayer",AddGlobalVehicle="addGlobalVehicle",RemoveGlobalVehicle="removeGlobalVehicle",AddModel="addModel",RemoveModel="removeModel",InspectModels="inspectModels",AddEntity="addEntity",RemoveEntity="removeEntity",AddLocalEntity="addLocalEntity",RemoveLocalEntity="removeLocalEntity",RemoveZone="removeZone"}
     for upper,lower in pairs(aliases) do target[upper]=target[upper] or target[lower] end
+    target.IsActive=target.IsActive or target.isActive
+    target.AddGlobalOption=target.AddGlobalOption or target.addGlobalOption
+    target.RemoveGlobalOption=target.RemoveGlobalOption or target.removeGlobalOption
+    target.ZoneExists=target.ZoneExists or target.zoneExists
+    target.GetTargetOptions=target.GetTargetOptions or target.getTargetOptions
     if not target.AddSphereZone and target.addSphereZone then function target.AddSphereZone(name,coords,radius,options,debug) return target.addSphereZone({name=name,coords=coords,radius=radius,options=options,debug=debug}) end end
     if not target.AddBoxZone and target.addBoxZone then function target.AddBoxZone(name,coords,size,rotation,options,debug) return target.addBoxZone({name=name,coords=coords,size=size,rotation=rotation,options=options,debug=debug}) end end
     if not target.AddPolyZone and target.addPolyZone then function target.AddPolyZone(name,points,thickness,options,debug) return target.addPolyZone({name=name,points=points,thickness=thickness,options=options,debug=debug}) end end

@@ -245,6 +245,132 @@ local function openLayoutEditor()
     saveGlobalConfig(config)
 end
 
+local function openTargetEditor()
+    local config = getGlobalConfig()
+    local target = config.target or {}
+    local values = UI.InputDialog("Visual do target", {
+        { type = "number", label = "Posicao horizontal (%)", default = target.x or 50, min = 0, max = 100, step = 0.1, precision = 2, required = true },
+        { type = "number", label = "Posicao vertical do olho (%)", default = target.y or 50, min = 0, max = 100, step = 0.1, precision = 2, required = true },
+        { type = "number", label = "Posicao vertical das opcoes (%)", default = target.optionsY or 48.4, min = 0, max = 100, step = 0.1, precision = 2, required = true },
+        { type = "number", label = "Distancia das opcoes (px)", default = target.offsetX or 24, min = -500, max = 500, step = 1, precision = 1, required = true },
+        { type = "number", label = "Largura das opcoes (px)", default = target.width or 200, min = 80, max = 800, step = 1, precision = 1, required = true },
+        { type = "number", label = "Altura das opcoes (px)", default = target.height or 29.33, min = 18, max = 100, step = 0.1, precision = 2, required = true },
+        { type = "number", label = "Tamanho do olho (px)", default = target.eyeSize or 36, min = 12, max = 120, step = 1, precision = 1, required = true },
+        { type = "number", label = "Escala do icone central", default = target.eyeScale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
+        { type = "select", label = "Icone do target", default = target.eyeIcon or "fa-solid fa-eye", options = {
+            { value = "fa-solid fa-eye", label = "Olho" },
+            { value = "fa-solid fa-crosshairs", label = "Mira" },
+            { value = "fa-solid fa-bullseye", label = "Alvo" },
+            { value = "fa-solid fa-location-crosshairs", label = "Localizacao" },
+            { value = "fa-solid fa-hand-pointer", label = "Ponteiro" },
+            { value = "fa-solid fa-circle-dot", label = "Ponto central" },
+        }, required = true },
+        { type = "number", label = "Escala geral", default = target.scale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
+        { type = "number", label = "Tamanho da fonte (px)", default = target.fontSize or 14.67, min = 8, max = 40, step = 0.1, precision = 2, required = true },
+        { type = "color", label = "Cor normal", default = target.color or "#cfd2da", required = true },
+        { type = "color", label = "Cor em destaque", default = target.hoverColor or "#ffffff", required = true },
+        { type = "color", label = "Cor do olho inativo", default = target.eyeColor or "#000000", required = true },
+        { type = "color", label = "Fundo das opcoes", default = target.background or "#141414", required = true },
+        { type = "color", label = "Fundo em destaque", default = target.hoverBackground or "#1e1e1e", required = true },
+        { type = "number", label = "Opacidade do fundo", default = target.backgroundOpacity or 0.70, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "number", label = "Desvanecimento do fundo", default = target.backgroundFade or 0.60, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "color", label = "Cor dos marcadores", default = target.markerColor or "#9b9b9b", required = true },
+        { type = "color", label = "Marcador em destaque", default = target.markerHoverColor or "#6287ec", required = true },
+        { type = "number", label = "Opacidade dos marcadores", default = target.markerOpacity or 0.69, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "select", label = "Icone do ponto proximo", default = target.markerIcon or "bi bi-circle", options = {
+            { value = "bi bi-circle", label = "Circulo" }, { value = "bi bi-record-circle", label = "Circulo marcado" },
+            { value = "bi bi-crosshair", label = "Mira" }, { value = "bi bi-bullseye", label = "Alvo" },
+            { value = "bi bi-geo-alt-fill", label = "Localizacao" }, { value = "bi bi-cursor-fill", label = "Ponteiro" },
+            { value = "bi bi-diamond", label = "Diamante" },
+        }, required = true },
+        { type = "checkbox", label = "Trocar icone quando o alvo for reconhecido", checked = target.markerChangeOnTarget ~= false },
+        { type = "select", label = "Icone do alvo reconhecido", default = target.markerTargetIcon or "bi bi-record-circle", options = {
+            { value = "bi bi-record-circle", label = "Circulo marcado" }, { value = "bi bi-circle", label = "Circulo" },
+            { value = "bi bi-crosshair", label = "Mira" }, { value = "bi bi-bullseye", label = "Alvo" },
+            { value = "bi bi-geo-alt-fill", label = "Localizacao" }, { value = "bi bi-cursor-fill", label = "Ponteiro" },
+            { value = "bi bi-diamond", label = "Diamante" },
+        }, required = true },
+        { type = "number", label = "Distancia para exibir o ponto (m)", default = target.markerDistance or 5, min = 1, max = 25, step = 0.5, precision = 1, required = true },
+        { type = "number", label = "Tamanho do icone do ponto (px)", default = target.markerSize or 30, min = 12, max = 96, step = 1, precision = 1, required = true },
+        { type = "number", label = "Escala do icone proximo", default = target.markerScale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
+        { type = "number", label = "Escala do icone reconhecido", default = target.markerTargetScale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
+        { type = "select", label = "Efeito do alvo reconhecido", default = target.markerEffect or "pulse-glow", options = {
+            { value = "none", label = "Sem efeito" }, { value = "pulse", label = "Pulsar opacidade" },
+            { value = "pulse-glow", label = "Pulsar brilho" }, { value = "spin", label = "Girar" },
+            { value = "breathe", label = "Aumentar e diminuir" },
+        }, required = true },
+        { type = "number", label = "Duracao de cada ciclo do efeito (s)", default = target.markerEffectSpeed or 1.2, min = 0.25, max = 5, step = 0.05, precision = 2, required = true },
+        { type = "number", label = "Intensidade do aumento", default = target.markerEffectStrength or 1.25, min = 1, max = 2, step = 0.05, precision = 2, required = true },
+        { type = "checkbox", label = "Ocultar alvos atras de paredes e objetos", checked = target.wallDetection ~= false },
+        { type = "number", label = "Flags da deteccao de paredes", description = "Padrao: 277 (1 + 4 + 16 + 256).", default = target.wallRayFlags or 277, min = 1, max = 511, step = 1, precision = 0, required = true },
+    }, { size = "lg", allowCancel = true })
+
+    if not values then return end
+    config.target = {
+        x = values[1], y = values[2], optionsY = values[3], offsetX = values[4],
+        width = values[5], height = values[6], eyeSize = values[7], eyeScale = values[8],
+        eyeIcon = values[9], scale = values[10], fontSize = values[11],
+        color = values[12], hoverColor = values[13], eyeColor = values[14],
+        background = values[15], hoverBackground = values[16],
+        backgroundOpacity = values[17], backgroundFade = values[18], markerColor = values[19],
+        markerHoverColor = values[20], markerOpacity = values[21],
+        markerIcon = values[22], markerChangeOnTarget = values[23] == true,
+        markerTargetIcon = values[24], markerDistance = values[25], markerSize = values[26],
+        markerScale = values[27], markerTargetScale = values[28],
+        markerEffect = values[29], markerEffectSpeed = values[30], markerEffectStrength = values[31],
+        wallDetection = values[32] == true, wallRayFlags = values[33],
+    }
+    saveGlobalConfig(config)
+end
+
+local function openInteractEditor()
+    local config = getGlobalConfig()
+    local interact = config.interact or {}
+    local values = UI.InputDialog("Visual do interact", {
+        { type = "select", label = "Modelo visual", default = interact.style or "obtaizen_ui", options = {
+            { value = "blue_circle", label = "Circulo azul" },
+            { value = "gold_circle", label = "Circulo dourado" },
+            { value = "green_square", label = "Quadrado verde" },
+            { value = "glitch", label = "Glitch" },
+            { value = "obtaizen_ui", label = "Obtaizen roxo" },
+        }, required = true },
+        { type = "number", label = "Escala geral", default = interact.scale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
+        { type = "number", label = "Tamanho do ponto proximo (px)", default = interact.pinSize or 32, min = 10, max = 120, step = 1, precision = 1, required = true },
+        { type = "number", label = "Tamanho da tecla de interacao (px)", default = interact.keySize or 38, min = 10, max = 120, step = 1, precision = 1, required = true },
+        { type = "number", label = "Tamanho do seletor (px)", default = interact.bulletSize or 17, min = 8, max = 60, step = 1, precision = 1, required = true },
+        { type = "number", label = "Largura das opcoes (px)", default = interact.optionWidth or 180, min = 80, max = 600, step = 1, precision = 1, required = true },
+        { type = "number", label = "Altura das opcoes (px)", default = interact.optionHeight or 30, min = 18, max = 80, step = 1, precision = 1, required = true },
+        { type = "number", label = "Espaco entre opcoes (px)", default = interact.optionGap or 3, min = 0, max = 30, step = 1, precision = 1, required = true },
+        { type = "number", label = "Tamanho do texto (px)", default = interact.fontSize or 14, min = 8, max = 36, step = 1, precision = 1, required = true },
+        { type = "color", label = "Cor do ponto proximo", default = interact.pinColor or "#7656ff", required = true },
+        { type = "color", label = "Cor da tecla de interacao", default = interact.keyColor or "#7656ff", required = true },
+        { type = "color", label = "Cor da opcao selecionada", default = interact.selectedColor or "#7656ff", required = true },
+        { type = "color", label = "Cor das opcoes nao selecionadas", default = interact.unselectedColor or "#777777", required = true },
+        { type = "color", label = "Cor do texto", default = interact.textColor or "#ffffff", required = true },
+        { type = "number", label = "Opacidade dos paineis", default = interact.backgroundOpacity or 0.92, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "checkbox", label = "Ocultar interacoes atras de paredes", checked = interact.wallDetection ~= false },
+        { type = "number", label = "Flags da deteccao de paredes", default = interact.wallRayFlags or 277, min = 1, max = 511, step = 1, precision = 0, required = true },
+        { type = "checkbox", label = "Desativar quando estiver morto", checked = interact.disableOnDeath ~= false },
+        { type = "checkbox", label = "Desativar quando outra NUI estiver focada", checked = interact.disableOnNuiFocus ~= false },
+        { type = "checkbox", label = "Desativar dentro de veiculos", checked = interact.disableInVehicle ~= false },
+        { type = "checkbox", label = "Desativar quando estiver algemado", checked = interact.disableWhenCuffed ~= false },
+        { type = "checkbox", label = "Exibir indicadores do interact na tela", checked = interact.showUI ~= false },
+    }, { size = "lg", allowCancel = true })
+
+    if not values then return end
+    config.interact = {
+        style = values[1], scale = values[2], pinSize = values[3], keySize = values[4], bulletSize = values[5],
+        optionWidth = values[6], optionHeight = values[7], optionGap = values[8], fontSize = values[9],
+        pinColor = values[10], keyColor = values[11], selectedColor = values[12], unselectedColor = values[13],
+        textColor = values[14], backgroundOpacity = values[15], wallDetection = values[16] == true, wallRayFlags = values[17],
+        disableOnDeath = values[18] == true, disableOnNuiFocus = values[19] == true,
+        disableInVehicle = values[20] == true, disableWhenCuffed = values[21] == true,
+        showUI = values[22] == true,
+    }
+    saveGlobalConfig(config)
+end
+
+
 function UI.OpenVisualAdminMenu(parentMenu)
     CreateThread(function()
         local allowed = Bridge.callback.await("pr_bridge:ui:isAdmin", 10000)
@@ -261,6 +387,8 @@ function UI.OpenVisualAdminMenu(parentMenu)
             options = {
                 { title = "Paleta de cores", description = "Cores e opacidade usadas por todos os componentes.", icon = "palette-fill", onSelect = openPaletteEditor },
                 { title = "Posicoes", description = "Lado dos menus, metadata, notificacoes e indicadores.", icon = "layout-sidebar-inset", onSelect = openLayoutEditor },
+                { title = "Target", description = "Posicao, escala, cores, opacidade e marcadores do sistema de interacao.", icon = "crosshair", onSelect = openTargetEditor },
+                { title = "Interact", description = "Modelo visual, cores, tamanhos, bloqueios e deteccao de paredes.", icon = "cursor", onSelect = openInteractEditor },
                 {
                     title = "Restaurar padrao",
                     description = "Restaura a paleta e todas as posicoes originais.",

@@ -3,6 +3,7 @@
 return function(Renderer)
     local Notify = {}
     local nextId = 0
+    local activeIds = {}
 
     ---@class NotifyData
     ---@field id? string|number
@@ -26,13 +27,19 @@ return function(Renderer)
         end
 
         nextId = nextId + 1
+        local id = data.id or ("pr_notify_" .. nextId)
+        local duration = tonumber(data.duration) or 5000
+
+        if activeIds[id] then return false end
+        activeIds[id] = true
+        SetTimeout(duration, function() activeIds[id] = nil end)
 
         Renderer.send("notify:push", {
-            id = data.id or ("pr_notify_" .. nextId),
+            id = id,
             title = data.title,
             description = data.description or "",
             type = data.type or "info",
-            duration = data.duration or 5000,
+            duration = duration,
             position = data.position or "top-right",
             icon = data.icon,
             iconColor = data.iconColor,

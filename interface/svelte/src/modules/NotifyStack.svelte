@@ -3,29 +3,32 @@
   import { notifyTone } from '../lib/forgebox'
   import BootstrapIcon from '../components/BootstrapIcon.svelte'
 
-  export let items: Array<{ id: string | number; title?: string; description?: string; type?: string; duration?: number }> = []
-  const dispatch = createEventDispatcher<{ remove: string | number }>()
-  const timers = new Map<string | number, number>()
-  let progress: Record<string | number, number> = {}
+  type NotifyItem = { id?: string | number; __renderId: string; title?: string; description?: string; type?: string; duration?: number }
+
+  export let items: NotifyItem[] = []
+  const dispatch = createEventDispatcher<{ remove: string }>()
+  const timers = new Map<string, number>()
+  let progress: Record<string, number> = {}
 
   $: for (const item of items) {
-    if (!timers.has(item.id)) startTimer(item)
+    if (!timers.has(item.__renderId)) startTimer(item)
   }
 
-  function startTimer(item: { id: string | number; duration?: number }) {
+  function startTimer(item: NotifyItem) {
     const duration = item.duration ?? 5000
     const started = Date.now()
-    progress = { ...progress, [item.id]: 100 }
+    const renderId = item.__renderId
+    progress = { ...progress, [renderId]: 100 }
     const handle = window.setInterval(() => {
       const pct = Math.max(0, 100 - ((Date.now() - started) / duration) * 100)
-      progress = { ...progress, [item.id]: pct }
+      progress = { ...progress, [renderId]: pct }
       if (pct <= 0) {
         window.clearInterval(handle)
-        timers.delete(item.id)
-        dispatch('remove', item.id)
+        timers.delete(renderId)
+        dispatch('remove', renderId)
       }
     }, 50)
-    timers.set(item.id, handle)
+    timers.set(renderId, handle)
   }
 
   const icon = (type?: string) => type === 'success' ? 'check-circle-fill' : type === 'error' ? 'x-circle-fill' : type === 'warning' ? 'exclamation-triangle-fill' : 'info-circle-fill'
@@ -34,7 +37,7 @@
 </script>
 
 <div class="notify-stack">
-  {#each items as item (item.id)}
+  {#each items as item (item.__renderId)}
     {@const tone = notifyTone(item.type)}
     <div class="notify" style={`border-left-color: ${tone.border}; box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px ${tone.glow};`}>
       <span class="notify__icon" style={`color: ${tone.border}`}><BootstrapIcon name={icon(item.type)} /></span>
@@ -42,7 +45,7 @@
         {#if item.title}<strong class="notify__title">{item.title}</strong>{/if}
         <p class="notify__desc">{item.description}</p>
       </div>
-      <div class="notify__progress" style={`width: ${progress[item.id] ?? 100}%; background-color: ${tone.border};`} />
+      <div class="notify__progress" style={`width: ${progress[item.__renderId] ?? 100}%; background-color: ${tone.border};`} />
     </div>
   {/each}
 </div>

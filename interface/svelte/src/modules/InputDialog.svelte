@@ -130,7 +130,7 @@
     </header>
 
     <div class="input__fields">
-      {#each data.rows || [] as row (row.index)}
+      {#each data.rows || [] as row}
         <div class="input__field">
           {#if row.label && row.type !== 'checkbox'}<label class="input__label">{row.label}{#if row.required}<span class="input__req">*</span>{/if}</label>{/if}
           {#if row.description}<p class="input__desc">{row.description}</p>{/if}

@@ -11,9 +11,24 @@ function tables.contains(source, value)
     return false
 end
 
-function tables.matches(left, right)
-    if type(left) ~= "table" or type(right) ~= "table" then return false end
-    return tables.contains(left, right) and tables.contains(right, left)
+function tables.matches(left, right, seen)
+    if left == right then return true end
+    if type(left) ~= type(right) then return false end
+    if type(left) ~= "table" then return false end
+
+    seen = seen or {}
+    if seen[left] == right then return true end
+    seen[left] = right
+
+    for key, value in pairs(left) do
+        if not tables.matches(value, right[key], seen) then return false end
+    end
+
+    for key in pairs(right) do
+        if left[key] == nil then return false end
+    end
+
+    return true
 end
 
 function tables.merge(target, source, override)
@@ -50,5 +65,31 @@ end
 
 function tables.count(source) local count=0; for _ in pairs(source or {}) do count=count+1 end; return count end
 
+local readonly = "pr_bridge:readonly"
+
+function tables.isfrozen(source)
+    return type(source) == "table" and getmetatable(source) == readonly
+end
+
+function tables.freeze(source)
+    assert(type(source) == "table", "freeze expects a table")
+    if tables.isfrozen(source) then return source end
+
+    local values = tables.clone(source)
+    local originalMeta = getmetatable(source)
+    for key in pairs(source) do source[key] = nil end
+
+    setmetatable(source, {
+        __index = originalMeta and setmetatable(values, originalMeta) or values,
+        __newindex = function() error("cannot set values on a frozen table", 2) end,
+        __len = function() return #values end,
+        __pairs = function() return next, values end,
+        __metatable = readonly,
+    })
+
+    return source
+end
+
 tables.Contains=tables.contains; tables.Matches=tables.matches; tables.Merge=tables.merge; tables.deepclone=tables.clone; tables.DeepClone=tables.clone; tables.Shuffle=tables.shuffle; tables.Map=tables.map; tables.Count=tables.count
+tables.Freeze=tables.freeze; tables.IsFrozen=tables.isfrozen
 return tables

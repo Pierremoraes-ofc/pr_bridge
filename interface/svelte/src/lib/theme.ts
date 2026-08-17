@@ -3,6 +3,8 @@ import { alphaColor } from './forgebox'
 export type VisualConfig = {
   palette?: Record<string, string | number>
   layout?: Record<string, string>
+  target?: Record<string, string | number | boolean>
+  interact?: Record<string, string | number | boolean>
 }
 
 const defaults: VisualConfig = {
@@ -15,11 +17,30 @@ const defaults: VisualConfig = {
     registerContext: 'right', metadata: 'right', alertDialog: 'center', inputDialog: 'center',
     registerMenu: 'right', notify: 'top-right', progressBar: 'bottom-center', showTextUI: 'right-center',
   },
+  target: {
+    x: 50, y: 50, optionsY: 48.4, offsetX: 24, width: 200, height: 29.33,
+    eyeSize: 36, eyeScale: 1, eyeIcon: 'fa-solid fa-eye', scale: 1, fontSize: 14.67, color: '#cfd2da', hoverColor: '#ffffff',
+    eyeColor: '#000000', background: '#141414', hoverBackground: '#1e1e1e',
+    backgroundOpacity: 0.70, backgroundFade: 0.60,
+    markerColor: '#9b9b9b', markerHoverColor: '#6287ec', markerOpacity: 0.69,
+    markerIcon: 'bi bi-circle', markerTargetIcon: 'bi bi-record-circle', markerChangeOnTarget: true,
+    markerDistance: 5, markerSize: 30, markerScale: 1, markerTargetScale: 1, markerEffect: 'pulse-glow', markerEffectSpeed: 1.2, markerEffectStrength: 1.25, wallDetection: true, wallRayFlags: 277,
+  },
+  interact: {
+    style: 'obtaizen_ui', scale: 1, pinSize: 32, keySize: 38, bulletSize: 17,
+    optionWidth: 180, optionHeight: 30, optionGap: 3, fontSize: 14,
+    pinColor: '#7656ff', keyColor: '#7656ff', selectedColor: '#7656ff',
+    unselectedColor: '#777777', textColor: '#ffffff', backgroundOpacity: 0.92,
+    wallDetection: true, wallRayFlags: 277,
+    disableOnDeath: true, disableOnNuiFocus: true, disableInVehicle: true, disableWhenCuffed: true,
+  },
 }
 
 export function applyVisualConfig(input?: VisualConfig) {
   const palette = { ...defaults.palette, ...(input?.palette || {}) } as Record<string, string | number>
   const layout = { ...defaults.layout, ...(input?.layout || {}) } as Record<string, string>
+  const target = { ...defaults.target, ...(input?.target || {}) } as Record<string, string | number>
+  const interact = { ...defaults.interact, ...(input?.interact || {}) } as Record<string, string | number>
   const root = document.documentElement
   const primary = String(palette.primary)
   const opacity = Math.max(0.15, Math.min(1, Number(palette.surfaceOpacity) || 0.82))
@@ -42,6 +63,50 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--fb-border-hover', String(palette.border))
   root.style.setProperty('--fb-nui-surface', alphaColor(String(palette.surface), opacity))
   root.style.setProperty('--fb-nui-field', alphaColor(String(palette.surface), Math.min(1, opacity + 0.08)))
+
+  root.style.setProperty('--pr-target-x', `${Number(target.x)}%`)
+  root.style.setProperty('--pr-target-y', `${Number(target.y)}%`)
+  root.style.setProperty('--pr-target-options-y', `${Number(target.optionsY)}%`)
+  root.style.setProperty('--pr-target-offset-x', `${Number(target.offsetX)}px`)
+  root.style.setProperty('--pr-target-width', `${Number(target.width)}px`)
+  root.style.setProperty('--pr-target-height', `${Number(target.height)}px`)
+  root.style.setProperty('--pr-target-eye-size', `${Number(target.eyeSize)}px`)
+  root.style.setProperty('--pr-target-eye-scale', String(Number(target.eyeScale)))
+  root.style.setProperty('--pr-target-scale', String(Number(target.scale)))
+  root.style.setProperty('--pr-target-font-size', `${Number(target.fontSize)}px`)
+  root.style.setProperty('--pr-target-color', String(target.color))
+  root.style.setProperty('--pr-target-hover', String(target.hoverColor))
+  root.style.setProperty('--pr-target-eye', String(target.eyeColor))
+  root.style.setProperty('--pr-target-background', String(target.background))
+  root.style.setProperty('--pr-target-hover-background', String(target.hoverBackground))
+  root.style.setProperty('--pr-target-background-opacity', `${Number(target.backgroundOpacity) * 100}%`)
+  root.style.setProperty('--pr-target-background-fade', `${Number(target.backgroundFade) * 100}%`)
+  root.style.setProperty('--pr-target-background-color', alphaColor(String(target.background), Number(target.backgroundOpacity)))
+  root.style.setProperty('--pr-target-background-fade-color', alphaColor(String(target.background), Number(target.backgroundFade)))
+  root.style.setProperty('--pr-target-hover-background-color', alphaColor(String(target.hoverBackground), Number(target.backgroundOpacity)))
+  root.style.setProperty('--pr-target-hover-background-fade-color', alphaColor(String(target.hoverBackground), Number(target.backgroundFade)))
+  root.style.setProperty('--pr-target-marker-color', String(target.markerColor))
+  root.style.setProperty('--pr-target-marker-hover', String(target.markerHoverColor))
+  root.style.setProperty('--pr-target-marker-opacity', String(Number(target.markerOpacity)))
+  root.style.setProperty('--pr-target-marker-size', `${Number(target.markerSize)}px`)
+  root.style.setProperty('--pr-target-marker-scale', String(Number(target.markerScale)))
+  root.style.setProperty('--pr-target-marker-target-scale', String(Number(target.markerTargetScale)))
+  root.style.setProperty('--pr-target-marker-effect-speed', `${Number(target.markerEffectSpeed)}s`)
+  root.style.setProperty('--pr-target-marker-effect-strength', String(Number(target.markerEffectStrength)))
+  root.style.setProperty('--pr-interact-scale', String(Number(interact.scale)))
+  root.style.setProperty('--pr-interact-pin-size', String(Number(interact.pinSize)) + 'px')
+  root.style.setProperty('--pr-interact-key-size', String(Number(interact.keySize)) + 'px')
+  root.style.setProperty('--pr-interact-bullet-size', String(Number(interact.bulletSize)) + 'px')
+  root.style.setProperty('--pr-interact-option-width', String(Number(interact.optionWidth)) + 'px')
+  root.style.setProperty('--pr-interact-option-height', String(Number(interact.optionHeight)) + 'px')
+  root.style.setProperty('--pr-interact-option-gap', String(Number(interact.optionGap)) + 'px')
+  root.style.setProperty('--pr-interact-font-size', String(Number(interact.fontSize)) + 'px')
+  root.style.setProperty('--pr-interact-pin-color', String(interact.pinColor))
+  root.style.setProperty('--pr-interact-key-color', String(interact.keyColor))
+  root.style.setProperty('--pr-interact-selected-color', String(interact.selectedColor))
+  root.style.setProperty('--pr-interact-unselected-color', String(interact.unselectedColor))
+  root.style.setProperty('--pr-interact-text-color', String(interact.textColor))
+  root.style.setProperty('--pr-interact-background-opacity', String(Number(interact.backgroundOpacity)))
 
   root.dataset.contextSide = layout.registerContext
   root.dataset.metadataSide = layout.metadata

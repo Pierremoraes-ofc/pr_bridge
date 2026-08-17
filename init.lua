@@ -75,16 +75,137 @@ public.getLocales = function(invokingResource)
 end
 PRCore.load("@pr_bridge/bridge/config", env)
 public.debug = PRCore.load("@pr_bridge/bridge/debug", env)
+public.print = {
+    info = function(...) public.debug.info(...) end,
+    warn = function(...) public.debug.warn(...) end,
+    error = function(...) public.debug.error(...) end,
+}
+
+function public.logger(source, event, message, tag)
+    local scope = tag and ("[%s]"):format(tag) or ""
+    print(("^3[pr_bridge][%s][%s]%s^0 %s"):format(resourceName, tostring(event or "log"), scope, tostring(message or "")))
+end
+
+function public.waitFor(callback, message, timeout)
+    assert(type(callback) == "function", "waitFor callback must be a function")
+    timeout = tonumber(timeout) or 1000
+    local started = GetGameTimer()
+
+    while true do
+        local result = callback()
+        if result ~= nil then return result end
+        if GetGameTimer() - started >= timeout then
+            if message then error(message, 2) end
+            return false
+        end
+        Wait(0)
+    end
+end
+
+local intervals = {}
+local nextIntervalId = 0
+
+function public.setInterval(callback, interval, ...)
+    interval = interval or 0
+
+    if type(interval) ~= "number" then
+        error(("interval must be a number (received '%s')"):format(type(interval)), 2)
+    end
+
+    if type(callback) == "number" then
+        local entry = intervals[callback]
+        if not entry then
+            error(("no interval exists with id %s"):format(callback), 2)
+        end
+
+        entry.delay = interval
+        return
+    end
+
+    if type(callback) ~= "function" then
+        error(("interval callback must be a function (received '%s')"):format(type(callback)), 2)
+    end
+
+    nextIntervalId = nextIntervalId + 1
+    local id = nextIntervalId
+    local entry = {
+        active = true,
+        delay = interval,
+        callback = callback,
+        args = { ... },
+    }
+
+    intervals[id] = entry
+
+    CreateThread(function()
+        while entry.active do
+            local delay = entry.delay
+            Wait(delay)
+            if not entry.active or delay < 0 then break end
+            entry.callback(table.unpack(entry.args))
+        end
+
+        intervals[id] = nil
+    end)
+
+    return id
+end
+
+function public.clearInterval(id)
+    if type(id) ~= "number" then
+        error(("interval id must be a number (received '%s')"):format(type(id)), 2)
+    end
+
+    local entry = intervals[id]
+    if not entry then
+        error(("no interval exists with id %s"):format(id), 2)
+    end
+
+    entry.active = false
+end
+
+public.array = {}
+function public.array:new(...)
+    local values = { ... }
+    local lookup = {}
+    for i = 1, #values do lookup[values[i]] = true end
+
+    function values:includes(value)
+        return lookup[value] == true
+    end
+
+    return values
+end
 env.Lang = env.Locale.init("pr_bridge")
 public.utils = PRCore.load("@pr_bridge/bridge/utils/shared", env) or {}
 public.math = PRCore.load("@pr_bridge/bridge/utils/numbers", env) or {}
 public.table = PRCore.load("@pr_bridge/bridge/utils/tables", env) or {}
+public.string = PRCore.load("@pr_bridge/bridge/utils/strings", env) or {}
+public.timer = PRCore.load("@pr_bridge/bridge/utils/timer", env)
 public.ids = PRCore.load("@pr_bridge/bridge/utils/ids", env) or {}
 public.translator = PRCore.load(("@pr_bridge/bridge/translator/%s"):format(PRCore.context), env, true) or {}
+
+if _ENV.SetInterval == nil then _ENV.SetInterval = public.setInterval end
+if _ENV.ClearInterval == nil then _ENV.ClearInterval = public.clearInterval end
+
+if PRCore.context == "client" then
+    function public.setClipboard(value)
+        assert(type(value) == "string", "clipboard value must be a string")
+        TriggerEvent("pr_bridge:ui:send", "setClipboard", value)
+        return true
+    end
+else
+    function public.setClipboard()
+        return false, "client_only"
+    end
+end
 
 local debugValue = GetResourceMetadata(resourceName, "pr_bridge_debug", 0)
 env.Config.Debug = debugValue == "true" or debugValue == "yes" or debugValue == "1"
 public.callback = PRCore.load(("@pr_bridge/bridge/callback/%s"):format(PRCore.context), env) or PRCore.callback
+if GetConvar("pr_bridge:callback:secure", "false") == "true" then
+    public.callback = PRCore.load(("@pr_bridge/bridge/callback/secure_%s"):format(PRCore.context), env) or public.callback
+end
 local normalizeInventoryBridge = PRCore.load("@pr_bridge/bridge/inventory_normalizer", env)
 local normalizeApi = PRCore.load("@pr_bridge/bridge/api_normalizer", env)
 
@@ -127,6 +248,21 @@ local function getBridgePath(bridgeType)
                     if GetResourceState(info.resource):find("start") then
                         setActiveBridge(bridgeType, info.folder)
                         return ("@pr_bridge/bridge/frameworks/%s/%s"):format(info.folder, PRCore.context)
+                    end
+                    break
+                end
+            end
+        end
+    end
+    if bridgeType == "targets" then
+        local forced = env.Config.Target
+        if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
+            for i = 1, #bridge do
+                local info = bridge[i]
+                if info.resource == forced or info.folder == forced then
+                    if GetResourceState(info.resource):find("start") then
+                        setActiveBridge(bridgeType, info.folder)
+                        return ("@pr_bridge/bridge/%s/%s/%s"):format(bridgeType, info.folder, PRCore.context)
                     end
                     break
                 end
@@ -177,6 +313,8 @@ if normalizeInventoryBridge then normalizeInventoryBridge(public.inventory, PRCo
 loadBridgeModule("notify", "notifications")
 loadBridgeModule("menus", "menus")
 loadBridgeModule("target", "targets")
+public.interact = PRCore.load(("@pr_bridge/bridge/interact/%s"):format(PRCore.context), env) or {}
+public.interactions = public.interact
 loadBridgeModule("textuiAdapter", "textui")
 loadBridgeModule("banking", "banking")
 if normalizeApi then normalizeApi.target(public.target, env.ActiveBridges.target); normalizeApi.textui(public.textuiAdapter); normalizeApi.banking(public.banking); normalizeApi.notification(public.notify, PRCore.context, env.ActiveBridges.notification) end
@@ -243,7 +381,7 @@ public.textUIAdapter = public.textuiAdapter
 public.textuiBridge = public.textuiAdapter
 public.textUIBridge = public.textuiAdapter
 public.bank = public.banking
-public.adapters = { framework=public.framework, inventory=public.inventory, notification=public.notify, menu=public.menus, target=public.target, textui=public.textuiAdapter, banking=public.banking, phone=public.phone, progress=public.progress, weather=public.weather }
+public.adapters = { framework=public.framework, inventory=public.inventory, notification=public.notify, menu=public.menus, target=public.target, interact=public.interact, textui=public.textuiAdapter, banking=public.banking, phone=public.phone, progress=public.progress, weather=public.weather }
 public.vehicleKey = public.vehicle_key
 public.vehicleKeys = public.vehicle_key
 public.db = public.database
@@ -292,6 +430,33 @@ if PRCore.context == "client" then
             end
         end
         return closestPlayer, closestPed, closestCoords
+    end
+    public.getNearbyPlayers = function(coords, radius, includePlayer)
+        coords = coords or GetEntityCoords(PlayerPedId())
+        radius = tonumber(radius) or 2.0
+        local nearby = {}
+        for _, playerId in ipairs(GetActivePlayers()) do
+            if playerId ~= PlayerId() and playerId ~= includePlayer then
+                local ped = GetPlayerPed(playerId)
+                local pedCoords = GetEntityCoords(ped)
+                local distance = #(coords - pedCoords)
+                if distance <= radius then
+                    nearby[#nearby + 1] = { id = playerId, ped = ped, coords = pedCoords, distance = distance }
+                end
+            end
+        end
+        table.sort(nearby, function(a, b) return a.distance < b.distance end)
+        return nearby
+    end
+
+    public.player = {}
+    function public.player:new()
+        local state = LocalPlayer.state
+        return {
+            get = function(_, key) return state[key] end,
+            set = function(_, key, value) state:set(key, value, false) end,
+            setr = function(_, key, value) state:set(key, value, true) end,
+        }
     end
     if public.raycast then
         public.raycast.cam = function(flags, ignoreFlags, distance)
@@ -541,13 +706,33 @@ setmetatable(prCache, {
 
 public.cache = prCache
 public.onCache = prCache.onChange
+local createAutomaticCache = PRCore.load("@pr_bridge/bridge/cache/shared", env)
+if createAutomaticCache then
+    prCache = createAutomaticCache(public, env.ActiveBridges)
+    local centralizeCache = PRCore.load("@pr_bridge/bridge/cache/central", env)
+    if centralizeCache then centralizeCache(prCache) end
+    public.cache = prCache
+    public.onCache = prCache.onChange
+    public.getCacheMetrics = prCache.getMetrics
+end
+if PRCore.context == "client" then
+    local normalizeEntities = PRCore.load("@pr_bridge/bridge/compat/entities_client", env)
+    if normalizeEntities then normalizeEntities(public) end
+end
 
 if PRCore.context == "client" then
     local activePoints = {}
     public.points = {}
 
-    function public.points.new(data)
-        local point = data or {}
+    function public.points.new(data, distance, extraData)
+        local point
+        if extraData ~= nil then
+            point = extraData
+            point.coords = data
+            point.distance = distance
+        else
+            point = data or {}
+        end
         point.distance = tonumber(point.distance) or 1.0
         point.currentDistance = math.huge
         point.inside = false
@@ -566,6 +751,19 @@ if PRCore.context == "client" then
             if not activePoints[i].removed then points[#points + 1] = activePoints[i] end
         end
         return points
+    end
+
+    function public.points.getClosestPoint(filter)
+        local closest
+        for i = 1, #activePoints do
+            local point = activePoints[i]
+            if not point.removed and point.currentDistance < math.huge and (not filter or filter(point)) then
+                if not closest or point.currentDistance < closest.currentDistance then
+                    closest = point
+                end
+            end
+        end
+        return closest
     end
     public.zones = {}
     function public.zones.sphere(data)
@@ -658,9 +856,12 @@ if PRCore.context == "client" then
 
     CreateThread(function()
         while true do
+            local sleep = 250
             local coords = GetEntityCoords(PlayerPedId())
+            local closestPoint = public.points.getClosestPoint()
             for i = #activePoints, 1, -1 do
                 local point = activePoints[i]
+                point.isClosest = point == closestPoint
                 if point.removed then
                     table.remove(activePoints, i)
                 elseif point.coords then
@@ -671,18 +872,20 @@ if PRCore.context == "client" then
                     else
                         inside = point.currentDistance <= point.distance
                     end
-                    if inside and not point.inside then
-                        point.inside = true
-                        if point.onEnter then point:onEnter() end
-                    elseif not inside and point.inside then
+                    if inside then
+                        sleep = 0
+                        if not point.inside then
+                            point.inside = true
+                            if point.onEnter then point:onEnter() end
+                        end
+                        if point.nearby then point:nearby() end
+                    elseif point.inside then
                         point.inside = false
                         if point.onExit then point:onExit() end
-                    elseif inside and point.nearby then
-                        point:nearby()
                     end
                 end
             end
-            Wait(250)
+            Wait(sleep)
         end
     end)
 end
