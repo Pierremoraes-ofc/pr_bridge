@@ -44,6 +44,18 @@ function database.single(_, _, cb)
     return unavailable("single", cb)
 end
 
+function database.prepare(_, _, cb)
+    return unavailable("prepare", cb)
+end
+
+function database.rawExecute(_, _, cb)
+    return unavailable("rawExecute", cb)
+end
+
+function database.ready(cb)
+    if type(cb) == "function" then cb(false) end
+    return false
+end
 function database.transaction(_, _, cb)
     return unavailable("transaction", cb)
 end

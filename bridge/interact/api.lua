@@ -48,6 +48,7 @@ local function create(data, kind)
         interactDst = tonumber(data.interactDst) or 1.0,
         groups = data.groups,
         ignoreLos = data.ignoreLos == true,
+        hide = data.hide == true or data.hidden == true or data.showUI == false,
         options = options,
         modelHashes = data.modelHashes,
     }

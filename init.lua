@@ -54,6 +54,74 @@ public.jsonExists = PRCore.jsonExists
 public.loadModule = PRCore.loadModule
 public.callback = PRCore.callback
 
+-- Registers exports on the resource that loaded @pr_bridge/init.lua. Because
+-- this file runs inside the consumer environment, client scripts create client
+-- exports and server scripts create server exports without extra manifests.
+local registeredExports = {}
+
+local function inferExportName(callback)
+    if type(callback) ~= "function" then return end
+
+    if _G then
+        for name, value in pairs(_G) do
+            if type(name) == "string" and value == callback then return name end
+        end
+    end
+
+    if debug and debug.getinfo then
+        local info = debug.getinfo(callback, "n")
+        if info and info.name and info.name ~= "" then return info.name end
+    end
+end
+
+local function registerExport(name, callback)
+    if type(name) ~= "string" or name == "" then return false, "invalid_name" end
+    if type(callback) ~= "function" then return false, "invalid_callback" end
+
+    local current = registeredExports[name]
+    if current then
+        return current == callback, current == callback and nil or "already_registered"
+    end
+
+    local ok, reason = pcall(function()
+        exports(name, callback)
+    end)
+    if not ok then return false, reason end
+
+    registeredExports[name] = callback
+    return true
+end
+
+function public.addExports(name, callback)
+    if type(name) == "table" and callback == nil then
+        local registered = {}
+        for exportName, exportCallback in pairs(name) do
+            local ok, reason = registerExport(exportName, exportCallback)
+            if not ok then return false, reason, exportName end
+            registered[#registered + 1] = exportName
+        end
+        table.sort(registered)
+        return true, registered
+    end
+
+    if type(name) == "function" then
+        if type(callback) == "string" then
+            name, callback = callback, name
+        else
+            callback = name
+            name = inferExportName(callback)
+        end
+    elseif type(name) == "string" and callback == nil then
+        callback = _G and _G[name] or nil
+    end
+
+    if not name then return false, "name_required" end
+    return registerExport(name, callback)
+end
+
+public.addExport = public.addExports
+public.AddExport = public.addExports
+public.AddExports = public.addExports
 local env = setmetatable({
     Bridge = public,
     ActiveBridges = {},
@@ -322,6 +390,12 @@ loadBridgeModule("phone", "phones")
 loadBridgeModule("progress", "progressbar")
 if PRCore.context == "client" then
     loadBridgeModule("minigame", "minigames")
+    local skillCheckAdapter = public.minigame
+    if type(skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck) ~= "function" then
+        skillCheckAdapter = PRCore.load("@pr_bridge/bridge/minigames/default/client", env) or {}
+    end
+    public.skillCheck = skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck
+    public.cancelSkillCheck = skillCheckAdapter.CancelSkillCheck or skillCheckAdapter.cancelSkillCheck
 else
     public.minigame = {}
 end
@@ -533,6 +607,14 @@ if PRCore.context == "client" then
         public.InputDialog = UI.InputDialog
         public.inputDialog = UI.inputDialog or UI.InputDialog
         public.Notify = UI.Notify
+        public.NotifyBubble = UI.NotifyBubble
+        public.notifyBubble = UI.notifyBubble or UI.NotifyBubble
+        public.HideNotifyBubble = UI.HideNotifyBubble
+        public.hideNotifyBubble = UI.hideNotifyBubble or UI.HideNotifyBubble
+        if type(public.notify) == "table" then
+            public.notify.NotifyBubble = public.NotifyBubble
+            public.notify.HideNotifyBubble = public.HideNotifyBubble
+        end
         public.ShowTextUI = UI.ShowTextUI
         public.showTextUI = UI.showTextUI or UI.ShowTextUI
         public.HideTextUI = UI.HideTextUI
@@ -567,6 +649,61 @@ if PRCore.context == "client" then
         public.hideRadial = UI.HideRadial
         public.disableRadial = UI.DisableRadial
         public.getCurrentRadialId = UI.GetCurrentRadialId
+    end
+end
+
+if PRCore.context == "server" then
+    local bubbleSequence = 0
+    local function prepareBubble(source, data, all)
+        if type(data) == "string" then data = { description = data } end
+        if type(data) ~= "table" then return nil end
+        local payload = {}
+        for key, value in pairs(data) do payload[key] = value end
+        bubbleSequence = bubbleSequence + 1
+        payload.id = tostring(payload.id or (resourceName .. ":server_bubble:" .. bubbleSequence))
+        if not all and payload.serverId == nil and payload.playerId == nil and payload.entity == nil and payload.netId == nil then
+            payload.serverId = source
+        end
+        return payload
+    end
+
+    function public.NotifyBubble(source, data)
+        source = tonumber(source)
+        if not source or source <= 0 then return false end
+        local payload = prepareBubble(source, data, false)
+        if not payload then return false end
+        TriggerClientEvent("pr_bridge:notifyBubble", source, payload)
+        return payload.id
+    end
+
+    function public.NotifyBubbleAll(source, data)
+        if type(source) ~= "number" then
+            data = source
+            source = type(data) == "table" and tonumber(data.serverId or data.source) or nil
+        end
+        source = tonumber(source)
+        if not source or source <= 0 then return false end
+        local payload = prepareBubble(source, data, true)
+        if not payload then return false end
+        payload.serverId = source
+        TriggerClientEvent("pr_bridge:notifyBubble", -1, payload)
+        return payload.id
+    end
+
+    function public.HideNotifyBubble(source, id)
+        source = tonumber(source)
+        if not source or source == 0 or id == nil then return false end
+        TriggerClientEvent("pr_bridge:notifyBubble:hideNet", source, tostring(id))
+        return true
+    end
+
+    public.notifyBubble = public.NotifyBubble
+    public.notifyBubbleAll = public.NotifyBubbleAll
+    public.hideNotifyBubble = public.HideNotifyBubble
+    if type(public.notify) == "table" then
+        public.notify.NotifyBubble = public.NotifyBubble
+        public.notify.NotifyBubbleAll = public.NotifyBubbleAll
+        public.notify.HideNotifyBubble = public.HideNotifyBubble
     end
 end
 
@@ -975,4 +1112,19 @@ if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", 
             originalNotify(data)
         end
     end
+end
+
+if type(public.notify) == "table" then
+    local notifyMetatable = getmetatable(public.notify) or {}
+    notifyMetatable.__call = notifyMetatable.__call or function(self, ...)
+        local callback = public.Notify or self.Notify or self.notify
+        if type(callback) ~= "function" then return false end
+        return callback(...)
+    end
+    setmetatable(public.notify, notifyMetatable)
+end
+
+local installOxCompatibility = PRCore.load("@pr_bridge/bridge/compat/ox_phase1", env, true)
+if type(installOxCompatibility) == "function" then
+    installOxCompatibility(public, { existing = rawget(_ENV, "lib") })
 end

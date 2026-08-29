@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte'
   import { fetchNui } from '../nui/bridge'
   import BootstrapIcon from '../components/BootstrapIcon.svelte'
 
@@ -113,10 +114,29 @@
   const isMultiSelected = (index: number, value: unknown) => (Array.isArray(values[index]) ? values[index] : []).some((item: unknown) => String(item) === String(value))
   const safeColor = (value: unknown) => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : '#ff7a1a'
   const numberStep = (row: any) => row.step ?? (typeof row.precision === 'number' && row.precision >= 0 ? 10 ** -Math.floor(row.precision) : 'any')
-  const optionLabel = (row: any, value: unknown) => String((row.options || []).find((entry: any) => String(entry.value) === String(value))?.label ?? (row.options || []).find((entry: any) => String(entry.value) === String(value))?.value ?? '')
-  const filteredSelectOptions = (row: any) => {
-    const query = String(selectSearch[row.index] || '').trim().toLowerCase()
-    return query ? (row.options || []).filter((option: any) => String(option.label ?? option.value).toLowerCase().includes(query)) : row.options || []
+  const optionValue = (option: any) => option && typeof option === 'object' ? option.value : option
+  const optionText = (option: any) => String(option && typeof option === 'object' ? (option.label ?? option.value ?? '') : (option ?? ''))
+  const optionLabel = (row: any, value: unknown) => optionText((row.options || []).find((entry: any) => String(optionValue(entry)) === String(value)))
+  const normalizeSearch = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const filteredSelectOptions = (row: any, queryValue: unknown) => {
+    const query = normalizeSearch(queryValue)
+    return query ? (row.options || []).filter((option: any) => {
+      const source = option && typeof option === 'object'
+        ? [option.label, option.value, option.description, option.keywords].flat().join(' ')
+        : option
+      return normalizeSearch(source).includes(query)
+    }) : row.options || []
+  }
+
+  async function toggleSelect(index: number) {
+    if (openSelect === index) {
+      openSelect = null
+      return
+    }
+    openSelect = index
+    selectSearch = { ...selectSearch, [index]: '' }
+    await tick()
+    document.querySelector<HTMLInputElement>('[data-select-search="' + index + '"]')?.focus()
   }
 </script>
 
@@ -137,30 +157,35 @@
 
           {#if row.type === 'select'}
             <div class:is-open={openSelect === row.index} class="input__select">
-              <button type="button" class="fb-input input__select-trigger" disabled={row.disabled} on:click={() => { openSelect = openSelect === row.index ? null : row.index; selectSearch[row.index] = '' }}>
+              <button type="button" class="fb-input input__select-trigger" disabled={row.disabled} on:click={() => toggleSelect(row.index)}>
                 <span class:is-placeholder={!optionLabel(row, values[row.index])}>{optionLabel(row, values[row.index]) || row.placeholder || 'Selecione...'}</span>
                 <span class="input__select-actions"><BootstrapIcon name="chevron-down" /></span>
               </button>
               {#if openSelect === row.index}
                 <div class="input__select-panel">
                   {#if row.searchable}
-                    <div class="input__select-search"><BootstrapIcon name="search" /><input value={selectSearch[row.index] || ''} on:input={(e) => (selectSearch = { ...selectSearch, [row.index]: (e.target as HTMLInputElement).value })} type="text" placeholder="Buscar..." autocomplete="off" /></div>
+                    <div class="input__select-search"><BootstrapIcon name="search" /><input data-select-search={row.index} value={selectSearch[row.index] || ''} on:input|stopPropagation={(e) => (selectSearch = { ...selectSearch, [row.index]: (e.target as HTMLInputElement).value })} on:keydown|stopPropagation={() => undefined} type="text" placeholder={row.searchPlaceholder || 'Buscar...'} autocomplete="off" /></div>
                   {/if}
-                  {#each filteredSelectOptions(row) as opt}
-                    <button type="button" class:is-selected={String(values[row.index]) === String(opt.value)} class="input__select-option" on:click={() => { updateValue(row.index, opt.value); openSelect = null }}>
-                      <span>{opt.label || opt.value}</span>{#if String(values[row.index]) === String(opt.value)}<BootstrapIcon name="check-lg" />{/if}
+                  {#each filteredSelectOptions(row, selectSearch[row.index]) as opt}
+                    <button type="button" class:is-selected={String(values[row.index]) === String(optionValue(opt))} class="input__select-option" on:click={() => { updateValue(row.index, optionValue(opt)); openSelect = null }}>
+                      <span>{optionText(opt)}</span>{#if String(values[row.index]) === String(optionValue(opt))}<BootstrapIcon name="check-lg" />{/if}
                     </button>
                   {/each}
+                  {#if filteredSelectOptions(row, selectSearch[row.index]).length === 0}<div class="input__select-empty"><BootstrapIcon name="search" /><span>Nenhuma opcao encontrada.</span></div>{/if}
                 </div>
               {/if}
             </div>
           {:else if row.type === 'multi-select'}
             <div class:is-disabled={row.disabled} class="input__multi">
-              {#each row.options || [] as opt}
-                <button type="button" class:is-selected={isMultiSelected(row.index, opt.value)} class="input__multi-option" disabled={row.disabled} on:click={() => toggleMultiSelect(row.index, opt.value, row.maxSelectedValues)}>
-                  <span class="input__multi-check">{#if isMultiSelected(row.index, opt.value)}<BootstrapIcon name="check-lg" />{/if}</span><span>{opt.label || opt.value}</span>
+              {#if row.searchable}
+                <div class="input__select-search"><BootstrapIcon name="search" /><input value={selectSearch[row.index] || ''} on:input|stopPropagation={(e) => (selectSearch = { ...selectSearch, [row.index]: (e.target as HTMLInputElement).value })} on:keydown|stopPropagation={() => undefined} type="text" placeholder={row.searchPlaceholder || 'Buscar...'} autocomplete="off" /></div>
+              {/if}
+              {#each filteredSelectOptions(row, selectSearch[row.index]) as opt}
+                <button type="button" class:is-selected={isMultiSelected(row.index, optionValue(opt))} class="input__multi-option" disabled={row.disabled} on:click={() => toggleMultiSelect(row.index, optionValue(opt), row.maxSelectedValues)}>
+                  <span class="input__multi-check">{#if isMultiSelected(row.index, optionValue(opt))}<BootstrapIcon name="check-lg" />{/if}</span><span>{optionText(opt)}</span>
                 </button>
               {/each}
+              {#if filteredSelectOptions(row, selectSearch[row.index]).length === 0}<div class="input__select-empty"><BootstrapIcon name="search" /><span>Nenhuma opcao encontrada.</span></div>{/if}
             </div>
           {:else if row.type === 'checkbox'}
             <label class="input__check"><input checked={values[row.index]} type="checkbox" disabled={row.disabled} on:change={(e) => updateValue(row.index, (e.target as HTMLInputElement).checked)} /><span class:is-on={values[row.index]} class="input__check-box"><BootstrapIcon name="check-lg" /></span><span>{row.placeholder || row.label}</span></label>
@@ -218,4 +243,5 @@
   .input__select-panel { margin-top: 5px; max-height: 220px; overflow-y: auto; padding: 5px; border: 1px solid var(--fb-border-hover); border-radius: 7px; background: var(--fb-nui-surface); box-shadow: 0 12px 30px rgba(0,0,0,.48); }
   .input__select-search { display: grid; grid-template-columns: 16px minmax(0,1fr); align-items: center; gap: 7px; margin-bottom: 5px; padding: 7px 9px; border: 1px solid var(--fb-border); border-radius: 6px; color: var(--fb-text-grey); }
   .input__select-search input { min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fb-text); }
+  .input__select-empty { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--fb-text-muted); font-size: 12px; }
 </style>

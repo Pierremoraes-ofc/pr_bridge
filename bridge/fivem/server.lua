@@ -1,6 +1,7 @@
 local fivem = {}
 
 local net = PRCore.load("@pr_bridge/bridge/fivem/net/server", _ENV) or {}
+local vehicleState = PRCore.load("@pr_bridge/bridge/fivem/vehicleState/shared", _ENV) or {}
 local vehicleCache = PRCore.load("@pr_bridge/bridge/fivem/vehicleCache/shared", _ENV) or {}
 local blips = PRCore.load("@pr_bridge/bridge/fivem/blips/shared", _ENV) or {}
 local streaming = PRCore.load("@pr_bridge/bridge/fivem/streaming/server", _ENV) or {}
@@ -29,6 +30,8 @@ local tuning = PRCore.load("@pr_bridge/bridge/fivem/tuning/server", moduleEnv) o
 
 fivem.net = net
 fivem.vehicleCache = vehicleCache
+fivem.vehicleState = vehicleState
+fivem.entityState = vehicleState.props
 fivem.blips = blips
 fivem.streaming = streaming
 fivem.ace = ace
@@ -56,6 +59,7 @@ fivem.setVehicleProperties = vehicleProperties.set
 
 fivem.vehicle = {
     cache = vehicleCache,
+    state = vehicleState,
     net = net,
     setProperties = vehicleProperties.set,
     getNetId = net.getNetId,
@@ -74,6 +78,10 @@ fivem.vehicles = {
     findClosest = objects.getClosestVehicle,
     findClosestByModel = objects.getClosestVehicleByModel,
     tuning = tuning,
+}
+
+fivem.props = {
+    state = vehicleState.props,
 }
 
 fivem.editor = {

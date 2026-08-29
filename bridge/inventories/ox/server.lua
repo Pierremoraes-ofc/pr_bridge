@@ -93,14 +93,34 @@ function inventory.RegisterUsableItem(item, cb, options)
         }
     }
 
+    local framework = Bridge and Bridge.framework
+    local frameworkFallback = not options.disableFrameworkFallback
+        and type(framework) == "table"
+        and type(framework.RegisterUsableItem) == "function"
+        and framework.RegisterUsableItem ~= inventory.RegisterUsableItem
+
     debugUsable(options, "INFO", ("register item=%s framework=%s inventoryHook=%s frameworkFallback=%s"):format(
         item,
         tostring(ActiveBridges and ActiveBridges["frameworks"]),
         tostring(not options.disableInventoryHook),
-        "false"
+        tostring(frameworkFallback)
     ))
 
     local registered = false
+
+    -- Items without an ox_inventory `consume` value are delegated to the
+    -- framework's usable-item registry before ox_inventory emits usingItem.
+    -- Registering this fallback is therefore required for dynamic Forge items.
+    if frameworkFallback then
+        local ok, result = pcall(framework.RegisterUsableItem, item, function(source, itemData)
+            return dispatchUse(source, itemData)
+        end)
+        local fallbackRegistered = ok and result ~= false
+        registered = registered or fallbackRegistered
+        debugUsable(options, fallbackRegistered and "SUCCESS" or "WARNING", (
+            "framework fallback item=%s ok=%s result=%s"
+        ):format(item, tostring(ok), tostring(result)))
+    end
 
     if not options.disableInventoryHook then
         local ok = pcall(function()

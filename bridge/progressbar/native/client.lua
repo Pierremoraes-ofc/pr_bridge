@@ -61,7 +61,7 @@ function progress.cancelProgress()
     if active and active.canCancel then active.cancelled = true end
 end
 
-function progress.progressBar(data)
+local function runProgress(data, style)
     if active or type(data) ~= "table" or type(data.duration) ~= "number" or data.duration <= 0 then return false end
     local ped = PlayerPedId()
     if (IsEntityDead(ped) and not data.useWhileDead) or (IsPedRagdoll(ped) and not data.allowRagdoll) or (IsPedSwimming(ped) and not data.allowSwimming) or (IsPedCuffed(ped) and not data.allowCuffed) or (IsPedFalling(ped) and not data.allowFalling) then return false end
@@ -76,7 +76,14 @@ function progress.progressBar(data)
     end
 
     local startedAt = GetGameTimer()
-    send("progress:show", { label = data.label, duration = data.duration })
+    send("progress:show", {
+        label = data.label,
+        duration = data.duration,
+        style = style,
+        position = data.position or ((((GlobalState.pr_bridge_ui_config or {}).layout or {}).progressBar) or "bottom-center"),
+        color = data.color,
+        canCancel = state.canCancel,
+    })
     while GetGameTimer() - startedAt < data.duration and not state.cancelled do
         disableControls(data.disable)
         if state.canCancel and (IsControlJustPressed(0, 177) or IsControlJustPressed(0, 202)) then state.cancelled = true end
@@ -91,12 +98,19 @@ function progress.progressBar(data)
     return complete
 end
 
-function progress.progressCircle(data)
-    return progress.progressBar(data)
+function progress.progressBar(data)
+    return runProgress(data, "bar")
 end
 
+function progress.progressCircle(data)
+    return runProgress(data, "circle")
+end
 function progress.doProgressbar(duration, label, anim)
     return progress.progressBar({ duration = duration, label = label, canCancel = true, disable = { move = true }, anim = { dict = anim and anim[1], clip = anim and anim[2] } })
+end
+
+function progress.doProgressCircle(duration, label, anim)
+    return progress.progressCircle({ duration = duration, label = label, canCancel = true, disable = { move = true }, anim = { dict = anim and anim[1], clip = anim and anim[2] } })
 end
 
 return progress

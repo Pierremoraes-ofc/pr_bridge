@@ -109,6 +109,32 @@ function database.single(query, parameters, cb)
     return rows and rows[1] or nil
 end
 
+-- Prepared and raw batch operations are additive contracts used by
+-- persistence-heavy resources such as ox_inventory.
+function database.prepare(query, parameters, cb)
+    parameters = parameters or {}
+
+    return call(function(resolve)
+        exports.oxmysql:prepare(query, parameters, resolve)
+    end, cb)
+end
+
+function database.rawExecute(query, parameters, cb)
+    parameters = parameters or {}
+
+    return call(function(resolve)
+        exports.oxmysql:rawExecute(query, parameters, resolve)
+    end, cb)
+end
+
+function database.ready(cb)
+    if type(cb) ~= "function" then return database.isReady() end
+
+    CreateThread(function()
+        while not database.isReady() do Wait(50) end
+        cb()
+    end)
+end
 function database.transaction(queries, parameters, cb)
     parameters = parameters or {}
 

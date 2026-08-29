@@ -180,6 +180,12 @@ Bridge.targets = Bridge.target
 Bridge.phones = Bridge.phone
 Bridge.progressbar = Bridge.progress
 Bridge.minigames = Bridge.minigame
+local skillCheckAdapter = Bridge.minigame or {}
+if PRCore.context == "client" and type(skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck) ~= "function" then
+    skillCheckAdapter = PRCore.load("bridge.minigames.default.client") or {}
+end
+Bridge.skillCheck = skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck
+Bridge.cancelSkillCheck = skillCheckAdapter.CancelSkillCheck or skillCheckAdapter.cancelSkillCheck
 Bridge.textUIAdapter = Bridge.textuiAdapter
 Bridge.textuiBridge = Bridge.textuiAdapter
 Bridge.textUIBridge = Bridge.textuiAdapter
@@ -289,6 +295,14 @@ if PRCore.context == "client" then
         Bridge.InputDialog = UI.InputDialog
         Bridge.inputDialog = UI.inputDialog or UI.InputDialog
         Bridge.Notify = UI.Notify
+        Bridge.NotifyBubble = UI.NotifyBubble
+        Bridge.notifyBubble = UI.notifyBubble or UI.NotifyBubble
+        Bridge.HideNotifyBubble = UI.HideNotifyBubble
+        Bridge.hideNotifyBubble = UI.hideNotifyBubble or UI.HideNotifyBubble
+        if type(Bridge.notify) == "table" then
+            Bridge.notify.NotifyBubble = Bridge.NotifyBubble
+            Bridge.notify.HideNotifyBubble = Bridge.HideNotifyBubble
+        end
         Bridge.ShowTextUI = UI.ShowTextUI
         Bridge.showTextUI = UI.showTextUI or UI.ShowTextUI
         Bridge.HideTextUI = UI.HideTextUI
@@ -316,6 +330,61 @@ if PRCore.context == "client" then
         Bridge.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
         Bridge.GetVisualConfig = UI.GetVisualConfig
         Bridge.getVisualConfig = UI.getVisualConfig or UI.GetVisualConfig
+    end
+end
+
+if PRCore.context == "server" then
+    local bubbleSequence = 0
+    local function prepareBubble(source, data, all)
+        if type(data) == "string" then data = { description = data } end
+        if type(data) ~= "table" then return nil end
+        local payload = {}
+        for key, value in pairs(data) do payload[key] = value end
+        bubbleSequence = bubbleSequence + 1
+        payload.id = tostring(payload.id or (GetCurrentResourceName() .. ":server_bubble:" .. bubbleSequence))
+        if not all and payload.serverId == nil and payload.playerId == nil and payload.entity == nil and payload.netId == nil then
+            payload.serverId = source
+        end
+        return payload
+    end
+
+    function Bridge.NotifyBubble(source, data)
+        source = tonumber(source)
+        if not source or source <= 0 then return false end
+        local payload = prepareBubble(source, data, false)
+        if not payload then return false end
+        TriggerClientEvent("pr_bridge:notifyBubble", source, payload)
+        return payload.id
+    end
+
+    function Bridge.NotifyBubbleAll(source, data)
+        if type(source) ~= "number" then
+            data = source
+            source = type(data) == "table" and tonumber(data.serverId or data.source) or nil
+        end
+        source = tonumber(source)
+        if not source or source <= 0 then return false end
+        local payload = prepareBubble(source, data, true)
+        if not payload then return false end
+        payload.serverId = source
+        TriggerClientEvent("pr_bridge:notifyBubble", -1, payload)
+        return payload.id
+    end
+
+    function Bridge.HideNotifyBubble(source, id)
+        source = tonumber(source)
+        if not source or source == 0 or id == nil then return false end
+        TriggerClientEvent("pr_bridge:notifyBubble:hideNet", source, tostring(id))
+        return true
+    end
+
+    Bridge.notifyBubble = Bridge.NotifyBubble
+    Bridge.notifyBubbleAll = Bridge.NotifyBubbleAll
+    Bridge.hideNotifyBubble = Bridge.HideNotifyBubble
+    if type(Bridge.notify) == "table" then
+        Bridge.notify.NotifyBubble = Bridge.NotifyBubble
+        Bridge.notify.NotifyBubbleAll = Bridge.NotifyBubbleAll
+        Bridge.notify.HideNotifyBubble = Bridge.HideNotifyBubble
     end
 end
 
@@ -488,6 +557,16 @@ if PRCore.context == "client" and GetConvar("pr_bridge:translator_auto_notify", 
             originalNotify(data)
         end
     end
+end
+
+if type(Bridge.notify) == "table" then
+    local notifyMetatable = getmetatable(Bridge.notify) or {}
+    notifyMetatable.__call = notifyMetatable.__call or function(self, ...)
+        local callback = Bridge.Notify or self.Notify or self.notify
+        if type(callback) ~= "function" then return false end
+        return callback(...)
+    end
+    setmetatable(Bridge.notify, notifyMetatable)
 end
 
 exports("getCacheSnapshot", function()

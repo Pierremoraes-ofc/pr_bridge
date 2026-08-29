@@ -9,6 +9,7 @@ local Context = PRCore.load("@pr_bridge/interface/client/modules/context", _ENV)
 local Alert = PRCore.load("@pr_bridge/interface/client/modules/alert", _ENV)(Renderer)
 local Input = PRCore.load("@pr_bridge/interface/client/modules/input", _ENV)(Renderer)
 local Notify = PRCore.load("@pr_bridge/interface/client/modules/notify", _ENV)(Renderer)
+local Bubble = PRCore.load("@pr_bridge/interface/client/modules/bubble", _ENV)()
 local TextUI = PRCore.load("@pr_bridge/interface/client/modules/textui", _ENV)(Renderer)
 local Radial = PRCore.load("@pr_bridge/interface/client/modules/radial", _ENV)(Renderer)
 
@@ -19,6 +20,7 @@ local UI = {
         alert = Alert,
         input = Input,
         notify = Notify,
+        bubble = Bubble,
         textui = TextUI,
         radial = Radial,
     },
@@ -38,6 +40,10 @@ local UI = {
     inputDialog = Input.InputDialog,
     Notify = Notify.Notify,
     notify = Notify.Notify,
+    NotifyBubble = Bubble.NotifyBubble,
+    notifyBubble = Bubble.NotifyBubble,
+    HideNotifyBubble = Bubble.HideNotifyBubble,
+    hideNotifyBubble = Bubble.HideNotifyBubble,
     ShowTextUI = TextUI.ShowTextUI,
     showTextUI = TextUI.ShowTextUI,
     HideTextUI = TextUI.HideTextUI,
@@ -233,6 +239,7 @@ local function openLayoutEditor()
         { type = "select", label = "RegisterMenu", default = layout.registerMenu or "right", options = layoutOptions({ "left", "right" }), required = true },
         { type = "select", label = "Notify", default = layout.notify or "top-right", options = layoutOptions({ "top-left", "top-center", "top-right", "center-left", "center-right", "bottom-left", "bottom-center", "bottom-right" }), required = true },
         { type = "select", label = "ProgressBar", default = layout.progressBar or "bottom-center", options = layoutOptions({ "top-center", "bottom-center" }), required = true },
+        { type = "select", label = "SkillCheck", default = layout.skillCheck or "bottom-center", options = layoutOptions({ "top-center", "bottom-center" }), required = true },
         { type = "select", label = "ShowTextUI", default = layout.showTextUI or "right-center", options = layoutOptions({ "left-center", "right-center", "top-center", "bottom-center" }), required = true },
     }, { size = "md", allowCancel = true })
 
@@ -240,7 +247,7 @@ local function openLayoutEditor()
     config.layout = {
         registerContext = values[1], metadata = values[2], alertDialog = values[3],
         inputDialog = values[4], registerMenu = values[5], notify = values[6],
-        progressBar = values[7], showTextUI = values[8],
+        progressBar = values[7], skillCheck = values[8], showTextUI = values[9],
     }
     saveGlobalConfig(config)
 end
@@ -370,6 +377,32 @@ local function openInteractEditor()
     saveGlobalConfig(config)
 end
 
+local function openBubbleEditor()
+    local config = getGlobalConfig()
+    local bubble = config.bubble or {}
+    local values = UI.InputDialog("Visual do notify em balao", {
+        { type = "color", label = "Cor do fundo", default = bubble.background or "#ffffff", required = true },
+        { type = "number", label = "Opacidade do fundo", default = bubble.backgroundOpacity or 0.96, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "color", label = "Cor da borda", default = bubble.border or "#222222", required = true },
+        { type = "number", label = "Opacidade da borda", default = bubble.borderOpacity or 0.92, min = 0, max = 1, step = 0.01, precision = 2, required = true },
+        { type = "color", label = "Cor do texto", default = bubble.text or "#161616", required = true },
+        { type = "number", label = "Largura minima (px)", default = bubble.minWidth or 100, min = 80, max = 400, step = 1, precision = 0, required = true },
+        { type = "number", label = "Largura maxima (px)", default = bubble.maxWidth or 300, min = 140, max = 800, step = 1, precision = 0, required = true },
+        { type = "number", label = "Espessura da borda (px)", default = bubble.borderWidth or 2, min = 0, max = 8, step = 0.5, precision = 1, required = true },
+        { type = "number", label = "Arredondamento (px)", default = bubble.radius or 18, min = 0, max = 60, step = 1, precision = 0, required = true },
+        { type = "number", label = "Tamanho da ponta (px)", default = bubble.tailSize or 16, min = 8, max = 40, step = 1, precision = 0, required = true },
+        { type = "number", label = "Tamanho do texto (px)", default = bubble.fontSize or 11, min = 8, max = 28, step = 1, precision = 0, required = true },
+        { type = "number", label = "Tamanho do titulo (px)", default = bubble.titleSize or 12, min = 8, max = 32, step = 1, precision = 0, required = true },
+    }, { size = "lg", allowCancel = true })
+
+    if not values then return end
+    config.bubble = {
+        background = values[1], backgroundOpacity = values[2], border = values[3], borderOpacity = values[4],
+        text = values[5], minWidth = values[6], maxWidth = values[7], borderWidth = values[8],
+        radius = values[9], tailSize = values[10], fontSize = values[11], titleSize = values[12],
+    }
+    saveGlobalConfig(config)
+end
 
 function UI.OpenVisualAdminMenu(parentMenu)
     CreateThread(function()
@@ -389,6 +422,7 @@ function UI.OpenVisualAdminMenu(parentMenu)
                 { title = "Posicoes", description = "Lado dos menus, metadata, notificacoes e indicadores.", icon = "layout-sidebar-inset", onSelect = openLayoutEditor },
                 { title = "Target", description = "Posicao, escala, cores, opacidade e marcadores do sistema de interacao.", icon = "crosshair", onSelect = openTargetEditor },
                 { title = "Interact", description = "Modelo visual, cores, tamanhos, bloqueios e deteccao de paredes.", icon = "cursor", onSelect = openInteractEditor },
+                { title = "Notify em balao", description = "Fundo, borda, opacidade, largura, ponta e tipografia do balao.", icon = "chat-square-text", onSelect = openBubbleEditor },
                 {
                     title = "Restaurar padrao",
                     description = "Restaura a paleta e todas as posicoes originais.",
@@ -425,6 +459,14 @@ end)
 AddEventHandler("pr_bridge:ui:context:back", function(owner)
     if owner ~= resourceName then return end
     Context.HandleBack()
+end)
+
+-- Context registries live in each consumer resource. This event lets a child
+-- context return to a parent registered by another resource without sharing
+-- callbacks or mutable registry tables between resources.
+AddEventHandler("pr_bridge:ui:context:openExternal", function(owner, id)
+    if owner ~= resourceName or type(id) ~= "string" or id == "" then return end
+    Context.ShowContext(id)
 end)
 
 AddEventHandler("pr_bridge:ui:alert:result", function(owner, result)

@@ -699,9 +699,7 @@ local function runThread()
         Wait(0)
 
         if state.suspended then
-            if state.gizmoActive and (isConfirmReleased() or isCancelReleased()) then
-                stopMoveMode()
-            end
+            -- A sessao modal do gizmo e a unica dona de ENTER/BACKSPACE.
         else
 
             local playerPed = PlayerPedId()
@@ -830,6 +828,10 @@ function DevLaser.moveWithGizmo(entity)
         allowFreeCameraToggle = true,
         useEditorCamera = true,
         editorCameraRadius = 2.0,
+        restoreOnCancel = true,
+        onFinish = function()
+            stopMoveMode(true)
+        end,
     })
 
     bridgeDebug("info", ("[pr_bridge:devlaser] move iniciado entity=%s. ENTER ou BACKSPACE finaliza."):format(tostring(entity)))

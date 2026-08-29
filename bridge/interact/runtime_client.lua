@@ -275,7 +275,10 @@ CreateThread(function()
                 local entries = {}
                 for i = 1, #nearby do
                     local candidate = nearby[i]
-                    local visible, x, y = GetScreenCoordFromWorldCoord(candidate.coords.x, candidate.coords.y, candidate.coords.z)
+                    local visible, x, y = false, 0.0, 0.0
+                    if not candidate.record.hide then
+                        visible, x, y = GetScreenCoordFromWorldCoord(candidate.coords.x, candidate.coords.y, candidate.coords.z)
+                    end
                     if visible then
                         local item = { id = candidate.key, x = x, y = y, active = active == candidate, options = {}, selected = selected }
                         if item.active then

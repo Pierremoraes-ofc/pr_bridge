@@ -44,6 +44,15 @@ local function getStreaming()
         or (Bridge and Bridge.fivem and Bridge.fivem.streaming)
 end
 
+local function getAddKeybind()
+    return PRAddKeybind
+        or (Bridge and (Bridge.addKeybind or (Bridge.fivem and Bridge.fivem.addKeybind)))
+end
+
+local function sendGizmoNui(action, data)
+    SendNUIMessage({ action = action, data = data })
+end
+
 local resourceName = GetCurrentResourceName()
 
 local lastSafeErrorAt = {}
@@ -66,14 +75,17 @@ end
 -- ============================================================
 
 local GizmoConfig = {
-    arrowLength         = 0.25,
-    arrowHeadSize       = 0.04,
-    rotationRingRadius  = 0.32,
+    arrowLength         = 0.36,
+    arrowHeadSize       = 0.07,
+    arrowHeadPixels     = 12.0,
+    arrowHalfWidthPixels= 6.25,
+    rotationRingRadius  = 0.50,
     rotationRingSegments= 40,
     rotationPickSamples = 64,
-    rotationPickThreshold = 0.03,
-    rotationHandleSize  = 0.018,
-    centerSquareSize    = 0.09,
+    rotationPickThreshold = 0.04,
+    rotationHandleSize  = 0.024,
+    centerSquareSize    = 0.085,
+    centerRadiusPixels  = 5.0,
     freeDragMinDistance = 0.6,
     freeDragMaxDistance = 8.0,
     freeDragDefaultDistance = 2.0,
@@ -81,11 +93,12 @@ local GizmoConfig = {
     freeDragOrbitSensitivityX = 8.0,
     freeDragOrbitSensitivityY = 5.0,
     freeDragPlayerHeight = 0.75,
-    rotationArcStart    = -0.12,
-    rotationArcEnd      = math.pi + 0.12,
+    -- Aneis completos como nos editores 3D (Unity/Unreal).
+    rotationArcStart    = 0.0,
+    rotationArcEnd      = math.pi * 2.0,
     lineThicknessPx     = 1.25,
-    planeSize           = 0.24,
-    planeOffset         = 0.09,
+    planeSize           = 0.105,
+    planeOffset         = 0.065,
     lineAlpha = {
         normal = 150,
         hover  = 200,
@@ -95,9 +108,9 @@ local GizmoConfig = {
         x  = { normal = {227, 39, 18},  hover = {255, 255, 0}, active = {255, 255, 255} },
         y  = { normal = {16, 224, 37},   hover = {255, 255, 0}, active = {255, 255, 255} },
         z  = { normal = {17, 77, 237},   hover = {255, 255, 0}, active = {255, 255, 255} },
-        xy = { normal = {111, 141, 189}, hover = {255, 255, 0}, active = {255, 255, 255} },
-        xz = { normal = {136, 181, 129}, hover = {255, 255, 0}, active = {255, 255, 255} },
-        yz = { normal = {181, 129, 129}, hover = {255, 255, 0}, active = {255, 255, 255} },
+        xy = { normal = {214, 190, 77},  hover = {255, 224, 64}, active = {255, 255, 255} },
+        xz = { normal = {214, 190, 77},  hover = {255, 224, 64}, active = {255, 255, 255} },
+        yz = { normal = {214, 190, 77},  hover = {255, 224, 64}, active = {255, 255, 255} },
         xyz = { normal = {235, 235, 235}, hover = {255, 255, 0}, active = {255, 255, 255} },
         dragLine = {178, 243, 0},
     },
@@ -146,6 +159,9 @@ local Gizmo = {
     rotationLastPos      = nil,
     rotationStartRotation= nil,
     rotationPlaneNormal  = nil,
+    rotationStartDirection = nil,
+    rotationCurrentDirection = nil,
+    rotationDegrees = 0.0,
     updateCallback = nil,
     beforeTransformCallback = nil,
     offset         = nil,
@@ -157,6 +173,10 @@ local Gizmo = {
         rotYPositive = false,
         rotZNegative = false,
         rotZPositive = false,
+        moveForward = false,
+        moveBackward = false,
+        moveLeft = false,
+        moveRight = false,
     },
     precisionLastAxis = nil,
     precisionMode = false,
@@ -177,6 +197,21 @@ local Gizmo = {
     previewLastUpdate = 0,
     _keybindRenderer = nil,
     _keybindMode = nil,
+    bindings = {},
+    session = nil,
+    lastResult = nil,
+    originalTransform = nil,
+    managedControls = true,
+    managedPrecision = true,
+    restoreOnCancel = true,
+    autoStop = true,
+    uiEnabled = true,
+    uiLastUpdate = 0,
+    ownsUiFocus = false,
+    finishPending = false,
+    freeCameraState = nil,
+    freeCameraAutoFromCenter = false,
+    actionLastAt = {},
 }
 
 -- ============================================================
@@ -342,7 +377,9 @@ end
 -- ============================================================
 
 local function getEntityBasis(entity)
-    local right, forward, up, pos = GetEntityMatrix(entity)
+    -- GetEntityMatrix retorna: forward, right, up, position.
+    -- O restante do gizmo trabalha no padrão X=right, Y=forward, Z=up.
+    local forward, right, up, pos = GetEntityMatrix(entity)
     return right, forward, up, pos
 end
 
@@ -389,6 +426,70 @@ local function drawLine3D(from, to, r, g, b, a, thickness)
     if ok1 and ok2 then
         DrawLine_2d(sx1, sy1, sx2, sy2, pixelToScreenRatio(thickness), r, g, b, a)
     end
+end
+
+-- Preenchimentos projetados em 2D não participam do depth test do mundo.
+-- Assim o manipulador permanece legível mesmo quando nasce dentro do prop.
+local function projectWorldPoint(point)
+    local visible, sx, sy = GetScreenCoordFromWorldCoord(point.x, point.y, point.z)
+    if not visible then return nil end
+    return { x = sx, y = sy }
+end
+
+local function drawFilledTriangle2D(tip, baseA, baseB, r, g, b, a, steps)
+    steps = steps or 12
+    local thickness = pixelToScreenRatio(1.35)
+    for i = 0, steps do
+        local t = i / steps
+        local ax = tip.x + (baseA.x - tip.x) * t
+        local ay = tip.y + (baseA.y - tip.y) * t
+        local bx = tip.x + (baseB.x - tip.x) * t
+        local by = tip.y + (baseB.y - tip.y) * t
+        DrawLine_2d(ax, ay, bx, by, thickness, r, g, b, a)
+    end
+end
+
+local function drawFilledQuad3DOverlay(p1, p2, p3, p4, r, g, b, a, steps)
+    local s1, s2, s3, s4 = projectWorldPoint(p1), projectWorldPoint(p2), projectWorldPoint(p3), projectWorldPoint(p4)
+    if not s1 or not s2 or not s3 or not s4 then return end
+
+    local width, height = GetActiveScreenResolution()
+    local edgePixels = math.max(
+        math.sqrt(((s4.x - s1.x) * width) ^ 2 + ((s4.y - s1.y) * height) ^ 2),
+        math.sqrt(((s3.x - s2.x) * width) ^ 2 + ((s3.y - s2.y) * height) ^ 2)
+    )
+    steps = math.max(steps or 12, math.min(64, math.ceil(edgePixels)))
+    local thickness = pixelToScreenRatio(1.35)
+    for i = 0, steps do
+        local t = i / steps
+        local leftX = s1.x + (s4.x - s1.x) * t
+        local leftY = s1.y + (s4.y - s1.y) * t
+        local rightX = s2.x + (s3.x - s2.x) * t
+        local rightY = s2.y + (s3.y - s2.y) * t
+        DrawLine_2d(leftX, leftY, rightX, rightY, thickness, r, g, b, a)
+    end
+end
+
+local function rotateVectorAroundAxis(value, axis, angle)
+    axis = vec3Normalize(axis)
+    local cosine, sine = math.cos(angle), math.sin(angle)
+    return value * cosine
+        + vec3Cross(axis, value) * sine
+        + axis * (vec3Dot(axis, value) * (1.0 - cosine))
+end
+
+local function drawWorldAngleLabel(position, degrees)
+    local visible, sx, sy = GetScreenCoordFromWorldCoord(position.x, position.y, position.z)
+    if not visible then return end
+
+    SetTextFont(0)
+    SetTextScale(0.0, 0.32)
+    SetTextCentre(true)
+    SetTextColour(255, 235, 90, 255)
+    SetTextOutline()
+    BeginTextCommandDisplayText("STRING")
+    AddTextComponentSubstringPlayerName(("%+.1f°"):format(degrees or 0.0))
+    EndTextCommandDisplayText(sx, sy)
 end
 
 --- Ray da câmera a partir de coordenadas de tela (0-1)
@@ -509,15 +610,266 @@ function Gizmo.releaseEditorCamera(silent)
     return true
 end
 
+local function cloneVector3(value)
+    if not value then return vector3(0.0, 0.0, 0.0) end
+    return vector3(value.x or 0.0, value.y or 0.0, value.z or 0.0)
+end
+
+local function callSessionHandler(label, handler, ...)
+    if type(handler) ~= "function" then return end
+    local ok, err = pcall(handler, ...)
+    if not ok then
+        bridgeDebug("error", ("[pr_bridge:gizmo] callback %s falhou: %s"):format(label, tostring(err)))
+    end
+end
+
+function Gizmo.getResult()
+    return Gizmo.lastResult
+end
+
+function Gizmo.isActive()
+    return Gizmo.enabled == true and Gizmo.entity ~= nil and DoesEntityExist(Gizmo.entity)
+end
+
+function Gizmo.buildResult(confirmed, reason)
+    local entity = Gizmo.entity
+    local exists = entity and DoesEntityExist(entity)
+    local coords = exists and GetEntityCoords(entity) or nil
+    local rotation = exists and GetEntityRotation(entity, 2) or nil
+
+    return {
+        confirmed = confirmed == true,
+        cancelled = confirmed ~= true,
+        reason = reason or (confirmed and "confirmed" or "cancelled"),
+        entity = entity,
+        coords = coords,
+        position = coords,
+        rotation = rotation,
+        heading = exists and GetEntityHeading(entity) or nil,
+        offset = cloneVector3(Gizmo.offset),
+        mode = Gizmo.mode,
+        space = Gizmo.space,
+        precision = Gizmo.isPrecisionMode(),
+        precisionSpeed = Gizmo.getPrecisionSpeed(),
+    }
+end
+
+function Gizmo.updateNui(force)
+    if not Gizmo.uiEnabled or not Gizmo.isActive() then return end
+    local now = GetGameTimer()
+    if not force and (now - (Gizmo.uiLastUpdate or 0)) < 80 then return end
+
+    Gizmo.uiLastUpdate = now
+    local data = Gizmo.getPreviewData()
+    if not data then return end
+
+    sendGizmoNui("gizmo:update", {
+        visible = true,
+        title = (Gizmo.session and Gizmo.session.title) or Gizmo.previewTitle or "Editor 3D",
+        mode = data.mode,
+        space = data.space,
+        precision = data.precision,
+        freeCamera = data.freeCamera,
+        precisionSpeed = data.precisionSpeed,
+        activeAxis = data.activeAxis,
+        hoveredAxis = data.hoveredAxis,
+        dragging = data.dragging,
+        coords = { x = data.coords.x, y = data.coords.y, z = data.coords.z },
+        rotation = { x = data.rotation.x, y = data.rotation.y, z = data.rotation.z },
+        rotationDegrees = Gizmo.rotationDegrees or 0.0,
+    })
+end
+
+function Gizmo.openModalUi()
+    -- O HUD volta a ser apenas informativo. O cursor permanece sob controle do
+    -- manipulador nativo e nenhuma NUI disputa mouse ou teclado com o gizmo.
+    if Gizmo.ownsUiFocus then
+        TriggerEvent("pr_bridge:ui:clearFocus")
+        Gizmo.ownsUiFocus = false
+    end
+
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    if not Gizmo.uiEnabled then return end
+    Gizmo.updateNui(true)
+end
+
+function Gizmo.closeModalUi()
+    sendGizmoNui("gizmo:close", {})
+    if Gizmo.ownsUiFocus then
+        TriggerEvent("pr_bridge:ui:clearFocus")
+        Gizmo.ownsUiFocus = false
+    end
+
+    -- A limpeza explicita protege inclusive stop externo e erros durante o
+    -- callback, evitando que o cursor permaneça visivel apos encerrar.
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end
+
+function Gizmo.finish(confirmed, reason)
+    if Gizmo.finishPending or not Gizmo.session then return Gizmo.lastResult end
+
+    Gizmo.finishPending = true
+    local session = Gizmo.session
+    local entity = Gizmo.entity
+
+    if confirmed ~= true and Gizmo.restoreOnCancel and Gizmo.originalTransform and entity and DoesEntityExist(entity) then
+        local original = Gizmo.originalTransform
+        SetEntityCoordsNoOffset(entity, original.coords.x, original.coords.y, original.coords.z, false, false, false)
+        SetEntityRotation(entity, original.rotation.x, original.rotation.y, original.rotation.z, 2, true)
+    end
+
+    local result = Gizmo.buildResult(confirmed == true, reason)
+    Gizmo.lastResult = result
+    session.result = result
+    session.active = false
+    Gizmo.closeModalUi()
+
+    if confirmed == true then
+        callSessionHandler("onConfirm", session.onConfirm, result)
+    else
+        callSessionHandler("onCancel", session.onCancel, result)
+    end
+    callSessionHandler("onFinish", session.onFinish, result)
+
+    bridgeDebug(confirmed and "success" or "info", ("[pr_bridge:gizmo] Sessao %s. entity=%s reason=%s"):format(
+        confirmed and "confirmada" or "cancelada",
+        tostring(result.entity),
+        tostring(result.reason)
+    ))
+
+    if Gizmo.autoStop then
+        SetTimeout(75, function()
+            if Gizmo.session == session then Gizmo.stop() end
+        end)
+    else
+        Gizmo.finishPending = false
+    end
+
+    return result
+end
+
+function Gizmo.confirm(reason)
+    return Gizmo.finish(true, reason or "enter")
+end
+
+function Gizmo.cancel(reason)
+    return Gizmo.finish(false, reason or "backspace")
+end
+
+-- Todas as entradas (keybind, controle desabilitado e NUI) passam por aqui.
+-- O debounce evita que o mesmo toque seja processado duas vezes pelo FiveM.
+function Gizmo.runAction(action, reason)
+    if not Gizmo.entity or Gizmo.finishPending then return false end
+
+    local now = GetGameTimer()
+    local lastAt = (Gizmo.actionLastAt and Gizmo.actionLastAt[action]) or 0
+    if now - lastAt < 90 then return false end
+    Gizmo.actionLastAt = Gizmo.actionLastAt or {}
+    Gizmo.actionLastAt[action] = now
+
+    if action == "confirm" then
+        local session = Gizmo.session
+        if not session or now < (session.inputArmedAt or 0) then return false end
+        Gizmo.confirm(reason or "enter")
+    elseif action == "cancel" then
+        local session = Gizmo.session
+        if not session or now < (session.inputArmedAt or 0) then return false end
+        Gizmo.cancel(reason or "backspace")
+    elseif action == "mode" then
+        if Gizmo.isFreeCameraMode() or Gizmo.isDragging then return false end
+        Gizmo.toggleMode()
+    elseif action == "freecamera" then
+        if Gizmo.allowFreeCameraToggle == false or Gizmo.isDragging then return false end
+        Gizmo.toggleFreeCameraMode()
+    elseif action == "ground" then
+        if Gizmo.isFreeCameraMode() then return false end
+        Gizmo.placeEntityOnGround()
+    elseif action == "precision" then
+        if Gizmo.handlePrecisionToggle == false or Gizmo.isFreeCameraMode() then return false end
+        Gizmo.togglePrecisionMode()
+    elseif action == "space" then
+        if Gizmo.isFreeCameraMode() or Gizmo.isDragging then return false end
+        Gizmo.space = Gizmo.space == "local" and "global" or "local"
+        Gizmo.invalidateKeybinds()
+        Gizmo.updateNui(true)
+    elseif action == "precision_speed_up" then
+        if not Gizmo.isPrecisionMode() then return false end
+        local speed = Gizmo.adjustPrecisionSpeed(0.1)
+        bridgeDebug("info", ("[pr_bridge:gizmo] precisionSpeed=%.1f"):format(speed))
+    elseif action == "precision_speed_down" then
+        if not Gizmo.isPrecisionMode() then return false end
+        local speed = Gizmo.adjustPrecisionSpeed(-0.1)
+        bridgeDebug("info", ("[pr_bridge:gizmo] precisionSpeed=%.1f"):format(speed))
+    else
+        return false
+    end
+
+    return true
+end
+
+
+function Gizmo.handleSessionInput()
+    if not Gizmo.managedControls or Gizmo.finishPending then return end
+    local session = Gizmo.session
+    if not session or GetGameTimer() < (session.inputArmedAt or 0) then return end
+
+    local mouseBusy = IsDisabledControlPressed(0, 24) or IsDisabledControlPressed(0, 25)
+    local confirm = not mouseBusy and (IsDisabledControlJustPressed(0, 191) or IsDisabledControlJustPressed(0, 201))
+    local cancel = not mouseBusy and (
+        IsDisabledControlJustPressed(0, 177)
+        or IsDisabledControlJustPressed(0, 200)
+        or IsDisabledControlJustPressed(0, 202)
+    )
+
+    if confirm then
+        Gizmo.runAction("confirm", "enter")
+    elseif cancel then
+        Gizmo.runAction("cancel", IsDisabledControlJustPressed(0, 177) and "backspace" or "escape")
+    end
+end
+
+function Gizmo.await(entity, callback, offset, options)
+    if type(callback) == "table" and offset == nil and options == nil then
+        options = callback
+        callback = options.onUpdate
+        offset = options.offset
+    end
+
+    local session = Gizmo.start(entity, callback, offset, options)
+    if not session then return nil, { confirmed = false, cancelled = true, reason = "start_failed" } end
+
+    while session.active do Citizen.Wait(0) end
+    if session.result and session.result.confirmed then return session.result, session.result end
+    return nil, session.result
+end
+
+Gizmo.use = Gizmo.await
 local function optionEnabled(options, name, default)
     if options[name] == nil then return default end
     return options[name] ~= false
 end
 
 function Gizmo.start(entity, callback, offset, options)
+    if type(callback) == "table" and offset == nil and options == nil then
+        options = callback
+        callback = options.onUpdate
+        offset = options.offset
+    end
+
     options = options or {}
 
-    if type(offset) == "table" and offset.x == nil and offset[1] == nil and (offset.offset or offset.showPreview ~= nil or offset.precisionMode ~= nil or offset.freeCameraMode ~= nil or offset.allowFreeCameraToggle ~= nil or offset.useEditorCamera ~= nil or offset.editorCamera ~= nil) then
+    if not entity or not DoesEntityExist(entity) then
+        bridgeDebug("error", "[pr_bridge:gizmo] start recebeu uma entidade invalida.")
+        return false
+    end
+
+    if Gizmo.isActive() then
+        Gizmo.stop()
+    end
+
+    if type(offset) == "table" and offset.x == nil and offset[1] == nil then
         options = offset
         offset = options.offset
     end
@@ -538,9 +890,13 @@ function Gizmo.start(entity, callback, offset, options)
     Gizmo.rotationCenter = nil
     Gizmo.rotationStartAngle = nil
     Gizmo.rotationAccumulated = 0
+    Gizmo.rotationStartDirection = nil
+    Gizmo.rotationCurrentDirection = nil
+    Gizmo.rotationDegrees = 0.0
+    Gizmo.actionLastAt = {}
     Gizmo.rotationLastPos = nil
     Gizmo.rotationStartRotation = nil
-    Gizmo.updateCallback = callback or function() return true end
+    Gizmo.updateCallback = callback or options.onUpdate or function() return true end
     Gizmo.beforeTransformCallback = nil
     Gizmo.offset = offset or vector3(0, 0, 0)
     Gizmo.precisionModeProvider = type(options.precisionModeProvider) == "function" and options.precisionModeProvider or nil
@@ -558,15 +914,43 @@ function Gizmo.start(entity, callback, offset, options)
     Gizmo.previewEntityText = nil
     Gizmo.previewLastUpdate = 0
     Gizmo.precisionSpeed = tonumber(options.precisionSpeed) or 1.0
+    Gizmo.managedControls = options.managedControls ~= false
+    Gizmo.managedPrecision = options.managedPrecision ~= false
+    Gizmo.restoreOnCancel = options.restoreOnCancel ~= false
+    Gizmo.autoStop = options.autoStop ~= false
+    Gizmo.uiEnabled = options.ui ~= false and options.showUi ~= false
+    Gizmo.uiLastUpdate = 0
+    Gizmo.finishPending = false
+    Gizmo.lastResult = nil
+    Gizmo.freeCameraState = nil
+    Gizmo.freeCameraAutoFromCenter = false
+    Gizmo.originalTransform = {
+        coords = cloneVector3(GetEntityCoords(entity)),
+        rotation = cloneVector3(GetEntityRotation(entity, 2)),
+    }
+    Gizmo.session = {
+        id = (GetGameTimer() * 1000) + (entity or 0),
+        active = true,
+        entity = entity,
+        title = options.title or options.previewTitle or "Editor 3D",
+        inputArmedAt = GetGameTimer() + (tonumber(options.inputDelay) or 180),
+        onConfirm = options.onConfirm,
+        onCancel = options.onCancel,
+        onFinish = options.onFinish,
+        result = nil,
+    }
     Gizmo.setPrecisionMode(options.precisionMode == true, true)
     Gizmo.invalidateKeybinds()
-    if Gizmo.freeCameraMode then
-        Gizmo.releaseEditorCamera(true)
+    local initialFreeCamera = Gizmo.freeCameraMode == true
+    Gizmo.freeCameraMode = false
+    if initialFreeCamera then
+        Gizmo.setFreeCameraMode(true, true)
     else
         Gizmo.focusEditorCamera(true)
     end
 
-    bridgeDebug("info", ("[pr_bridge:gizmo] Editor iniciado. entity=%s preview=%s"):format(entity, tostring(Gizmo.showPreview)))
+    Gizmo.openModalUi()
+    bridgeDebug("info", ("[pr_bridge:gizmo] Editor iniciado. entity=%s preview=%s managed=%s"):format(entity, tostring(Gizmo.showPreview), tostring(Gizmo.managedControls)))
 
     if not Gizmo._threadRunning then
         Citizen.CreateThread(function()
@@ -574,10 +958,13 @@ function Gizmo.start(entity, callback, offset, options)
             while Gizmo.entity and DoesEntityExist(Gizmo.entity) do
                 Citizen.Wait(0)
                 safeGizmoCall("control locks", Gizmo.applyControlLocks)
+                safeGizmoCall("session input", Gizmo.handleSessionInput)
                 safeGizmoCall("precision toggle", Gizmo.handlePrecisionToggleInput)
                 safeGizmoCall("precision speed", Gizmo.handlePrecisionSpeedInput)
+                safeGizmoCall("instructional actions", Gizmo.handleInstructionalActions)
                 safeGizmoCall("update", Gizmo.update)
-                if Gizmo.showPreview then
+                safeGizmoCall("nui", Gizmo.updateNui)
+                if Gizmo.showPreview and not Gizmo.uiEnabled then
                     safeGizmoCall("preview", Gizmo.drawPreview)
                 end
                 if GizmoConfig.showKeybinds then
@@ -587,11 +974,29 @@ function Gizmo.start(entity, callback, offset, options)
             Gizmo._threadRunning = false
         end)
     end
+
+    return Gizmo.session
 end
 
 function Gizmo.stop()
+    -- Um stop externo nunca pode deixar Gizmo.await bloqueado para sempre.
+    if Gizmo.session and Gizmo.session.active then
+        local result = Gizmo.buildResult(false, "stopped")
+        Gizmo.lastResult = result
+        Gizmo.session.result = result
+        Gizmo.session.active = false
+    end
+
+    Gizmo.closeModalUi()
     Gizmo.hidePreview()
     Gizmo.invalidateKeybinds()
+
+    local editorCamera = getEditorCamera()
+    if Gizmo.freeCameraState and editorCamera and type(editorCamera.stopFreecam) == "function" then
+        editorCamera.stopFreecam(Gizmo.freeCameraState)
+    end
+    Gizmo.freeCameraState = nil
+    Gizmo.freeCameraAutoFromCenter = false
     Gizmo.releaseEditorCamera(true)
     Gizmo.enabled = false
     Gizmo.entity = nil
@@ -618,6 +1023,14 @@ function Gizmo.stop()
     Gizmo.editorCameraOwned = false
     Gizmo.editorCameraRadius = 2.0
     Gizmo.showPreview = false
+    Gizmo.managedControls = true
+    Gizmo.managedPrecision = true
+    Gizmo.restoreOnCancel = true
+    Gizmo.autoStop = true
+    Gizmo.uiEnabled = true
+    Gizmo.originalTransform = nil
+    Gizmo.session = nil
+    Gizmo.finishPending = false
     Gizmo.ResetPrecisionKeys()
     bridgeDebug("info", "[pr_bridge:gizmo] Editor finalizado.")
 end
@@ -662,28 +1075,62 @@ function Gizmo.setFreeCameraMode(enabled, silent)
 
     local nextState = enabled == true
     local previous = Gizmo.freeCameraMode == true
+    if previous == nextState then return nextState end
 
-    Gizmo.freeCameraMode = nextState
     Gizmo.isDragging = false
     Gizmo.activeAxis = nil
     Gizmo.hoveredAxis = nil
     Gizmo.dragPlane = nil
     Gizmo.dragFree = nil
     Gizmo.dragAxis = nil
-    Gizmo.invalidateKeybinds()
 
+    local editorCamera = getEditorCamera()
     if nextState then
+        local camCoords = GetFinalRenderedCamCoord()
+        local camRot = GetFinalRenderedCamRot(2)
+        local camFov = GetFinalRenderedCamFov()
+
         Gizmo.setPrecisionMode(false, true)
         Gizmo.releaseEditorCamera(silent)
+
+        if editorCamera and type(editorCamera.startFreecam) == "function" then
+            Gizmo.freeCameraState = editorCamera.startFreecam({
+                coords = camCoords,
+                cameraHeight = 0.0,
+                cameraPitch = camRot.x,
+                heading = camRot.z,
+                fov = camFov,
+                moveSpeed = 0.08,
+                mouseSensitivity = 7.0,
+            })
+        end
+
+        -- A freecam usa o delta do mouse, nao o cursor NUI.
+        SetNuiFocus(false, false)
+        SetNuiFocusKeepInput(false)
     else
+        if Gizmo.freeCameraState and editorCamera and type(editorCamera.stopFreecam) == "function" then
+            editorCamera.stopFreecam(Gizmo.freeCameraState)
+        end
+        Gizmo.freeCameraState = nil
+        Gizmo.freeCameraAutoFromCenter = false
+
+        if Gizmo.ownsUiFocus then
+            SetNuiFocus(true, true)
+            SetNuiFocusKeepInput(true)
+        end
         Gizmo.focusEditorCamera(silent)
     end
 
-    if previous ~= nextState and type(Gizmo.onFreeCameraModeChange) == "function" then
+    Gizmo.freeCameraMode = nextState
+    Gizmo.invalidateKeybinds()
+    Gizmo.updateNui(true)
+
+    if type(Gizmo.onFreeCameraModeChange) == "function" then
         Gizmo.onFreeCameraModeChange(nextState, previous)
     end
 
-    if not silent and previous ~= nextState then
+    if not silent then
         bridgeDebug("info", ("[pr_bridge:gizmo] freeCameraMode=%s"):format(tostring(nextState)))
     end
 
@@ -695,18 +1142,26 @@ function Gizmo.toggleFreeCameraMode()
 end
 
 function Gizmo.applyControlLocks()
-    local controls = Gizmo.isFreeCameraMode()
-        and (GizmoConfig.freeCameraBlockedControls or {})
-        or (GizmoConfig.focusBlockedControls or {})
+    if not Gizmo.managedControls then return end
 
-    for i = 1, #controls do
-        DisableControlAction(0, controls[i], true)
-    end
+    DisableAllControlActions(0)
+    DisableAllControlActions(1)
+    DisableAllControlActions(2)
+    DisablePlayerFiring(PlayerId(), true)
+    SetPauseMenuActive(false)
+    HideHudComponentThisFrame(14)
 end
 
 function Gizmo.setPrecisionMode(enabled, silent)
     local nextState = enabled == true
-    local previous = Gizmo.precisionMode == true
+    local previous = Gizmo.isPrecisionMode()
+
+    -- Um provider externo pode definir o estado inicial, mas uma troca feita
+    -- pelo usuario precisa assumir a autoridade para que TAB sempre retorne ao
+    -- manipulador. O callback continua informando o consumidor da mudanca.
+    if not silent and type(Gizmo.precisionModeProvider) == "function" then
+        Gizmo.precisionModeProvider = nil
+    end
 
     Gizmo.precisionMode = nextState
     Gizmo.ResetPrecisionKeys()
@@ -759,24 +1214,27 @@ local function isControlJustPressedAny(...)
 end
 
 function Gizmo.handlePrecisionToggleInput()
-    if Gizmo.handlePrecisionToggle == false then return end
-    if Gizmo.isFreeCameraMode() then return end
-
-    if isControlJustPressedAny(37) then
-        Gizmo.togglePrecisionMode()
-    end
+    if Gizmo.bindings and Gizmo.bindings.precision then return end
+    if isControlJustPressedAny(37) then Gizmo.runAction("precision") end
 end
 
 function Gizmo.handlePrecisionSpeedInput()
     if not Gizmo.isPrecisionMode() then return end
 
     if isControlJustPressedAny(83, 314) then
-        local speed = Gizmo.adjustPrecisionSpeed(0.1)
-        bridgeDebug("info", ("[pr_bridge:gizmo] precisionSpeed=%.1f"):format(speed))
+        Gizmo.runAction("precision_speed_up")
     elseif isControlJustPressedAny(84, 315) then
-        local speed = Gizmo.adjustPrecisionSpeed(-0.1)
-        bridgeDebug("info", ("[pr_bridge:gizmo] precisionSpeed=%.1f"):format(speed))
+        Gizmo.runAction("precision_speed_down")
     end
+end
+
+function Gizmo.handleInstructionalActions()
+    if not Gizmo.managedControls then return end
+    if isControlJustPressedAny(45) then Gizmo.runAction("mode")
+    elseif isControlJustPressedAny(182) then Gizmo.runAction("space")
+    elseif isControlJustPressedAny(47) then Gizmo.runAction("ground")
+    elseif isControlJustPressedAny(37) then Gizmo.runAction("precision")
+    elseif isControlJustPressedAny(23) then Gizmo.runAction("freecamera") end
 end
 
 function Gizmo.toggleMode()
@@ -952,7 +1410,11 @@ function Gizmo.checkPlane(mx, my, center, planeName)
     local uProj = vec3Dot(delta, uNorm)
     local vProj = vec3Dot(delta, vNorm)
 
-    if uProj < GizmoConfig.planeOffset then return false, 999 end
+    local minValue = GizmoConfig.planeOffset
+    local maxValue = GizmoConfig.planeOffset + GizmoConfig.planeSize
+    if uProj < minValue or uProj > maxValue or vProj < minValue or vProj > maxValue then
+        return false, 999
+    end
 
     local camPos = GetFinalRenderedCamCoord()
     return true, #(hit - camPos)
@@ -1184,39 +1646,23 @@ end
 
 function Gizmo.beginFreeDrag(mx, my)
     local gizmoPos = Gizmo.getGizmoPosition()
-    local _, camFwd = getCameraInfo()
-    local playerPed = PlayerPedId()
-    local playerPos = (playerPed and playerPed ~= 0 and DoesEntityExist(playerPed)) and GetEntityCoords(playerPed) or gizmoPos
-    local playerAnchor = playerPos + vector3(0.0, 0.0, GizmoConfig.freeDragPlayerHeight or 0.75)
-    local rel = gizmoPos - playerAnchor
-    local distance = vec3Length(rel)
+    local camPos, camFwd = getCameraInfo()
     local minDistance = GizmoConfig.freeDragMinDistance or 0.6
     local maxDistance = GizmoConfig.freeDragMaxDistance or 8.0
+    local distance = clampNumber(vec3Length(gizmoPos - camPos), minDistance, maxDistance)
 
-    if distance < minDistance then
+    if distance <= minDistance then
         distance = GizmoConfig.freeDragDefaultDistance or 2.0
-        rel = vec3Normalize(camFwd) * distance
     end
-
-    distance = clampNumber(distance, minDistance, maxDistance)
-    local yaw, pitch = vectorToOrbitAngles(rel)
-    local cameraYaw, cameraPitch = vectorToOrbitAngles(camFwd)
 
     Gizmo.dragPlane = nil
     Gizmo.dragFree = {
-        yaw = yaw,
-        pitch = pitch,
-        cameraYawOffset = yaw - cameraYaw,
-        cameraPitchOffset = pitch - cameraPitch,
-        lastCameraYaw = cameraYaw,
-        lastCameraPitch = cameraPitch,
         distance = distance,
         minDistance = minDistance,
         maxDistance = maxDistance,
         startPos = gizmoPos,
         startEntityPos = GetEntityCoords(Gizmo.entity),
-        startPlayerPos = playerPos,
-        startPlayerAnchor = playerAnchor,
+        startCameraPos = camPos,
         axis = "xyz",
     }
 end
@@ -1225,44 +1671,18 @@ function Gizmo.updateFreeDrag(mx, my)
     if not Gizmo.dragFree then return end
 
     local drag = Gizmo.dragFree
-    local _, camFwd = getCameraInfo()
-    local cameraYaw, cameraPitch = vectorToOrbitAngles(camFwd)
-    local cameraChanged = math.abs(cameraYaw - (drag.lastCameraYaw or cameraYaw)) > 0.0005
-        or math.abs(cameraPitch - (drag.lastCameraPitch or cameraPitch)) > 0.0005
-    local orbitSpeedX = GizmoConfig.freeDragOrbitSensitivityX or 8.0
-    local orbitSpeedY = GizmoConfig.freeDragOrbitSensitivityY or 5.0
     local distanceStep = GizmoConfig.freeDragDistanceStep or 0.2
-
-    if IsDisabledControlJustPressed(0, 241) or IsControlJustPressed(0, 241) then
+    if IsDisabledControlJustPressed(0, 241) then
         drag.distance = clampNumber((drag.distance or 0.0) - distanceStep, drag.minDistance, drag.maxDistance)
-    elseif IsDisabledControlJustPressed(0, 242) or IsControlJustPressed(0, 242) then
+    elseif IsDisabledControlJustPressed(0, 242) then
         drag.distance = clampNumber((drag.distance or 0.0) + distanceStep, drag.minDistance, drag.maxDistance)
     end
 
-    if cameraChanged then
-        drag.yaw = cameraYaw + (drag.cameraYawOffset or 0.0)
-        drag.pitch = clampNumber(cameraPitch + (drag.cameraPitchOffset or 0.0), -1.15, 1.15)
-    else
-        local mouseX, mouseY = getMouseLookInput()
-        if math.abs(mouseX) > 1e-5 or math.abs(mouseY) > 1e-5 then
-            drag.yaw = (drag.yaw or 0.0) - mouseX * orbitSpeedX
-            drag.pitch = clampNumber((drag.pitch or 0.0) + mouseY * orbitSpeedY, -1.15, 1.15)
-        end
-    end
-
-    drag.lastCameraYaw = cameraYaw
-    drag.lastCameraPitch = cameraPitch
-
-    local playerPed = PlayerPedId()
-    local playerPos = (playerPed and playerPed ~= 0 and DoesEntityExist(playerPed)) and GetEntityCoords(playerPed) or drag.startPlayerPos
-    local playerAnchor = playerPos + vector3(0.0, 0.0, GizmoConfig.freeDragPlayerHeight or 0.75)
-    local direction = orbitAnglesToVector(drag.yaw or 0.0, drag.pitch or 0.0)
-    local newGizmoPos = playerAnchor + direction * (drag.distance or GizmoConfig.freeDragDefaultDistance or 2.0)
-
+    local camPos, camFwd = getCameraInfo()
+    local newGizmoPos = camPos + vec3Normalize(camFwd) * (drag.distance or GizmoConfig.freeDragDefaultDistance or 2.0)
     local offsetWorld = localToWorld(Gizmo.entity, Gizmo.offset)
     local entityPos = GetEntityCoords(Gizmo.entity)
-    local offsetDelta = offsetWorld - entityPos
-    local finalPos = newGizmoPos - offsetDelta
+    local finalPos = newGizmoPos - (offsetWorld - entityPos)
 
     Gizmo.setCoords(finalPos.x, finalPos.y, finalPos.z)
 end
@@ -1310,6 +1730,11 @@ function Gizmo.beginRotationDrag(axis, mx, my)
     Gizmo.activeAxis = axis
     Gizmo.rotationStartPos = hitPoint
     Gizmo.rotationLastPos = hitPoint
+    Gizmo.rotationStartDirection = vec3Normalize(hitPoint - gizmoPos)
+    Gizmo.rotationCurrentDirection = Gizmo.rotationStartDirection
+    Gizmo.rotationDegrees = 0.0
+    Gizmo.invalidateKeybinds()
+    Gizmo.updateNui(true)
 end
 
 function Gizmo.updateRotationDrag(mx, my)
@@ -1327,8 +1752,12 @@ function Gizmo.updateRotationDrag(mx, my)
 
     local adjustedAngle = math.rad(math.deg(angle) * GizmoConfig.sensitivity.rotationDrag)
     adjustedAngle = adjustedAngle * Gizmo.getSpeedModifier()
+    Gizmo.rotationDegrees = (Gizmo.rotationDegrees or 0.0) + math.deg(adjustedAngle)
+    Gizmo.rotationCurrentDirection = vec3Normalize(hitPoint - Gizmo.rotationCenter)
 
-    local entityPos = GetEntityCoords(Gizmo.entity)
+    local oldCoords = GetEntityCoords(Gizmo.entity)
+    local oldRotation = GetEntityRotation(Gizmo.entity, 2)
+    local entityPos = oldCoords
     local gizmoPosBeforeRot = Gizmo.getGizmoPosition()
     local currentQuat = getEntityQuat(Gizmo.entity)
 
@@ -1365,6 +1794,9 @@ function Gizmo.updateRotationDrag(mx, my)
     end
 
     Gizmo.rotationLastPos = hitPoint
+    if Gizmo.updateCallback then
+        Gizmo.updateCallback(GetEntityCoords(Gizmo.entity), oldCoords, GetEntityRotation(Gizmo.entity, 2), oldRotation)
+    end
 end
 
 -- ============================================================
@@ -1375,38 +1807,38 @@ function Gizmo.drawArrow(origin, axis, colorSet)
     local dir = Gizmo.getAxisDirection(axis, false)
     local tip = origin + dir * GizmoConfig.arrowLength
 
-    local r, g, b, a = Gizmo.getColorAlpha(axis, colorSet.normal)
+    local r, g, b = Gizmo.getColorAlpha(axis, colorSet.normal)
     if Gizmo.hoveredAxis == axis then
         r, g, b = colorSet.hover[1], colorSet.hover[2], colorSet.hover[3]
     elseif Gizmo.activeAxis == axis then
         r, g, b = colorSet.active[1], colorSet.active[2], colorSet.active[3]
     end
 
-    -- Linha principal
-    drawLine3D(origin, tip, r, g, b, 255, 1.25)
+    local originScreen = projectWorldPoint(origin)
+    local tipScreen = projectWorldPoint(tip)
+    if not originScreen or not tipScreen then return end
 
-    -- Cabeça da seta
-    local headSize = GizmoConfig.arrowHeadSize
-    local headBase = tip - dir * headSize
+    local width, height = GetActiveScreenResolution()
+    local originPx = { x = originScreen.x * width, y = originScreen.y * height }
+    local tipPx = { x = tipScreen.x * width, y = tipScreen.y * height }
+    local dx, dy = tipPx.x - originPx.x, tipPx.y - originPx.y
+    local length = math.sqrt(dx * dx + dy * dy)
+    if length < 2.0 then return end
 
-    local perp1, perp2
-    if math.abs(dir.z) > 0.9 then
-        perp1 = vec3Normalize(vec3Cross(dir, vector3(1, 0, 0)))
-    else
-        perp1 = vec3Normalize(vec3Cross(dir, vector3(0, 0, 1)))
-    end
-    perp2 = vec3Normalize(vec3Cross(dir, perp1))
+    local ux, uy = dx / length, dy / length
+    local headPixels = math.min(GizmoConfig.arrowHeadPixels or 11.0, math.max(5.0, length * 0.34))
+    local halfWidth = math.min(GizmoConfig.arrowHalfWidthPixels or 5.5, headPixels * 0.55)
+    local basePx = { x = tipPx.x - ux * headPixels, y = tipPx.y - uy * headPixels }
+    local perpX, perpY = -uy, ux
+    local baseA = { x = (basePx.x + perpX * halfWidth) / width, y = (basePx.y + perpY * halfWidth) / height }
+    local baseB = { x = (basePx.x - perpX * halfWidth) / width, y = (basePx.y - perpY * halfWidth) / height }
+    local tip2D = { x = tipPx.x / width, y = tipPx.y / height }
+    local baseCenter = { x = basePx.x / width, y = basePx.y / height }
+    local selected = Gizmo.hoveredAxis == axis or Gizmo.activeAxis == axis
 
-    local adjustedTip = origin + dir * (GizmoConfig.arrowLength - 0.005)
-    local halfHead = headSize * 0.3
-    for i = 0, 5 do
-        local angle = (i * math.pi) / 6.0
-        local offset = vec3Normalize(perp1 * math.cos(angle) + perp2 * math.sin(angle)) * halfHead
-        drawLine3D(adjustedTip, headBase + offset, r, g, b, 255, 1.25)
-        drawLine3D(adjustedTip, headBase - offset, r, g, b, 255, 1.25)
-    end
+    DrawLine_2d(originScreen.x, originScreen.y, baseCenter.x, baseCenter.y, pixelToScreenRatio(selected and 1.8 or 1.1), r, g, b, 255)
+    drawFilledTriangle2D(tip2D, baseA, baseB, r, g, b, 255, 12)
 end
-
 function Gizmo.drawPlaneSquare(origin, plane, colorSet, isFacing)
     local r, g, b, a = Gizmo.getColorAlpha(plane, colorSet.normal)
     if Gizmo.hoveredAxis == plane then
@@ -1435,42 +1867,61 @@ function Gizmo.drawPlaneSquare(origin, plane, colorSet, isFacing)
     local p2 = corner + u * size + v * size
     local p3 = corner + v * size
 
-    drawLine3D(corner, p1, r, g, b, a, 1)
-    drawLine3D(p1, p2, r, g, b, a, 1)
-    drawLine3D(p2, p3, r, g, b, a, 1)
-    drawLine3D(p3, corner, r, g, b, a, 1)
+    local fillAlpha = 24
+    if Gizmo.hoveredAxis == plane then fillAlpha = 58 end
+    if Gizmo.activeAxis == plane then fillAlpha = 86 end
+    drawFilledQuad3DOverlay(corner, p1, p2, p3, r, g, b, fillAlpha, 18)
+
+    drawLine3D(corner, p1, r, g, b, a, 1.8)
+    drawLine3D(p1, p2, r, g, b, a, 1.8)
+    drawLine3D(p2, p3, r, g, b, a, 1.8)
+    drawLine3D(p3, corner, r, g, b, a, 1.8)
 end
 
 function Gizmo.drawCenterSquare(origin)
     local colorSet = GizmoConfig.colors.xyz
     local r, g, b, a = Gizmo.getColorAlpha("xyz", colorSet.normal)
+    local selected = Gizmo.hoveredAxis == "xyz" or Gizmo.activeAxis == "xyz"
     if Gizmo.hoveredAxis == "xyz" then
         r, g, b = colorSet.hover[1], colorSet.hover[2], colorSet.hover[3]
     elseif Gizmo.activeAxis == "xyz" then
         r, g, b = colorSet.active[1], colorSet.active[2], colorSet.active[3]
     end
 
-    local _, camFwd, camRight, camUp = getCameraInfo()
-    local size = GizmoConfig.centerSquareSize or 0.09
-    local half = size * 0.5
-    local center = origin - vec3Normalize(camFwd) * 0.004
-    local right = vec3Normalize(camRight)
-    local up = vec3Normalize(camUp)
-    local thickness = (Gizmo.hoveredAxis == "xyz" or Gizmo.activeAxis == "xyz") and 2.2 or 1.4
+    local center = projectWorldPoint(origin)
+    if not center then return end
 
-    local p1 = center - right * half - up * half
-    local p2 = center + right * half - up * half
-    local p3 = center + right * half + up * half
-    local p4 = center - right * half + up * half
+    local width, height = GetActiveScreenResolution()
+    local radius = (GizmoConfig.centerRadiusPixels or 5.0) + (selected and 1.5 or 0.0)
+    local fillAlpha = selected and 105 or 52
+    local segments = 20
 
-    drawLine3D(p1, p2, r, g, b, a, thickness)
-    drawLine3D(p2, p3, r, g, b, a, thickness)
-    drawLine3D(p3, p4, r, g, b, a, thickness)
-    drawLine3D(p4, p1, r, g, b, a, thickness)
-    drawLine3D(p1, p3, r, g, b, math.floor(a * 0.7), 1.0)
-    drawLine3D(p2, p4, r, g, b, math.floor(a * 0.7), 1.0)
+    -- Disco pequeno projetado em 2D para continuar sempre visivel sobre o prop.
+    for py = -math.floor(radius), math.floor(radius) do
+        local half = math.sqrt(math.max(0.0, radius * radius - py * py))
+        DrawLine_2d(
+            center.x - half / width,
+            center.y + py / height,
+            center.x + half / width,
+            center.y + py / height,
+            pixelToScreenRatio(1.05),
+            r, g, b, fillAlpha
+        )
+    end
+
+    local previous
+    for i = 0, segments do
+        local angle = (i / segments) * math.pi * 2.0
+        local point = {
+            x = center.x + math.cos(angle) * radius / width,
+            y = center.y + math.sin(angle) * radius / height,
+        }
+        if previous then
+            DrawLine_2d(previous.x, previous.y, point.x, point.y, pixelToScreenRatio(selected and 1.8 or 1.25), r, g, b, a)
+        end
+        previous = point
+    end
 end
-
 function Gizmo.drawRotationHandle(point, color)
     local camPos = GetFinalRenderedCamCoord()
     local toCamera = vec3Normalize(camPos - point)
@@ -1541,31 +1992,73 @@ function Gizmo.drawRotationRing(origin, axis, colorSet, distance)
     end
 
     local radius = GizmoConfig.rotationRingRadius
-    local segments = GizmoConfig.rotationRingSegments
-    local thickness = GizmoConfig.lineThicknessPx or 3
-    if Gizmo.hoveredAxis == axis or Gizmo.activeAxis == axis then
-        thickness = thickness * 1.65
-    end
+    local segments = math.max(48, GizmoConfig.rotationRingSegments or 64)
+    local thickness = (Gizmo.hoveredAxis == axis or Gizmo.activeAxis == axis) and 3.2 or 1.85
+    local basisA, basisB = Gizmo.getRotationRingBasis(axis)
+    local firstPoint, previousPoint
 
-    local a1, a2 = Gizmo.getRotationRingBasis(axis)
-
-    local prevPoint = nil
     for i = 0, segments do
-        local t = GizmoConfig.rotationArcStart + ((GizmoConfig.rotationArcEnd - GizmoConfig.rotationArcStart) * (i / segments))
-        local point = origin + (a1 * math.cos(t) + a2 * math.sin(t)) * radius
-        if prevPoint then
-            drawLine3D(prevPoint, point, r, g, b, a, thickness)
-        end
-        prevPoint = point
+        local angle = (i / segments) * math.pi * 2.0
+        local point = origin + (basisA * math.cos(angle) + basisB * math.sin(angle)) * radius
+        firstPoint = firstPoint or point
+        if previousPoint then drawLine3D(previousPoint, point, r, g, b, a, thickness) end
+        previousPoint = point
     end
 
-    local startPoint = origin + (a1 * math.cos(GizmoConfig.rotationArcStart) + a2 * math.sin(GizmoConfig.rotationArcStart)) * radius
-    local midPoint = origin + (a1 * math.cos((GizmoConfig.rotationArcStart + GizmoConfig.rotationArcEnd) * 0.5) + a2 * math.sin((GizmoConfig.rotationArcStart + GizmoConfig.rotationArcEnd) * 0.5)) * radius
-    local endPoint = origin + (a1 * math.cos(GizmoConfig.rotationArcEnd) + a2 * math.sin(GizmoConfig.rotationArcEnd)) * radius
+    if previousPoint and firstPoint then drawLine3D(previousPoint, firstPoint, r, g, b, a, thickness) end
+end
 
-    Gizmo.drawRotationHandle(startPoint, { r, g, b })
-    Gizmo.drawRotationHandle(midPoint, { r, g, b })
-    Gizmo.drawRotationArrow(endPoint, a2, { r, g, b })
+function Gizmo.drawViewRotationRing(origin)
+    local _, _, camRight, camUp = getCameraInfo()
+    local radius = GizmoConfig.rotationRingRadius * 1.08
+    local segments = 72
+    local previousPoint
+
+    for i = 0, segments do
+        local angle = (i / segments) * math.pi * 2.0
+        local point = origin + (vec3Normalize(camRight) * math.cos(angle) + vec3Normalize(camUp) * math.sin(angle)) * radius
+        if previousPoint then drawLine3D(previousPoint, point, 225, 225, 230, 185, 1.35) end
+        previousPoint = point
+    end
+end
+
+function Gizmo.drawActiveRotation(origin)
+    if not Gizmo.isDragging or not Gizmo.activeAxis or not Gizmo.rotationStartDirection or not Gizmo.rotationPlaneNormal then return end
+
+    local normal = vec3Normalize(Gizmo.rotationPlaneNormal)
+    local startDirection = vec3Normalize(Gizmo.rotationStartDirection)
+    local degrees = Gizmo.rotationDegrees or 0.0
+    local visualDegrees = math.max(-360.0, math.min(360.0, degrees))
+    local visualRadians = math.rad(visualDegrees)
+    local radius = GizmoConfig.rotationRingRadius
+    local color = { 255, 225, 65 }
+
+    -- Régua circular com marcas leves a cada 5 graus e maiores a cada 30 graus.
+    for degree = 0, 355, 5 do
+        local direction = rotateVectorAroundAxis(startDirection, normal, math.rad(degree))
+        local major = degree % 30 == 0
+        local inner = origin + direction * (radius * (major and 0.86 or 0.92))
+        local outer = origin + direction * radius
+        drawLine3D(inner, outer, color[1], color[2], color[3], major and 235 or 150, major and 1.8 or 1.0)
+    end
+
+    local segmentCount = math.max(1, math.ceil(math.abs(visualDegrees) / 4.0))
+    local previous = origin + startDirection * radius
+    for i = 1, segmentCount do
+        local angle = visualRadians * (i / segmentCount)
+        local current = origin + rotateVectorAroundAxis(startDirection, normal, angle) * radius
+        DrawPoly(origin.x, origin.y, origin.z, previous.x, previous.y, previous.z, current.x, current.y, current.z, color[1], color[2], color[3], 68)
+        DrawPoly(origin.x, origin.y, origin.z, current.x, current.y, current.z, previous.x, previous.y, previous.z, color[1], color[2], color[3], 68)
+        drawLine3D(previous, current, color[1], color[2], color[3], 255, 2.5)
+        previous = current
+    end
+
+    local startPoint = origin + startDirection * radius
+    local currentDirection = rotateVectorAroundAxis(startDirection, normal, visualRadians)
+    local currentPoint = origin + currentDirection * radius
+    drawLine3D(origin, startPoint, 245, 245, 245, 210, 1.5)
+    drawLine3D(origin, currentPoint, color[1], color[2], color[3], 255, 2.5)
+    drawWorldAngleLabel(origin + currentDirection * (radius * 1.14), degrees)
 end
 
 function Gizmo.drawDragLine()
@@ -1682,23 +2175,89 @@ function Gizmo.draw()
         end
         table.sort(ringOrder, function(a, b) return a.distance > b.distance end)
 
+        Gizmo.drawViewRotationRing(gizmoPos)
         for _, r in ipairs(ringOrder) do
             Gizmo.drawRotationRing(gizmoPos, r.axis, GizmoConfig.colors[r.axis], r.distance)
         end
+        Gizmo.drawActiveRotation(gizmoPos)
     end
 end
 
+function Gizmo.updatePrecision()
+    if not Gizmo.managedPrecision or not Gizmo.entity or not DoesEntityExist(Gizmo.entity) then return end
+
+    local oldCoords = GetEntityCoords(Gizmo.entity)
+    local coords = oldCoords
+    local rotation = GetEntityRotation(Gizmo.entity, 2)
+    local oldRotation = cloneVector3(rotation)
+    local speedMultiplier = Gizmo.getPrecisionSpeed()
+    local fast = IsDisabledControlPressed(0, 21)
+    local speed = (fast and 0.04 or 0.015) * speedMultiplier
+    local rotationSpeed = (fast and 3.0 or 1.0) * speedMultiplier
+    local forward, right = GetEntityMatrix(Gizmo.entity)
+    local moved, rotated = false, false
+
+    local precisionKeys = Gizmo.precisionKeys or {}
+    if precisionKeys.moveForward or IsDisabledControlPressed(0, 32) then coords = coords + forward * speed; moved = true end
+    if precisionKeys.moveBackward or IsDisabledControlPressed(0, 31) then coords = coords - forward * speed; moved = true end
+    if precisionKeys.moveLeft or IsDisabledControlPressed(0, 34) then coords = coords - right * speed; moved = true end
+    if precisionKeys.moveRight or IsDisabledControlPressed(0, 35) or IsDisabledControlPressed(0, 30) then coords = coords + right * speed; moved = true end
+    if IsDisabledControlPressed(0, 241) then coords = coords + vector3(0.0, 0.0, speed); moved = true end
+    if IsDisabledControlPressed(0, 242) then coords = coords - vector3(0.0, 0.0, speed); moved = true end
+
+    local mappedRotation, mappedRotated = Gizmo.HandlePrecisionRotation(rotation, rotationSpeed)
+    if mappedRotated then
+        rotation, rotated = mappedRotation, true
+    else
+        if IsDisabledControlPressed(0, 44) then rotation = vector3(rotation.x, rotation.y, rotation.z + rotationSpeed); rotated = true end
+        if IsDisabledControlPressed(0, 38) then rotation = vector3(rotation.x, rotation.y, rotation.z - rotationSpeed); rotated = true end
+        if IsDisabledControlPressed(0, 174) then rotation = vector3(rotation.x, rotation.y - rotationSpeed, rotation.z); rotated = true end
+        if IsDisabledControlPressed(0, 175) then rotation = vector3(rotation.x, rotation.y + rotationSpeed, rotation.z); rotated = true end
+        if IsDisabledControlPressed(0, 172) then rotation = vector3(rotation.x - rotationSpeed, rotation.y, rotation.z); rotated = true end
+        if IsDisabledControlPressed(0, 173) then rotation = vector3(rotation.x + rotationSpeed, rotation.y, rotation.z); rotated = true end
+    end
+
+    if moved or rotated then
+        if Gizmo.beforeTransformCallback then Gizmo.beforeTransformCallback() end
+        Gizmo.lastCoords = oldCoords
+        if moved then SetEntityCoordsNoOffset(Gizmo.entity, coords.x, coords.y, coords.z, false, false, false) end
+        if rotated then SetEntityRotation(Gizmo.entity, rotation.x, rotation.y, rotation.z, 2, true) end
+        if Gizmo.updateCallback then Gizmo.updateCallback(GetEntityCoords(Gizmo.entity), oldCoords, GetEntityRotation(Gizmo.entity, 2), oldRotation) end
+    end
+end
 -- ============================================================
 -- MAIN UPDATE
 -- ============================================================
 
 function Gizmo.update()
-    if not DoesEntityExist(Gizmo.entity) then return end
+    if not Gizmo.entity or not DoesEntityExist(Gizmo.entity) or Gizmo.finishPending then return end
 
     if Gizmo.isPrecisionMode() then
         Gizmo.isDragging = false
         Gizmo.activeAxis = nil
         Gizmo.hoveredAxis = nil
+        Gizmo.updatePrecision()
+        Gizmo.draw()
+        return
+    end
+
+    if Gizmo.isFreeCameraMode() then
+        local editorCamera = getEditorCamera()
+        if Gizmo.freeCameraState and editorCamera and type(editorCamera.updateFreecam) == "function" then
+            editorCamera.updateFreecam(Gizmo.freeCameraState, 0.08 * Gizmo.getPrecisionSpeed())
+        end
+
+        if Gizmo.isDragging and Gizmo.activeAxis == "xyz" then
+            Gizmo.updateFreeDrag(0.5, 0.5)
+        end
+
+        if IsDisabledControlJustReleased(0, 24) and Gizmo.activeAxis == "xyz" then
+            Gizmo.isDragging = false
+            Gizmo.activeAxis = nil
+            Gizmo.dragFree = nil
+            if Gizmo.freeCameraAutoFromCenter then Gizmo.setFreeCameraMode(false, true) end
+        end
+
         Gizmo.draw()
         return
     end
@@ -1707,44 +2266,37 @@ function Gizmo.update()
     local mx, my = Gizmo.getMousePosition()
     Gizmo.updateHover(mx, my)
 
-    -- Início do drag
     if IsDisabledControlJustPressed(0, 24) then
         Gizmo.lastCoords = GetEntityCoords(Gizmo.entity)
         if Gizmo.hoveredAxis then
             local clickedAxis = Gizmo.hoveredAxis
-            if Gizmo.mode == "translate" and clickedAxis == "xyz" and not Gizmo.isFreeCameraMode() then
-                Gizmo.setFreeCameraMode(true)
+            if Gizmo.mode == "translate" and clickedAxis == "xyz" then
+                Gizmo.freeCameraAutoFromCenter = true
+                Gizmo.setFreeCameraMode(true, true)
             end
 
-            if Gizmo.beforeTransformCallback then
-                Gizmo.beforeTransformCallback()
-            end
+            if Gizmo.beforeTransformCallback then Gizmo.beforeTransformCallback() end
             Gizmo.isDragging = true
             Gizmo.activeAxis = clickedAxis
             Gizmo.lastMousePos = { x = mx, y = my }
 
             if Gizmo.mode == "translate" then
-                local ax = Gizmo.activeAxis
-                if ax == "xyz" then
+                if clickedAxis == "xyz" then
                     Gizmo.beginFreeDrag(mx, my)
                     Gizmo.dragAxis = nil
-                elseif ax == "xy" or ax == "xz" or ax == "yz" then
-                    Gizmo.beginPlaneDrag(ax, mx, my)
+                elseif clickedAxis == "xy" or clickedAxis == "xz" or clickedAxis == "yz" then
+                    Gizmo.beginPlaneDrag(clickedAxis, mx, my)
                     Gizmo.dragAxis = nil
-                elseif ax == "x" or ax == "y" or ax == "z" then
-                    Gizmo.beginAxisDrag(ax, mx, my)
+                elseif clickedAxis == "x" or clickedAxis == "y" or clickedAxis == "z" then
+                    Gizmo.beginAxisDrag(clickedAxis, mx, my)
                     Gizmo.dragPlane = nil
-                else
-                    Gizmo.dragPlane = nil
-                    Gizmo.dragAxis = nil
                 end
             else
-                Gizmo.beginRotationDrag(Gizmo.activeAxis, mx, my)
+                Gizmo.beginRotationDrag(clickedAxis, mx, my)
             end
         end
     end
 
-    -- Fim do drag
     if IsDisabledControlJustReleased(0, 24) then
         Gizmo.isDragging = false
         Gizmo.activeAxis = nil
@@ -1757,18 +2309,15 @@ function Gizmo.update()
         Gizmo.rotationPlaneNormal = nil
     end
 
-    -- Atualizar drag
     if Gizmo.isDragging and Gizmo.activeAxis then
         local dx = mx - Gizmo.lastMousePos.x
         local dy = my - Gizmo.lastMousePos.y
 
         if Gizmo.mode == "translate" then
-            local ax = Gizmo.activeAxis
-            if ax == "x" or ax == "y" or ax == "z" then
+            local axis = Gizmo.activeAxis
+            if axis == "x" or axis == "y" or axis == "z" then
                 Gizmo.updateAxisDrag(mx, my)
-            elseif ax == "xyz" then
-                Gizmo.updateFreeDrag(mx, my)
-            elseif ax == "xy" or ax == "xz" or ax == "yz" then
+            elseif axis == "xy" or axis == "xz" or axis == "yz" then
                 Gizmo.updatePlaneDrag(mx, my)
             else
                 Gizmo.handleTranslation(dx, dy)
@@ -2046,10 +2595,12 @@ end
 -- KEYBINDS
 -- ============================================================
 
-local function getKeybindButton(commandName)
-    local hash = GetHashKey("+" .. commandName)
-    hash = hash | 2147483648
-    return GetControlInstructionalButton(2, hash, true)
+local function getBindingButton(name, fallbackControl)
+    local binding = Gizmo.bindings and Gizmo.bindings[name]
+    local combo = binding and binding.combos and binding.combos[1]
+    local hash = combo and combo.hashes and combo.hashes[1]
+    if hash then return GetControlInstructionalButton(2, hash, true) end
+    return fallbackControl and GetControlInstructionalButton(2, fallbackControl, true) or ""
 end
 
 local function freeCameraCommandName()
@@ -2070,45 +2621,52 @@ end
 
 local function buildMouseKeybinds()
     return "mouse", {
-        { label = "OK", control = controlButton(201), controlId = 201 },
-        { label = "Drag", control = controlButton(24), controlId = 24 },
-        { label = "Cam", control = controlButton(25), controlId = 25 },
+        { label = "Confirmar", control = getBindingButton("confirm", 201), controlId = 201 },
+        { label = "Cancelar", control = getBindingButton("cancel", 177), controlId = 177 },
+        { label = "Arrastar", control = controlButton(24), controlId = 24 },
+        { label = "Camera", control = controlButton(25), controlId = 25 },
         { label = "Zoom+", control = controlButton(241), controlId = 241 },
         { label = "Zoom-", control = controlButton(242), controlId = 242 },
-        { label = "Mode", control = getKeybindButton(modeCommandName()) },
-        { label = "Ground", control = getKeybindButton(groundCommandName()) },
-        { label = "Prec", control = controlButton(37), controlId = 37 },
-        { label = Gizmo.isFreeCameraMode() and "Focus" or "Free", control = getKeybindButton(freeCameraCommandName()) },
+        { label = "Modo", control = getBindingButton("mode", 45), controlId = 45 },
+        { label = "Local/Global", control = getBindingButton("space", 182), controlId = 182 },
+        { label = "No chao", control = getBindingButton("ground", 47), controlId = 47 },
+        { label = "Precisao", control = getBindingButton("precision", 37), controlId = 37 },
+        { label = Gizmo.isFreeCameraMode() and "Focar" or "Camera livre", control = getBindingButton("freecamera", 23), controlId = 23 },
     }
 end
 
 local function buildPrecisionKeybinds()
     return "precision", {
-        { label = "OK", control = controlButton(201), controlId = 201 },
-        { label = "Move", control = controlButton(32), controlId = 32 },
-        { label = "Pit+", control = controlButton(172), controlId = 172 },
-        { label = "Pit-", control = controlButton(173), controlId = 173 },
-        { label = "Roll-", control = controlButton(174), controlId = 174 },
-        { label = "Roll+", control = controlButton(175), controlId = 175 },
-        { label = "Yaw+", control = controlButton(44), controlId = 44 },
-        { label = "Yaw-", control = controlButton(38), controlId = 38 },
-        { label = "Spd+", control = controlButton(83), controlId = 83 },
-        { label = "Spd-", control = controlButton(84), controlId = 84 },
-        { label = "Cam", control = controlButton(25), controlId = 25 },
-        { label = "Ground", control = getKeybindButton(groundCommandName()) },
-        { label = "Mouse", control = controlButton(37), controlId = 37 },
-        { label = "Free", control = getKeybindButton(freeCameraCommandName()) },
+        { label = "Confirmar", control = getBindingButton("confirm", 201), controlId = 201 },
+        { label = "Cancelar", control = getBindingButton("cancel", 177), controlId = 177 },
+        { label = "Frente", control = getBindingButton("move_forward", 32), controlId = 32 },
+        { label = "Tras", control = getBindingButton("move_backward", 31), controlId = 31 },
+        { label = "Esq", control = getBindingButton("move_left", 34), controlId = 34 },
+        { label = "Dir", control = getBindingButton("move_right", 35), controlId = 35 },
+        { label = "Pit+", control = getBindingButton("rot_x_negative", 172) },
+        { label = "Pit-", control = getBindingButton("rot_x_positive", 173) },
+        { label = "Roll-", control = getBindingButton("rot_y_negative", 174) },
+        { label = "Roll+", control = getBindingButton("rot_y_positive", 175) },
+        { label = "Yaw+", control = getBindingButton("rot_z_positive", 44) },
+        { label = "Yaw-", control = getBindingButton("rot_z_negative", 38) },
+        { label = "Vel+", control = getBindingButton("precision_speed_up", 83), controlId = 83 },
+        { label = "Vel-", control = getBindingButton("precision_speed_down", 84), controlId = 84 },
+        { label = "Camera", control = controlButton(25), controlId = 25 },
+        { label = "No chao", control = getBindingButton("ground", 47), controlId = 47 },
+        { label = "Mouse", control = getBindingButton("precision", 37), controlId = 37 },
+        { label = "Camera livre", control = getBindingButton("freecamera", 23), controlId = 23 },
     }
 end
 
 local function buildFreeCameraKeybinds()
     return "freecamera", {
-        { label = "Focus", control = getKeybindButton(freeCameraCommandName()) },
-        { label = "Ground", control = getKeybindButton(groundCommandName()) },
-        { label = "Confirm", control = controlButton(201), controlId = 201 },
+        { label = "Confirmar", control = getBindingButton("confirm", 201), controlId = 201 },
+        { label = "Cancelar", control = getBindingButton("cancel", 177), controlId = 177 },
+        { label = "Mover camera", control = controlButton(32), controlId = 32 },
+        { label = "Descer/Subir", control = controlButton(44), controlId = 44 },
+        { label = "Focar objeto", control = getBindingButton("freecamera", 23), controlId = 23 },
     }
 end
-
 function Gizmo.invalidateKeybinds()
     if Gizmo._keybindRenderer and Gizmo._keybindRenderer.dispose then
         Gizmo._keybindRenderer:dispose()
@@ -2130,6 +2688,7 @@ function Gizmo.drawKeybinds()
         mode, buttons = buildPrecisionKeybinds()
     else
         mode, buttons = buildMouseKeybinds()
+        if Gizmo.mode == "rotate" then mode = Gizmo.isDragging and "rotation-active" or "rotation-select" end
     end
 
     if type(buttons) ~= "table" then
@@ -2161,60 +2720,62 @@ function Gizmo.drawKeybinds()
     end
 end
 
--- Registrar comandos de tecla
-local resName = GetCurrentResourceName()
+-- Keybinds pertencem ao pr_bridge e continuam remapeaveis no menu do FiveM.
+local function registerGizmoBinding(name, description, defaultKey, onPressed, onReleased, defaultMapper)
+    local addKeybind = getAddKeybind()
+    if type(addKeybind) ~= "table" and type(addKeybind) ~= "function" then
+        bridgeDebug("error", ("[pr_bridge:gizmo] addKeybind indisponivel para %s"):format(name))
+        return nil
+    end
 
-local function registerPrecisionRotationKey(commandName, stateKey, axisName, defaultKey)
-    RegisterCommand("+" .. commandName .. resName, function()
-        if not (Gizmo.isPrecisionMode() and Gizmo.entity) then return end
-        Gizmo.precisionKeys[stateKey] = true
-        Gizmo.precisionLastAxis = axisName
-    end, false)
+    local binding, err = addKeybind({
+        name = "pr_bridge_gizmo_" .. name,
+        description = description,
+        defaultMapper = defaultMapper or "keyboard",
+        defaultKey = defaultKey,
+        onPressed = onPressed,
+        onReleased = onReleased,
+    })
 
-    RegisterCommand("-" .. commandName .. resName, function()
-        Gizmo.precisionKeys[stateKey] = false
-        if axisName == Gizmo.precisionLastAxis then
-            Gizmo.precisionLastAxis = nil
-        end
-    end, false)
+    if not binding then
+        bridgeDebug("error", ("[pr_bridge:gizmo] Falha no keybind %s: %s"):format(name, tostring(err)))
+        return nil
+    end
 
-    RegisterKeyMapping("+" .. commandName .. resName, Locales['Gizmo']['Rotate'], "keyboard", defaultKey)
+    Gizmo.bindings[name] = binding
+    return binding
 end
 
-registerPrecisionRotationKey("prBridgePrecisionRotZPositive", "rotZPositive", "z", "Q")
-registerPrecisionRotationKey("prBridgePrecisionRotZNegative", "rotZNegative", "z", "E")
-registerPrecisionRotationKey("prBridgePrecisionRotYNegative", "rotYNegative", "y", "LEFT")
-registerPrecisionRotationKey("prBridgePrecisionRotYPositive", "rotYPositive", "y", "RIGHT")
-registerPrecisionRotationKey("prBridgePrecisionRotXNegativeNew", "rotXNegative", "x", "UP")
-registerPrecisionRotationKey("prBridgePrecisionRotXPositiveNew", "rotXPositive", "x", "DOWN")
+local function setPrecisionKey(stateKey, axisName, pressed)
+    if not (Gizmo.entity and Gizmo.isPrecisionMode()) then return end
+    Gizmo.precisionKeys[stateKey] = pressed == true
+    if pressed and axisName then
+        Gizmo.precisionLastAxis = axisName
+    elseif axisName and axisName == Gizmo.precisionLastAxis then
+        Gizmo.precisionLastAxis = nil
+    end
+end
 
-RegisterCommand("+kqGizmoRotation" .. resName, function()
-    if not Gizmo.entity then return end
-    Gizmo.toggleMode()
-end, false)
+registerGizmoBinding("confirm", "(pr_bridge) Gizmo confirmar", "RETURN", function() Gizmo.runAction("confirm", "enter") end)
+registerGizmoBinding("cancel", "(pr_bridge) Gizmo cancelar", "BACK", function() Gizmo.runAction("cancel", "backspace") end)
+registerGizmoBinding("mode", "(pr_bridge) Gizmo mover/rotacionar", "R", function() Gizmo.runAction("mode") end)
+registerGizmoBinding("freecamera", "(pr_bridge) Gizmo freecam/foco", "F", function() Gizmo.runAction("freecamera") end)
+registerGizmoBinding("ground", "(pr_bridge) Gizmo alinhar ao chao", "G", function() Gizmo.runAction("ground") end)
+registerGizmoBinding("precision", "(pr_bridge) Gizmo modo de precisao", "TAB", function() Gizmo.runAction("precision") end)
+registerGizmoBinding("space", "(pr_bridge) Gizmo espaco local/global", "L", function() Gizmo.runAction("space") end)
+registerGizmoBinding("precision_speed_up", "(pr_bridge) Gizmo aumentar velocidade precisa", "PAGEUP", function() Gizmo.runAction("precision_speed_up") end)
+registerGizmoBinding("precision_speed_down", "(pr_bridge) Gizmo reduzir velocidade precisa", "PAGEDOWN", function() Gizmo.runAction("precision_speed_down") end)
 
-RegisterCommand("-kqGizmoRotation" .. resName, function() end, false)
-
-RegisterKeyMapping("+kqGizmoRotation" .. resName, "Gizmo move/rotate", "keyboard", "R")
-
-RegisterCommand("+" .. freeCameraCommandName(), function()
-    if not Gizmo.entity or Gizmo.allowFreeCameraToggle == false then return end
-    Gizmo.toggleFreeCameraMode()
-end, false)
-
-RegisterCommand("-" .. freeCameraCommandName(), function() end, false)
-
-RegisterKeyMapping("+" .. freeCameraCommandName(), "Gizmo freecam/focus", "keyboard", "F")
-
-RegisterCommand("+" .. groundCommandName(), function()
-    if not Gizmo.entity then return end
-    Gizmo.placeEntityOnGround()
-end, false)
-
-RegisterCommand("-" .. groundCommandName(), function() end, false)
-
-RegisterKeyMapping("+" .. groundCommandName(), "Gizmo ground", "keyboard", "G")
-
+registerGizmoBinding("move_forward", "(pr_bridge) Gizmo precisao: avancar", "W", function() setPrecisionKey("moveForward", nil, true) end, function() setPrecisionKey("moveForward", nil, false) end)
+registerGizmoBinding("move_backward", "(pr_bridge) Gizmo precisao: recuar", "S", function() setPrecisionKey("moveBackward", nil, true) end, function() setPrecisionKey("moveBackward", nil, false) end)
+registerGizmoBinding("move_left", "(pr_bridge) Gizmo precisao: esquerda", "A", function() setPrecisionKey("moveLeft", nil, true) end, function() setPrecisionKey("moveLeft", nil, false) end)
+registerGizmoBinding("move_right", "(pr_bridge) Gizmo precisao: direita", "D", function() setPrecisionKey("moveRight", nil, true) end, function() setPrecisionKey("moveRight", nil, false) end)
+registerGizmoBinding("rot_z_positive", "(pr_bridge) Gizmo precisao: yaw positivo", "Q", function() setPrecisionKey("rotZPositive", "z", true) end, function() setPrecisionKey("rotZPositive", "z", false) end)
+registerGizmoBinding("rot_z_negative", "(pr_bridge) Gizmo precisao: yaw negativo", "E", function() setPrecisionKey("rotZNegative", "z", true) end, function() setPrecisionKey("rotZNegative", "z", false) end)
+registerGizmoBinding("rot_y_negative", "(pr_bridge) Gizmo precisao: roll negativo", "LEFT", function() setPrecisionKey("rotYNegative", "y", true) end, function() setPrecisionKey("rotYNegative", "y", false) end)
+registerGizmoBinding("rot_y_positive", "(pr_bridge) Gizmo precisao: roll positivo", "RIGHT", function() setPrecisionKey("rotYPositive", "y", true) end, function() setPrecisionKey("rotYPositive", "y", false) end)
+registerGizmoBinding("rot_x_negative", "(pr_bridge) Gizmo precisao: pitch negativo", "UP", function() setPrecisionKey("rotXNegative", "x", true) end, function() setPrecisionKey("rotXNegative", "x", false) end)
+registerGizmoBinding("rot_x_positive", "(pr_bridge) Gizmo precisao: pitch positivo", "DOWN", function() setPrecisionKey("rotXPositive", "x", true) end, function() setPrecisionKey("rotXPositive", "x", false) end)
 Gizmo.config = GizmoConfig
 
 if _G then

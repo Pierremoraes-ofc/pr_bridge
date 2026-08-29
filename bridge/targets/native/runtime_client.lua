@@ -15,6 +15,7 @@ local lastSignature
 local renderNearby = {}
 local renderHasOptions = false
 local markerEntities = {}
+local markerZones = {}
 local backOptions = {
     {
         name = "pr_bridge:target:back",
@@ -28,7 +29,7 @@ local toggleHotkey = GetConvarInt("pr_bridge:target:toggleHotkey", GetConvarInt(
 local leftClick = GetConvarInt("pr_bridge:target:leftClick", GetConvarInt("ox_target:leftClick", 1)) == 1
 local debugEnabled = GetConvarInt("pr_bridge:target:debug", GetConvarInt("ox_target:debug", 0)) == 1
 local defaultDistance = tonumber(GetConvar("pr_bridge:target:distance", "7")) or 7.0
-local drawSpriteLimit = GetConvarInt("pr_bridge:target:drawSprite", GetConvarInt("ox_target:drawSprite", 24))
+local drawSpriteLimit = math.max(0, GetConvarInt("pr_bridge:target:drawSprite", GetConvarInt("ox_target:drawSprite", 24)))
 local markerUpdateInterval = math.max(0, GetConvarInt("pr_bridge:target:markerInterval", 16))
 local markerModelOffsets = {}
 
@@ -205,7 +206,7 @@ local function collectEntityGroups(entity, entityType, model, distance)
     return output
 end
 
-local function collectZones(endCoords, distance, entity)
+local function collectZones(endCoords, distance, entity, markerCoords)
     activeZones = {}
     local output = {}
     local nearby = Zones.getNearby(endCoords)
@@ -224,7 +225,10 @@ local function collectZones(endCoords, distance, entity)
             if #visible.options > 0 then output[#output + 1] = visible end
         end
     end
-    return output, nearby
+    -- Interaction follows the camera ray, but nearby markers must follow the
+    -- player. Using the ray endpoint for both made zone targets disappear
+    -- until the crosshair was already inside the zone.
+    return output, Zones.getNearby(markerCoords or endCoords)
 end
 
 local function signature(groups, zones)
@@ -244,35 +248,12 @@ local function signature(groups, zones)
     return table.concat(values, "|")
 end
 
-local function rgba(hex, opacity, fallback)
-    if type(hex) ~= "string" or not hex:match("^#%x%x%x%x%x%x$") then return fallback end
-    return {
-        tonumber(hex:sub(2, 3), 16),
-        tonumber(hex:sub(4, 5), 16),
-        tonumber(hex:sub(6, 7), 16),
-        math.floor(math.max(0, math.min(1, tonumber(opacity) or 1)) * 255),
-    }
-end
 
 local function drawNearbyZones(nearby)
-    if drawSpriteLimit == 0 then return end
-    local config = GlobalState.pr_bridge_ui_config or {}
-    local targetConfig = config.target or {}
-    local opacity = targetConfig.markerOpacity or 0.69
-    local normal = rgba(targetConfig.markerColor, opacity, { 155, 155, 155, 175 })
-    local hover = rgba(targetConfig.markerHoverColor, 1.0, { 98, 135, 236, 255 })
-    local drawn = 0
+    if not debugEnabled then return end
     for i = 1, #nearby do
         local zone = nearby[i]
-        if zone.drawSprite ~= false and drawn < drawSpriteLimit then
-            drawn = drawn + 1
-            local inside = zone:contains(current.coords)
-            local color = inside and hover or normal
-            DrawMarker(28, zone.coords.x, zone.coords.y, zone.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                0.16, 0.16, 0.16, color[1] or color.r or 155, color[2] or color.g or 155,
-                color[3] or color.b or 155, color[4] or color.a or 175, false, false, 2, false, nil, nil, false)
-        end
-        if debugEnabled and zone.debug then
+        if zone.debug then
             DrawMarker(28, zone.coords.x, zone.coords.y, zone.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                 0.3, 0.3, 0.3, 255, 42, 24, 120, false, false, 2, false, nil, nil, false)
         end
@@ -350,10 +331,14 @@ local function filterVisibleMarkerEntities(entities, targetConfig)
 end
 
 local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
-    local nextEntities = {}
+    if drawSpriteLimit == 0 then
+        markerEntities = {}
+        return
+    end
+
+    local candidates = {}
     local objects = GetGamePool("CObject")
     for i = 1, #objects do
-        if #nextEntities >= drawSpriteLimit then break end
         local entity = objects[i]
         if DoesEntityExist(entity) then
             local model = GetEntityModel(entity)
@@ -364,7 +349,7 @@ local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
                 if distance <= markerDistance then
                     for optionIndex = 1, #options do
                         if markerOptionAllowed(options[optionIndex], entity, distance, coords) then
-                            nextEntities[#nextEntities + 1] = entity
+                            candidates[#candidates + 1] = { entity = entity, distance = distance }
                             break
                         end
                     end
@@ -372,11 +357,64 @@ local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
             end
         end
     end
-    markerEntities = filterVisibleMarkerEntities(nextEntities, targetConfig)
+    table.sort(candidates, function(a, b)
+        if a.distance == b.distance then return a.entity < b.entity end
+        return a.distance < b.distance
+    end)
+
+    -- Check more candidates than can be rendered. A hidden object must not
+    -- consume the quota and suppress another valid target behind it in the
+    -- unordered CObject pool.
+    local scanLimit = math.min(#candidates, math.max(32, drawSpriteLimit * 3))
+    local nextEntities = {}
+    for i = 1, scanLimit do nextEntities[i] = candidates[i].entity end
+
+    local visible = filterVisibleMarkerEntities(nextEntities, targetConfig)
+    markerEntities = {}
+    for i = 1, math.min(#visible, drawSpriteLimit) do
+        markerEntities[i] = visible[i]
+    end
+end
+
+local function refreshMarkerZones(playerCoords, markerDistance)
+    if drawSpriteLimit == 0 then
+        markerZones = {}
+        return
+    end
+
+    local candidates = {}
+    local nearby = Zones.getNearby(playerCoords)
+    for i = 1, #nearby do
+        local zone = nearby[i]
+        if zone.drawSprite ~= false then
+            local distance = #(playerCoords - zone.coords)
+            if distance <= markerDistance or zone:contains(playerCoords) then
+                for optionIndex = 1, #zone.options do
+                    if markerOptionAllowed(zone.options[optionIndex], 0, distance, zone.coords) then
+                        candidates[#candidates + 1] = { zone = zone, distance = distance }
+                        break
+                    end
+                end
+            end
+        end
+    end
+    table.sort(candidates, function(a, b)
+        return a.distance == b.distance and a.zone.id < b.zone.id or a.distance < b.distance
+    end)
+
+    markerZones = {}
+    for i = 1, math.min(#candidates, drawSpriteLimit) do markerZones[i] = candidates[i].zone end
 end
 
 local function sendScreenMarkers(playerCoords, markerDistance)
     local markers = {}
+    local targetedZones = {}
+    if renderHasOptions then
+        for i = 1, #activeZones do
+            targetedZones[activeZones[i].id] = true
+        end
+    end
+
     for i = 1, #markerEntities do
         local entity = markerEntities[i]
         if DoesEntityExist(entity) then
@@ -386,10 +424,24 @@ local function sendScreenMarkers(playerCoords, markerDistance)
                 local visible, screenX, screenY = GetScreenCoordFromWorldCoord(point.x, point.y, point.z)
                 if visible then
                     markers[#markers + 1] = {
-                        id = tostring(entity), x = screenX, y = screenY,
+                        id = ("entity:%s"):format(entity), x = screenX, y = screenY,
                         targeted = entity == current.entity and renderHasOptions,
                     }
                 end
+            end
+        end
+    end
+
+    for i = 1, #markerZones do
+        local zone = markerZones[i]
+        local coords = zone.coords
+        if #(playerCoords - coords) <= markerDistance or zone:contains(playerCoords) then
+            local visible, screenX, screenY = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
+            if visible then
+                markers[#markers + 1] = {
+                    id = ("zone:%s"):format(zone.id), x = screenX, y = screenY,
+                    targeted = targetedZones[zone.id] == true,
+                }
             end
         end
     end
@@ -479,12 +531,14 @@ local function startTargeting()
             local now = GetGameTimer()
             if now >= nextScan then
                 refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
+                refreshMarkerZones(playerCoords, markerDistance)
                 nextScan = now + 500
             end
             sendScreenMarkers(playerCoords, markerDistance)
             Wait(markerUpdateInterval)
         end
         markerEntities = {}
+        markerZones = {}
         targetMessage("target:markers", { markers = {} })
     end)
 
@@ -522,7 +576,7 @@ local function startTargeting()
 
             current.entity, current.coords, current.distance = entity, endCoords, distance
             local groups = collectEntityGroups(entity, entityType, model, distance)
-            local zones, nearby = collectZones(endCoords, distance, entity)
+            local zones, nearby = collectZones(endCoords, distance, entity, playerCoords)
             local nextSignature = signature(groups, zones)
             local hasOptions = #groups > 0 or #zones > 0
             renderNearby = nearby

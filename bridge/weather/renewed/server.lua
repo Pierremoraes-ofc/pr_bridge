@@ -117,6 +117,8 @@ end
 
 function weather.SetWeatherType(index, weatherType, match)
     if normalizeIndex(index) == 1 then
+        local exportOk, result = callExport('SetWeatherType', 1, weatherType)
+        if exportOk and result then return true, result end
         return setCurrentWeather(weatherType, type(match) == 'table' and match.time or nil)
     end
 
@@ -144,10 +146,10 @@ end
 
 function weather.SetEventTime(index, duration, match)
     if normalizeIndex(index) == 1 then
+        local exportOk, result = callExport('SetEventTime', 1, normalizeDuration(duration))
+        if exportOk and result then return true, result end
         local currentWeather = type(match) == 'table' and match.weather or (GlobalState.weather and GlobalState.weather.weather)
-        if currentWeather then
-            return setCurrentWeather(currentWeather, duration)
-        end
+        if currentWeather then return setCurrentWeather(currentWeather, duration) end
     end
 
     local ok, resolvedIndex = resolveIndex(index, match)
@@ -198,11 +200,11 @@ function weather.RemoveWeatherEvent(index, match)
 end
 
 function weather.SetTime(hour, minute)
-    GlobalState.currentTime = {
-        hour = normalizeHour(hour),
-        minute = normalizeMinute(minute),
-    }
+    hour, minute = normalizeHour(hour), normalizeMinute(minute)
+    local ok, result = callExport('SetTime', hour, minute)
+    if ok then return true, result end
 
+    GlobalState.currentTime = { hour = hour, minute = minute }
     return true, GlobalState.currentTime
 end
 
@@ -211,12 +213,19 @@ function weather.SetTimeScale(scale)
     if scale < 2000 then scale = 2000 end
     if scale > 60000 then scale = 60000 end
 
+    local ok, result = callExport('SetTimeScale', scale)
+    if ok then return true, result end
+
     GlobalState.timeScale = scale
     return true, scale
 end
 
 function weather.SetFreezeTime(enabled)
-    GlobalState.freezeTime = boolValue(enabled)
+    enabled = boolValue(enabled)
+    local ok, result = callExport('SetFreezeTime', enabled)
+    if ok then return true, result end
+
+    GlobalState.freezeTime = enabled
     return true, GlobalState.freezeTime
 end
 

@@ -46,6 +46,9 @@ function normalizer.database(database)
     database.Insert=database.Insert or database.insert
     database.Update=database.Update or database.update or database.execute
     database.Transaction=database.Transaction or database.transaction
+    database.Prepare=database.Prepare or database.prepare
+    database.RawExecute=database.RawExecute or database.rawExecute
+    database.Ready=database.Ready or database.ready
     return database
 end
 

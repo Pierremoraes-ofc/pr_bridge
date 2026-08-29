@@ -23,6 +23,10 @@ LocalPlayer = { state = { set = function(self, key, value) self[key] = value end
 local api = assert(loadfile(apiPath))()
 local point = api.addInteraction({ id = "point", coords = vector3(1, 2, 3), options = { { name = "hello", label = "Hello" } } })
 assert(point == "point" and api._records().point.kind == "coords")
+assert(api._records().point.hide == false, "interacao comum nao deve ocultar a NUI")
+
+local hiddenPoint = api.addInteraction({ id = "hidden", coords = vector3(4, 5, 6), hide = true, options = { { name = "secret", label = "Secret" } } })
+assert(hiddenPoint == "hidden" and api._records().hidden.hide == true, "hide individual nao foi preservado")
 
 local localId = api.addLocalEntityInteraction({ entity = 11, options = { label = "Local" } })
 assert(api._records()[localId].entity == 11)

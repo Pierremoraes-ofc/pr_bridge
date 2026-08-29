@@ -25,6 +25,7 @@ return function(Renderer)
         "returnString",
         "clearable",
         "searchable",
+        "searchPlaceholder",
         "maxSelectedValues",
         "minLength",
         "maxLength",

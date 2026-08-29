@@ -222,32 +222,113 @@ local function addAce(restricted, commandName)
     end
 end
 
-local function registerSuggestion(suggestion)
-    registeredSuggestions[#registeredSuggestions + 1] = suggestion
+local function cloneSuggestion(suggestion)
+    local result = {
+        name = suggestion.name,
+        help = suggestion.help,
+        params = {},
+    }
 
-    if shouldSendSuggestions then
-        TriggerClientEvent("chat:addSuggestion", -1, suggestion.name, suggestion.help, suggestion.params)
+    for index = 1, #(suggestion.params or {}) do
+        result.params[index] = cloneParam(suggestion.params[index])
     end
+
+    return result
+end
+
+local function canSeeSuggestion(target, entry)
+    target = tonumber(target)
+    if not target or target <= 0 then return false end
+    local properties = entry.properties or {}
+    if type(properties.suggestionAccess) == 'function' then
+        local ok, allowed = pcall(properties.suggestionAccess, target, entry.commandName, properties)
+        return ok and allowed == true
+    end
+    return canRunCommand(target, entry.commandName, properties)
+end
+
+local function sendSuggestionEntry(target, entry)
+    if not canSeeSuggestion(target, entry) then return false end
+    local suggestion = entry.suggestion
+    TriggerClientEvent("chat:addSuggestion", target, suggestion.name, suggestion.help, suggestion.params)
+    return true
+end
+
+local function sendEntryToOnlinePlayers(entry)
+    local sent = 0
+    for _, player in ipairs(GetPlayers()) do
+        if sendSuggestionEntry(tonumber(player), entry) then sent = sent + 1 end
+    end
+    return sent
+end
+
+local function registerSuggestion(suggestion, commandName, properties)
+    local entry = {
+        suggestion = suggestion,
+        commandName = commandName,
+        properties = properties or {},
+    }
+
+    for index = 1, #registeredSuggestions do
+        if registeredSuggestions[index].suggestion.name == suggestion.name then
+            registeredSuggestions[index] = entry
+            if shouldSendSuggestions then sendEntryToOnlinePlayers(entry) end
+            return
+        end
+    end
+
+    registeredSuggestions[#registeredSuggestions + 1] = entry
+    if shouldSendSuggestions then sendEntryToOnlinePlayers(entry) end
+end
+
+function commandApi.getSuggestions(target)
+    target = tonumber(target)
+    local result = {}
+    for index = 1, #registeredSuggestions do
+        local entry = registeredSuggestions[index]
+        if not target or canSeeSuggestion(target, entry) then
+            result[#result + 1] = cloneSuggestion(entry.suggestion)
+        end
+    end
+    return result
+end
+
+function commandApi.sendSuggestions(target)
+    target = tonumber(target) or -1
+    if target == -1 then
+        local sent = 0
+        for _, player in ipairs(GetPlayers()) do
+            sent = sent + commandApi.sendSuggestions(tonumber(player))
+        end
+        return sent
+    end
+
+    local sent = 0
+    for index = 1, #registeredSuggestions do
+        if sendSuggestionEntry(target, registeredSuggestions[index]) then sent = sent + 1 end
+    end
+    return sent
+end
+
+function commandApi.hasSuggestion(commandName, target)
+    commandName = tostring(commandName or ""):gsub("^/", ""):lower()
+    for index = 1, #registeredSuggestions do
+        local entry = registeredSuggestions[index]
+        if entry.commandName:lower() == commandName then
+            return target == nil or canSeeSuggestion(target, entry)
+        end
+    end
+    return false
 end
 
 SetTimeout(1000, function()
     shouldSendSuggestions = true
-
-    for i = 1, #registeredSuggestions do
-        local suggestion = registeredSuggestions[i]
-        TriggerClientEvent("chat:addSuggestion", -1, suggestion.name, suggestion.help, suggestion.params)
-    end
+    commandApi.sendSuggestions(-1)
 end)
 
 AddEventHandler("playerJoining", function()
-    local source = source
-
-    for i = 1, #registeredSuggestions do
-        local suggestion = registeredSuggestions[i]
-        TriggerClientEvent("chat:addSuggestion", source, suggestion.name, suggestion.help, suggestion.params)
-    end
+    commandApi.sendSuggestions(source)
 end)
-
 local function createCommand(commandName, properties, cb)
     if type(commandName) ~= "string" or commandName == "" then return false, "missing_name" end
     if type(properties) == "function" and cb == nil then
@@ -288,7 +369,7 @@ local function createCommand(commandName, properties, cb)
     end, registerRestricted)
 
     addAce(restricted, commandName)
-    registerSuggestion(buildSuggestion(commandName, properties))
+    registerSuggestion(buildSuggestion(commandName, properties), commandName, properties)
 
     return true
 end
@@ -316,3 +397,6 @@ return setmetatable(commandApi, {
         return commandApi.add(commandName, properties, cb)
     end,
 })
+
+
+

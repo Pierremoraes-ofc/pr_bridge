@@ -29,6 +29,12 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
     alias("getPlayerMetadata", "GetPlayerMetadata")
     alias("SetPlayerMetadata", "setPlayerMetadata")
     alias("setPlayerMetadata", "SetPlayerMetadata")
+    alias("GetPlayerStatus", "getPlayerStatus")
+    alias("getPlayerStatus", "GetPlayerStatus")
+    alias("SetPlayerStatus", "setPlayerStatus")
+    alias("setPlayerStatus", "SetPlayerStatus")
+    alias("AddPlayerStatus", "addPlayerStatus")
+    alias("addPlayerStatus", "AddPlayerStatus")
     alias("GetPlayerAccountBalance", "getPlayerMoney", "GetAccountBalance")
     alias("AddPlayerAccountBalance", "addPlayerMoney", "AddAccountBalance")
     alias("RemovePlayerAccountBalance", "removePlayerMoney", "RemoveAccountBalance")
@@ -40,6 +46,28 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
 
     if context == "server" then
         framework.GetPlayerData = framework.GetPlayerData or framework.GetPlayer
+        if not framework.GetPlayerStatus then
+            function framework.GetPlayerStatus(source, status)
+                return framework.GetPlayerMetadata and framework.GetPlayerMetadata(source, status)
+            end
+        end
+        if not framework.SetPlayerStatus then
+            function framework.SetPlayerStatus(source, status, value)
+                if not framework.SetPlayerMetadata then return false, "status_unavailable" end
+                local result = framework.SetPlayerMetadata(source, status, value)
+                return result ~= false
+            end
+        end
+        if not framework.AddPlayerStatus then
+            function framework.AddPlayerStatus(source, status, amount)
+                local current = tonumber(framework.GetPlayerStatus(source, status)) or 0
+                local value = math.max(0, math.min(100, current + (tonumber(amount) or 0)))
+                return framework.SetPlayerStatus(source, status, value)
+            end
+        end
+        framework.getPlayerStatus = framework.getPlayerStatus or framework.GetPlayerStatus
+        framework.setPlayerStatus = framework.setPlayerStatus or framework.SetPlayerStatus
+        framework.addPlayerStatus = framework.addPlayerStatus or framework.AddPlayerStatus
         if not framework.GetFrameworkJobs then
             function framework.GetFrameworkJobs()
                 if activeFramework == "qb" then local core=exports["qb-core"]:GetCoreObject(); return core.Shared and core.Shared.Jobs or {} end

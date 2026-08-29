@@ -1,4 +1,5 @@
 local commandApi = {}
+local registeredSuggestions = {}
 
 local function debug(level, message)
     local debugApi = Bridge and Bridge.debug
@@ -100,7 +101,7 @@ local function parseParams(args, raw, definitions)
         parsed[i] = definition
 
         if definition.name then
-            parsed[definition.name] = definition
+            parsed[definition.name] = value
             parsed.values[definition.name] = value
         end
     end
@@ -108,33 +109,56 @@ local function parseParams(args, raw, definitions)
     return parsed
 end
 
-local function addSuggestion(commandName, properties)
+local function buildSuggestion(commandName, properties)
     properties = properties or {}
-
     local params = {}
     local definitions = properties.params or {}
 
-    for i = 1, #definitions do
-        local param = definitions[i]
+    for index = 1, #definitions do
+        local param = definitions[index]
         local help = param.help
-
         if param.type then
             help = help and ("%s (type: %s)"):format(help, param.type) or ("type: %s"):format(param.type)
         end
-
         if param.optional then
             help = help and ("%s | optional"):format(help) or "optional"
         end
-
-        params[i] = {
-            name = param.name or tostring(i),
-            help = help,
-        }
+        params[index] = { name = param.name or tostring(index), help = help }
     end
 
-    TriggerEvent("chat:addSuggestion", "/" .. commandName, properties.help, params)
+    return { name = "/" .. commandName, help = properties.help, params = params }
 end
 
+local function addSuggestion(commandName, properties)
+    local suggestion = buildSuggestion(commandName, properties)
+    registeredSuggestions[suggestion.name:lower()] = suggestion
+    TriggerEvent("chat:addSuggestion", suggestion.name, suggestion.help, suggestion.params)
+end
+
+function commandApi.getSuggestions()
+    local result = {}
+    for _, suggestion in pairs(registeredSuggestions) do
+        local item = { name = suggestion.name, help = suggestion.help, params = {} }
+        for index = 1, #(suggestion.params or {}) do item.params[index] = cloneParam(suggestion.params[index]) end
+        result[#result + 1] = item
+    end
+    table.sort(result, function(a, b) return a.name < b.name end)
+    return result
+end
+
+function commandApi.sendSuggestions()
+    local suggestions = commandApi.getSuggestions()
+    for index = 1, #suggestions do
+        local suggestion = suggestions[index]
+        TriggerEvent("chat:addSuggestion", suggestion.name, suggestion.help, suggestion.params)
+    end
+    return #suggestions
+end
+
+function commandApi.hasSuggestion(commandName)
+    local name = "/" .. tostring(commandName or ""):gsub("^/", ""):lower()
+    return registeredSuggestions[name] ~= nil
+end
 local function createCommand(commandName, properties, cb)
     if type(commandName) ~= "string" or commandName == "" then return false, "missing_name" end
     if type(properties) == "function" and cb == nil then
@@ -202,3 +226,5 @@ return setmetatable(commandApi, {
         return commandApi.add(commandName, properties, cb)
     end,
 })
+
+

@@ -11,6 +11,9 @@
   import RadialMenu from './modules/RadialMenu.svelte'
   import TargetEye from './modules/TargetEye.svelte'
   import WorldInteract from './modules/WorldInteract.svelte'
+  import SkillCheck from './modules/SkillCheck.svelte'
+  import BubbleNotify from './modules/BubbleNotify.svelte'
+  import GizmoHud from './modules/GizmoHud.svelte'
 
   let context: any = null
   let alert: any = null
@@ -21,6 +24,9 @@
   let radial: any = null
   let target: any = { visible: false, groups: [], zones: [], markers: [] }
   let interact: any = { entries: [] }
+  let skillcheck: any = null
+  let bubbles: any[] = []
+  let gizmo: any = null
   let visualConfig: any = {}
   let notifySequence = 0
 
@@ -91,6 +97,11 @@
       }),
       onNuiMessage('interact:set', (data) => (interact = { entries: Array.isArray(data?.entries) ? data.entries : [], key: String(data?.key || 'E') })),
       onNuiMessage('interact:clear', () => (interact = { entries: [] })),
+      onNuiMessage('skillcheck:open', (data) => (skillcheck = data)),
+      onNuiMessage('skillcheck:close', () => (skillcheck = null)),
+      onNuiMessage('bubble:sync', (data) => (bubbles = Array.isArray(data?.items) ? data.items : [])),
+      onNuiMessage('gizmo:update', (data) => (gizmo = data)),
+      onNuiMessage('gizmo:close', () => (gizmo = null)),
     ]
 
     window.parent.postMessage({ action: 'ui:frame-ready' }, '*')
@@ -144,6 +155,9 @@
   {#if radial}<RadialMenu data={radial} />{/if}
   <TargetEye data={target} eyeIcon={visualConfig?.target?.eyeIcon || 'fa-solid fa-eye'} visual={visualConfig?.target || {}} />
   <WorldInteract data={interact} visual={visualConfig?.interact || {}} />
+  {#if skillcheck}<SkillCheck data={skillcheck} />{/if}
+  <BubbleNotify items={bubbles} />
+  {#if gizmo}<GizmoHud data={gizmo} />{/if}
 </div>
 
 <style>

@@ -129,6 +129,80 @@ function database.single(query, parameters, cb)
     return rows and rows[1] or nil
 end
 
+local function preparedReadResult(rows)
+    if type(rows) ~= "table" or #rows ~= 1 or type(rows[1]) ~= "table" then
+        return rows
+    end
+
+    local count, value = 0, nil
+    for _, current in pairs(rows[1]) do
+        count = count + 1
+        value = current
+        if count > 1 then return rows end
+    end
+
+    return value
+end
+
+local function runParameterSets(parameters, executeOne)
+    parameters = parameters or {}
+
+    if type(parameters[1]) ~= "table" then
+        return executeOne(parameters)
+    end
+
+    local results = {}
+    for i = 1, #parameters do
+        results[i] = executeOne(parameters[i])
+    end
+    return results
+end
+
+-- Emulates oxmysql prepare semantics for drivers without a native prepare API.
+function database.prepare(query, parameters, cb)
+    local function execute()
+        return runParameterSets(parameters, function(values)
+            if isReadQuery(query) then
+                return preparedReadResult(database.query(query, values))
+            end
+            return database.execute(query, values)
+        end)
+    end
+
+    if type(cb) == "function" then
+        CreateThread(function() cb(execute()) end)
+        return
+    end
+
+    return execute()
+end
+
+-- Preserves detailed affectedRows payloads for single and batch writes.
+function database.rawExecute(query, parameters, cb)
+    local function execute()
+        return runParameterSets(parameters, function(values)
+            local result = database.execute(query, values)
+            if type(result) == "number" then return { affectedRows = result } end
+            return result
+        end)
+    end
+
+    if type(cb) == "function" then
+        CreateThread(function() cb(execute()) end)
+        return
+    end
+
+    return execute()
+end
+
+function database.ready(cb)
+    if type(cb) ~= "function" then return database.isReady() end
+
+    CreateThread(function()
+        while not database.isReady() do Wait(50) end
+        cb()
+    end)
+end
 function database.transaction(_, _, cb)
     if Debug then
         Debug("WARNING", "ghmattimysql transaction is not implemented in pr_bridge.")

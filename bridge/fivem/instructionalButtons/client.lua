@@ -100,8 +100,9 @@ function instructionalButtons.create(buttons, options)
     end
 
     function instance:draw()
-        self:refresh()
+        if not self.handle or not HasScaleformMovieLoaded(self.handle) then return false end
         DrawScaleformMovieFullscreen(self.handle, 255, 255, 255, 255, self.drawMode)
+        return true
     end
 
     function instance:dispose()
@@ -129,6 +130,13 @@ function instructionalButtons.show(buttons, options)
     local instance = instructionalButtons.create(buttons, options)
     if not instance then return false, nil end
 
+    if instance.clickable then
+        -- O cursor do Scaleform não recebe cliques enquanto uma NUI Chromium
+        -- possui foco. A função é modal e libera esse foco durante a seleção.
+        SetNuiFocus(false, false)
+        SetNuiFocusKeepInput(false)
+    end
+
     local timeout = tonumber(options.duration or options.timeout) or 5000
     local expires = GetGameTimer() + timeout
     local pressedButton
@@ -149,7 +157,15 @@ function instructionalButtons.show(buttons, options)
             local button = instance.buttons[i]
             local controlId = tonumber(button.controlId)
 
-            if controlId and IsControlJustReleased(button.inputGroup or 2, controlId) then
+            local inputGroup = button.inputGroup or 2
+            local released = controlId and (
+                IsControlJustReleased(inputGroup, controlId)
+                or IsDisabledControlJustReleased(inputGroup, controlId)
+                or (inputGroup ~= 0 and IsControlJustReleased(0, controlId))
+                or (inputGroup ~= 0 and IsDisabledControlJustReleased(0, controlId))
+            )
+
+            if released then
                 pressedButton = button
                 pressedControl = controlId
                 break
@@ -160,6 +176,10 @@ function instructionalButtons.show(buttons, options)
     end
 
     instance:dispose()
+    if instance.clickable then
+        SetNuiFocus(false, false)
+        SetNuiFocusKeepInput(false)
+    end
 
     return pressedButton ~= nil, pressedButton, pressedControl
 end

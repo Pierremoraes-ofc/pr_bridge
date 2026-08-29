@@ -129,6 +129,13 @@
         forward(payload)
       })
 
+      window.addEventListener('keydown', (event) => {
+        forward({
+          action: 'ui:key',
+          data: { key: event.key, code: event.code, repeat: event.repeat === true },
+        })
+      }, true)
+
       void loadInterface('svelte')
     </script>
   </body>

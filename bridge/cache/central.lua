@@ -11,6 +11,7 @@ local replicatedKeys = {
     dead = true,
     entityCount = true,
     playerCount = true,
+    seatbelt = true,
 }
 
 local function shallowRecord(record)
@@ -62,12 +63,38 @@ return function(cache)
             end
             return result
         end
+        cache.setShared = cache.set
+
+        AddEventHandler("pr_bridge:cache:publish", function(key, value, ttl)
+            if replicatedKeys[key] then
+                cache.set(key, value, ttl)
+            end
+        end)
+
 
         return cache
     end
 
+    local baseSet = cache.set
+
+    function cache.setShared(first, second, third, fourth)
+        local key, value, ttl
+        if first == cache then
+            key, value, ttl = second, third, fourth
+        else
+            key, value, ttl = first, second, third
+        end
+        assert(replicatedKeys[key], ("cache key '%s' is not shared"):format(tostring(key)))
+
+        local changed, stored = baseSet(key, value, ttl)
+        if changed and GetResourceState("pr_bridge") == "started" then
+            TriggerEvent("pr_bridge:cache:publish", key, stored, ttl)
+        end
+        return changed, stored
+    end
+
     AddEventHandler("pr_bridge:cache:update", function(key, value)
-        if replicatedKeys[key] then cache.set(key, value) end
+        if replicatedKeys[key] then baseSet(key, value) end
     end)
 
     CreateThread(function()

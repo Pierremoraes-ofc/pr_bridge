@@ -22,6 +22,7 @@ local defaults = {
         registerMenu = "right",
         notify = "top-right",
         progressBar = "bottom-center",
+        skillCheck = "bottom-center",
         showTextUI = "right-center",
     },
     target = {
@@ -69,6 +70,12 @@ local defaults = {
         showUI = true,
         disableOnDeath = true, disableOnNuiFocus = true, disableInVehicle = true, disableWhenCuffed = true,
     },
+    bubble = {
+        background = "#ffffff", backgroundOpacity = 0.96,
+        border = "#222222", borderOpacity = 0.92, text = "#161616",
+        minWidth = 100.0, maxWidth = 300.0, borderWidth = 2.0,
+        radius = 18.0, tailSize = 16.0, fontSize = 11.0, titleSize = 12.0,
+    },
 }
 
 local allowedInteractStyles = {
@@ -89,6 +96,7 @@ local allowedLayout = {
         ["bottom-left"] = true, ["bottom-center"] = true, ["bottom-right"] = true,
     },
     progressBar = { ["top-center"] = true, ["bottom-center"] = true },
+    skillCheck = { ["top-center"] = true, ["bottom-center"] = true },
     showTextUI = {
         ["left-center"] = true, ["right-center"] = true,
         ["top-center"] = true, ["bottom-center"] = true,
@@ -197,6 +205,20 @@ local function sanitize(input)
         output.interact[key] = interact[key] ~= false
     end
 
+    local bubble = type(input.bubble) == "table" and input.bubble or {}
+    local bubbleRanges = {
+        backgroundOpacity = { 0, 1 }, borderOpacity = { 0, 1 }, minWidth = { 80, 400 },
+        maxWidth = { 140, 800 }, borderWidth = { 0, 8 }, radius = { 0, 60 },
+        tailSize = { 8, 40 }, fontSize = { 8, 28 }, titleSize = { 8, 32 },
+    }
+    for key, range in pairs(bubbleRanges) do
+        local value = tonumber(bubble[key]) or defaults.bubble[key]
+        output.bubble[key] = math.max(range[1], math.min(range[2], value))
+    end
+    output.bubble.maxWidth = math.max(output.bubble.minWidth, output.bubble.maxWidth)
+    for _, key in ipairs({ "background", "border", "text" }) do
+        output.bubble[key] = validColor(bubble[key]) and bubble[key]:lower() or defaults.bubble[key]
+    end
 
     return output
 end

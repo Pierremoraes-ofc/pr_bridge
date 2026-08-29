@@ -1,6 +1,7 @@
 ---Context menu module. Receives Renderer via create(renderer).
 ---@param Renderer table
 return function(Renderer)
+    local contextResource = GetCurrentResourceName()
     ---@class ContextOption
     ---@field title string
     ---@field description? string
@@ -23,6 +24,7 @@ return function(Renderer)
     ---@field id string
     ---@field title string
     ---@field menu? string
+    ---@field menuResource? string Resource that owns the parent context
     ---@field canClose? boolean
     ---@field searchPlaceholder? string
     ---@field searchEmpty? string
@@ -198,6 +200,7 @@ return function(Renderer)
                 id = data.id,
                 title = data.title or data.id,
                 menu = data.menu,
+                menuResource = data.menuResource or data.parentResource,
                 position = data.position,
                 canClose = data.canClose ~= false,
                 searchPlaceholder = data.searchPlaceholder,
@@ -248,6 +251,14 @@ return function(Renderer)
             searchEmpty = ctx.searchEmpty,
             options = ctx.options,
         })
+
+        -- Combos com modificadores (ex.: ALT+7) podem entregar o foco antes
+        -- de o frontend terminar de exibir o contexto. Reafirma o foco sem
+        -- incrementar o contador e somente se este contexto ainda estiver aberto.
+        Renderer.ensureFocus(false)
+        SetTimeout(75, function()
+            if openId == id then Renderer.ensureFocus(false) end
+        end)
 
         return true
     end
@@ -364,9 +375,19 @@ return function(Renderer)
             return
         end
 
-        if type(current.menu) == "string" and registered[current.menu] then
-            openContext(current.menu, false)
-            return
+        if type(current.menu) == "string" then
+            local parentResource = current.menuResource
+            if type(parentResource) == "string" and parentResource ~= "" and parentResource ~= contextResource then
+                local parentId = current.menu
+                Context.HideContext(false)
+                TriggerEvent("pr_bridge:ui:context:openExternal", parentResource, parentId, contextResource)
+                return
+            end
+
+            if registered[current.menu] then
+                openContext(current.menu, false)
+                return
+            end
         end
 
         Context.HideContext(true)

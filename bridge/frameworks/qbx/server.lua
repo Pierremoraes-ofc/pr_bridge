@@ -83,6 +83,35 @@ function framework.setPlayerMetadata(source, meta, value)
     Player.Functions.SetMetaData(meta, value)
 end
 
+-- Status values are owned by qbx_core's server cache. These methods avoid a
+-- metadata read/write race and keep cache, metadata and HUD synchronized.
+function framework.GetPlayerStatus(source, status)
+    local ok, value = pcall(function()
+        return qbx_core:GetStatus(tonumber(source), status)
+    end)
+    if not ok then return nil, value end
+    return value
+end
+
+function framework.SetPlayerStatus(source, status, value)
+    local ok, result = pcall(function()
+        return qbx_core:SetStatus(tonumber(source), status, value)
+    end)
+    if not ok then return false, result end
+    return result ~= false
+end
+
+function framework.AddPlayerStatus(source, status, amount)
+    local ok, result = pcall(function()
+        return qbx_core:AddStatus(tonumber(source), status, amount)
+    end)
+    if not ok then return false, result end
+    return result ~= false
+end
+
+framework.getPlayerStatus = framework.GetPlayerStatus
+framework.setPlayerStatus = framework.SetPlayerStatus
+framework.addPlayerStatus = framework.AddPlayerStatus
 function framework.addSocietyBalance(job, amount)
     if not exports['Renewed-Banking'] then return end
     exports['Renewed-Banking']:addAccountMoney(job, amount)

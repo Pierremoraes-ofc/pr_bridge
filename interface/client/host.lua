@@ -6,13 +6,9 @@ local textuiDebugEnabled = false
 
 local function getUiInterface()
     local value = Config and Config.ui_interface or "svelte"
-
-    if type(value) ~= "string" then
-        return "svelte"
-    end
+    if type(value) ~= "string" then return "svelte" end
 
     value = value:lower()
-
     if value ~= "svelte" and value ~= "vue" then
         Bridge.debug.warn(("[pr_interface] ui_interface '%s' invalida, usando svelte."):format(value))
         return "svelte"
@@ -24,30 +20,30 @@ end
 local function applyUiInterface()
     SendNUIMessage({
         action = "ui:load",
-        data = {
-            interface = getUiInterface(),
-        },
+        data = { interface = getUiInterface() },
     })
 end
 
 local function applyGlobalConfig(config)
     if type(config) ~= "table" then return end
-    SendNUIMessage({
-        action = "theme:apply",
-        data = config,
-    })
+    SendNUIMessage({ action = "theme:apply", data = config })
 end
 
 local function payloadOwner(data)
     if type(data) == "table" then
         return data.__resource or data.resource or data.owner or ownerResource
     end
-
     return ownerResource
 end
 
 local function setFocus(keepInput)
     focusCount = focusCount + 1
+    SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(keepInput == true)
+end
+
+local function ensureFocus(keepInput)
+    if focusCount <= 0 then focusCount = 1 end
     SetNuiFocus(true, true)
     SetNuiFocusKeepInput(keepInput == true)
 end
@@ -68,34 +64,43 @@ local function resetFocus()
 end
 
 AddEventHandler("pr_bridge:ui:claim", function(resourceName)
-    if type(resourceName) == "string" and resourceName ~= "" then
-        ownerResource = resourceName
-    end
+    if type(resourceName) == "string" and resourceName ~= "" then ownerResource = resourceName end
 end)
 
 AddEventHandler("pr_bridge:ui:send", function(action, data)
-    SendNUIMessage({
-        action = action,
-        data = data,
-    })
+    SendNUIMessage({ action = action, data = data })
 end)
 
 AddEventHandler("pr_bridge:ui:setFocus", function(keepInput)
     setFocus(keepInput == true)
 end)
 
-AddEventHandler("pr_bridge:ui:clearFocus", function()
-    clearFocus()
+AddEventHandler("pr_bridge:ui:ensureFocus", function(keepInput)
+    ensureFocus(keepInput == true)
 end)
 
-AddEventHandler("pr_bridge:ui:resetFocus", function()
-    resetFocus()
+AddEventHandler("pr_bridge:ui:setKeyboardFocus", function()
+    focusCount = focusCount + 1
+    SetNuiFocus(true, false)
+    SetNuiFocusKeepInput(false)
 end)
 
+AddEventHandler("pr_bridge:ui:clearKeyboardFocus", function()
+    focusCount = math.max(0, focusCount - 1)
+    if focusCount > 0 then
+        SetNuiFocus(true, true)
+        SetNuiFocusKeepInput(false)
+        return
+    end
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end)
+
+AddEventHandler("pr_bridge:ui:clearFocus", clearFocus)
+AddEventHandler("pr_bridge:ui:resetFocus", resetFocus)
 AddEventHandler("pr_bridge:ui:hasFocus", function(requestId)
     TriggerEvent("pr_bridge:ui:hasFocus:result", requestId, focusCount > 0)
 end)
-
 AddEventHandler("pr_bridge:ui:textuiDebug", function(enabled)
     textuiDebugEnabled = enabled == true
     print(("[pr_bridge:textui-debug] enabled=%s"):format(tostring(textuiDebugEnabled)))
@@ -104,7 +109,6 @@ end)
 RegisterNUICallback("debug:textui", function(data, cb)
     cb(1)
     if not textuiDebugEnabled then return end
-
     local ok, payload = pcall(json.encode, data or {})
     print(("[pr_bridge:textui-debug] %s"):format(ok and payload or tostring(data)))
 end)
@@ -116,52 +120,41 @@ RegisterNUICallback("context:select", function(data, cb)
         TriggerEvent("pr_bridge:ui:context:select", resource, data.id, tonumber(data.index))
     end
 end)
-
 RegisterNUICallback("context:close", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:context:close", resource)
-    end
+    if resource then TriggerEvent("pr_bridge:ui:context:close", resource) end
 end)
-
 RegisterNUICallback("context:back", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:context:back", resource)
-    end
+    if resource then TriggerEvent("pr_bridge:ui:context:back", resource) end
 end)
-
 RegisterNUICallback("alert:result", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:alert:result", resource, data and data.result or "cancel")
-    end
+    if resource then TriggerEvent("pr_bridge:ui:alert:result", resource, data and data.result or "cancel") end
 end)
-
 RegisterNUICallback("alert:close", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:alert:close", resource)
-    end
+    if resource then TriggerEvent("pr_bridge:ui:alert:close", resource) end
 end)
-
 RegisterNUICallback("input:submit", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:input:submit", resource, data and data.values or nil)
-    end
+    if resource then TriggerEvent("pr_bridge:ui:input:submit", resource, data and data.values or nil) end
 end)
-
 RegisterNUICallback("input:close", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
-    if resource then
-        TriggerEvent("pr_bridge:ui:input:close", resource)
+    if resource then TriggerEvent("pr_bridge:ui:input:close", resource) end
+end)
+RegisterNUICallback("skillcheck:result", function(data, cb)
+    cb(1)
+    local resource = payloadOwner(data)
+    if resource and type(data) == "table" then
+        TriggerEvent("pr_bridge:ui:skillcheck:result", resource, data.token, data.result == true, data.reason)
     end
 end)
 
@@ -215,7 +208,10 @@ AddEventHandler("pr_bridge:radial:clear", function()
     radial.items = {}; radial.menus = {}; hideRadial()
 end)
 AddEventHandler("pr_bridge:radial:hide", hideRadial)
-AddEventHandler("pr_bridge:radial:disable", function(state) radial.disabled = state; if state then hideRadial() end end)
+AddEventHandler("pr_bridge:radial:disable", function(state)
+    radial.disabled = state == true
+    if radial.disabled then hideRadial() end
+end)
 
 local function toggleRadial()
     if radial.open then hideRadial() else showRadial(GetCurrentResourceName(), nil) end
@@ -228,11 +224,8 @@ local radialKeybind, radialKeybindError = Bridge.addKeybind({
     description = "Menu radial",
     defaultMapper = "keyboard",
     defaultKey = GetConvar("pr_bridge:radial:defaultKey", "F1"),
-    onPressed = function()
-        toggleRadial()
-    end,
+    onPressed = toggleRadial,
 })
-
 if not radialKeybind then
     print(("^1[pr_bridge:radial] Falha ao registrar keybind: %s^0"):format(tostring(radialKeybindError)))
 else
@@ -257,25 +250,23 @@ RegisterNUICallback("radial:select", function(data, cb)
         showRadial(itemResource, item.menu)
         return
     end
+
     local selectedMenuId = current.menuId
     local selectedItemId = item.id
     local selectedIndex = tonumber(data.index)
-
     if item.keepOpen then
         TriggerEvent("pr_bridge:radial:select", itemResource, selectedMenuId, selectedItemId, selectedIndex)
         return
     end
 
-    -- Libera o foco do radial antes do callback abrir outra interface.
-    -- Assim o fechamento do radial nao remove o foco adquirido pelo registerContext.
     hideRadial()
     SetTimeout(280, function()
         TriggerEvent("pr_bridge:radial:select", itemResource, selectedMenuId, selectedItemId, selectedIndex)
     end)
 end)
+
 CreateThread(function()
     applyUiInterface()
-
     while type(GlobalState.pr_bridge_ui_config) ~= "table" do Wait(100) end
     applyGlobalConfig(GlobalState.pr_bridge_ui_config)
 end)
@@ -288,6 +279,8 @@ local NativeUI = PRCore.load("@pr_bridge/interface/client/ui", _ENV)
 
 RegisterNUICallback("ui:ready", function(_, cb)
     cb(1)
+    applyUiInterface()
+    applyGlobalConfig(GlobalState.pr_bridge_ui_config)
     if NativeUI and NativeUI.modules and NativeUI.modules.textui then
         NativeUI.modules.textui.Refresh()
     end

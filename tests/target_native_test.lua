@@ -30,6 +30,23 @@ assert(not poly:contains(vector3(5, 2, 5)))
 assert(not poly:contains(vector3(2, 2, 8)))
 assert(#Zones.getNearby(vector3(2, 2, 5)) >= 2)
 
+local multiZones = {}
+for i = 1, 4 do
+    multiZones[i] = Zones.box({
+        coords = vector3(100 + i, 100, 0),
+        size = vector3(1, 1, 2),
+        options = { { name = ("multi_%s"):format(i), label = "Multi" } },
+    })
+end
+local nearbyMulti = Zones.getNearby(vector3(102, 100, 0))
+local foundMulti = 0
+for i = 1, #nearbyMulti do
+    for j = 1, #multiZones do
+        if nearbyMulti[i].id == multiZones[j].id then foundMulti = foundMulti + 1 end
+    end
+end
+assert(foundMulti == 4, "spatial index must preserve multiple nearby target zones")
+
 local replaced = Zones.sphere({ name = "sphere", coords = vector3(30, 30, 0), radius = 1 })
 assert(replaced.id ~= sphere.id and not Zones.exists(sphere.id) and Zones.exists("sphere"))
 

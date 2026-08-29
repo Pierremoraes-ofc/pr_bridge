@@ -22,7 +22,24 @@ local function translateKey(phrase, subs, ...)
 
     local result = phrase
     for key, value in pairs(subs) do
-        result = result:gsub("%%{" .. key .. "}", tostring(value))
+        local token = "%{" .. tostring(key) .. "}"
+        local replacement = tostring(value)
+        local parts = {}
+        local cursor = 1
+
+        while true do
+            local first, last = result:find(token, cursor, true)
+            if not first then break end
+
+            parts[#parts + 1] = result:sub(cursor, first - 1)
+            parts[#parts + 1] = replacement
+            cursor = last + 1
+        end
+
+        if #parts > 0 then
+            parts[#parts + 1] = result:sub(cursor)
+            result = table.concat(parts)
+        end
     end
 
     return result

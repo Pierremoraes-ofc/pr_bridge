@@ -28,6 +28,9 @@
 ---@field resource string?
 ---@field context string
 ---@field isReady fun(): boolean
+---@field ready fun(cb?: fun()): boolean?
+---@field prepare fun(query: string, parameters?: table, cb?: fun(result: any)): any
+---@field rawExecute fun(query: string, parameters?: table, cb?: fun(result: any)): any
 ---@field GetResourceName fun(): string?
 ---@field query fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
 ---@field read fun(query: string, parameters?: table, cb?: fun(result: table|nil)): table|nil
@@ -403,6 +406,33 @@
 ---@field getVehicleProperties fun(vehicle: number): VehicleProperties?
 ---@field setVehicleProperties fun(vehicle: number, props: VehicleProperties, fixVehicle?: boolean): boolean
 
+---@class PROxCompatibility
+---@field bridge 'pr_bridge'
+---@field phase number
+---@field target PRTarget
+---@field ox_target PRTarget
+---@field alertDialog fun(data: table): string?
+---@field setClipboard fun(value: string): boolean
+---@field registerContext fun(data: table): any
+---@field showContext fun(id: string): any
+---@field hideContext fun(onExit?: boolean): any
+---@field inputDialog fun(heading: string, rows: table, options?: table): table?
+---@field registerMenu fun(data: table, cb: function): any
+---@field showMenu fun(id: string, startIndex?: number): any
+---@field hideMenu fun(onExit?: boolean): any
+---@field notify fun(data: NotificationData): any
+---@field progressBar fun(data: table): boolean
+---@field progressCircle fun(data: table): boolean
+---@field progressActive fun(): boolean
+---@field cancelProgress fun(): any
+---@field addRadialItem fun(items: table, parentMenuId?: string): any
+---@field removeRadialItem fun(id: string, parentMenuId?: string): any
+---@field registerRadial fun(data: table): boolean
+---@field skillCheck fun(difficulties: table|string, keys?: table|string, options?: table): boolean
+---@field cancelSkillCheck fun(): boolean
+---@field showTextUI fun(text: string, options?: table): boolean
+---@field hideTextUI fun(): boolean
+---@field isTextUIOpen fun(): boolean
 ---@class PRLib
 ---@field debug PRDebug
 ---@field callback PRCallback
@@ -413,6 +443,9 @@
 ---@field inventories PRInventory
 ---@field target PRTarget
 ---@field targets PRTarget
+---@field ox PROxCompatibility
+---@field ox_lib PROxCompatibility
+---@field ox_target PRTarget
 ---@field addKeybind fun(data: PRKeybindData): PRKeybind|false, string?
 ---@field keybind fun(data: PRKeybindData): PRKeybind|false, string?
 ---@field keybinds PRAddKeybind
@@ -461,3 +494,18 @@
 ---@field createReplaceTextureInteractive fun(options?: table): table?, table|string?
 ---@field entityRenderTarget fun(entity: number, options?: table): table
 ---@field textureReplacement fun(textureDict: string, textureName: string, options?: table): table
+
+---@alias PRExportCallback fun(...: any): ...any
+---@alias PRExportMap table<string, PRExportCallback>
+
+---Registers one or many exports in the resource/context that loaded pr_bridge.
+---@param name string|PRExportCallback|PRExportMap
+---@param callback? PRExportCallback|string
+---@return boolean success
+---@return string|string[]|nil result
+---@return string|nil failedName
+function pr_lib.addExports(name, callback) end
+
+pr_lib.addExport = pr_lib.addExports
+pr_lib.AddExport = pr_lib.addExports
+pr_lib.AddExports = pr_lib.addExports

@@ -6,6 +6,11 @@ function Renderer.setFocus(keepInput)
     TriggerEvent("pr_bridge:ui:setFocus", keepInput == true)
 end
 
+function Renderer.ensureFocus(keepInput)
+    TriggerEvent("pr_bridge:ui:claim", resourceName)
+    TriggerEvent("pr_bridge:ui:ensureFocus", keepInput == true)
+end
+
 function Renderer.clearFocus()
     TriggerEvent("pr_bridge:ui:clearFocus")
 end

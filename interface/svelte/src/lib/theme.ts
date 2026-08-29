@@ -5,6 +5,7 @@ export type VisualConfig = {
   layout?: Record<string, string>
   target?: Record<string, string | number | boolean>
   interact?: Record<string, string | number | boolean>
+  bubble?: Record<string, string | number>
 }
 
 const defaults: VisualConfig = {
@@ -15,7 +16,7 @@ const defaults: VisualConfig = {
   },
   layout: {
     registerContext: 'right', metadata: 'right', alertDialog: 'center', inputDialog: 'center',
-    registerMenu: 'right', notify: 'top-right', progressBar: 'bottom-center', showTextUI: 'right-center',
+    registerMenu: 'right', notify: 'top-right', progressBar: 'bottom-center', skillCheck: 'bottom-center', showTextUI: 'right-center',
   },
   target: {
     x: 50, y: 50, optionsY: 48.4, offsetX: 24, width: 200, height: 29.33,
@@ -34,6 +35,11 @@ const defaults: VisualConfig = {
     wallDetection: true, wallRayFlags: 277,
     disableOnDeath: true, disableOnNuiFocus: true, disableInVehicle: true, disableWhenCuffed: true,
   },
+  bubble: {
+    background: '#ffffff', backgroundOpacity: 0.96, border: '#222222', borderOpacity: 0.92,
+    text: '#161616', minWidth: 100, maxWidth: 300, borderWidth: 2, radius: 18,
+    tailSize: 16, fontSize: 11, titleSize: 12,
+  },
 }
 
 export function applyVisualConfig(input?: VisualConfig) {
@@ -41,6 +47,7 @@ export function applyVisualConfig(input?: VisualConfig) {
   const layout = { ...defaults.layout, ...(input?.layout || {}) } as Record<string, string>
   const target = { ...defaults.target, ...(input?.target || {}) } as Record<string, string | number>
   const interact = { ...defaults.interact, ...(input?.interact || {}) } as Record<string, string | number>
+  const bubble = { ...defaults.bubble, ...(input?.bubble || {}) } as Record<string, string | number>
   const root = document.documentElement
   const primary = String(palette.primary)
   const opacity = Math.max(0.15, Math.min(1, Number(palette.surfaceOpacity) || 0.82))
@@ -107,7 +114,16 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--pr-interact-unselected-color', String(interact.unselectedColor))
   root.style.setProperty('--pr-interact-text-color', String(interact.textColor))
   root.style.setProperty('--pr-interact-background-opacity', String(Number(interact.backgroundOpacity)))
-
+  root.style.setProperty('--pr-bubble-background-color', alphaColor(String(bubble.background), Number(bubble.backgroundOpacity)))
+  root.style.setProperty('--pr-bubble-border-color', alphaColor(String(bubble.border), Number(bubble.borderOpacity)))
+  root.style.setProperty('--pr-bubble-text', String(bubble.text))
+  root.style.setProperty('--pr-bubble-min-width', `${Number(bubble.minWidth)}px`)
+  root.style.setProperty('--pr-bubble-max-width', `${Number(bubble.maxWidth)}px`)
+  root.style.setProperty('--pr-bubble-border-width', `${Number(bubble.borderWidth)}px`)
+  root.style.setProperty('--pr-bubble-radius', `${Number(bubble.radius)}px`)
+  root.style.setProperty('--pr-bubble-tail-size', `${Number(bubble.tailSize)}px`)
+  root.style.setProperty('--pr-bubble-font-size', `${Number(bubble.fontSize)}px`)
+  root.style.setProperty('--pr-bubble-title-size', `${Number(bubble.titleSize)}px`)
   root.dataset.contextSide = layout.registerContext
   root.dataset.metadataSide = layout.metadata
   root.dataset.alertSide = layout.alertDialog
@@ -115,5 +131,6 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.dataset.menuSide = layout.registerMenu
   root.dataset.notifyPosition = layout.notify
   root.dataset.progressPosition = layout.progressBar
+  root.dataset.skillcheckPosition = layout.skillCheck
   root.dataset.textuiPosition = layout.showTextUI
 }
