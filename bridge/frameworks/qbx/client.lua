@@ -24,6 +24,15 @@ RegisterNetEvent('QBCore:Player:SetPlayerData', function(value)
     end
 end)
 
+AddEventHandler('qbx_core:client:statusChanged', function(status)
+    if type(status) ~= 'table' then return end
+    QBX.PlayerData = QBX.PlayerData or {}
+    QBX.PlayerData.metadata = QBX.PlayerData.metadata or {}
+    for _, key in ipairs({ 'health', 'armor', 'hunger', 'thirst', 'stress', 'oxygen' }) do
+        if status[key] ~= nil then QBX.PlayerData.metadata[key] = status[key] end
+    end
+end)
+
 RegisterNetEvent('QBCore:Client:OnJobUpdate', function(job)
     QBX.PlayerData = QBX.PlayerData or {}
     QBX.PlayerData.job = job

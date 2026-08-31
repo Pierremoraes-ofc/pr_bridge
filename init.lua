@@ -788,6 +788,31 @@ function prCache.onChange(key, callback)
     cacheEvents[key][#cacheEvents[key] + 1] = callback
 end
 
+local playerStatusKeys = { "health", "armor", "hunger", "thirst", "stress", "oxygen" }
+
+local function cachePlayerStatus(status)
+    if type(status) ~= "table" then return end
+    local snapshot = {}
+    for i = 1, #playerStatusKeys do
+        local key = playerStatusKeys[i]
+        if status[key] ~= nil then
+            local value = math.max(0, math.min(100, tonumber(status[key]) or 0))
+            snapshot[key] = value
+            prCache.set(key, value)
+        end
+    end
+    if next(snapshot) then prCache.set("playerStatus", snapshot) end
+end
+
+if PRCore.context == "client" then
+    AddEventHandler("qbx_core:client:statusChanged", cachePlayerStatus)
+    SetTimeout(0, function()
+        if GetResourceState("qbx_core") ~= "started" then return end
+        local ok, status = pcall(function() return exports.qbx_core:GetStatusSnapshot() end)
+        if ok then cachePlayerStatus(status) end
+    end)
+end
+
 function prCache.GetPlayer(source, timeout)
     if PRCore.context == "server" then
         if type(source) ~= "number" then return nil end
@@ -1077,9 +1102,6 @@ if PRCore.context == "client" then
             prCache.set("cash", account("cash"))
             prCache.set("bank", account("bank"))
             prCache.set("dirtyMoney", account("black"))
-            prCache.set("hunger", tonumber(metadata.hunger) or 0)
-            prCache.set("thirst", tonumber(metadata.thirst) or 0)
-            prCache.set("stress", tonumber(metadata.stress) or 0)
             prCache.set("isDead", IsEntityDead(ped) or metadata.isdead == true or metadata.inlaststand == true)
             Wait(100)
         end
