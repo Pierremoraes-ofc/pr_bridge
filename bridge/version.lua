@@ -1,5 +1,5 @@
 -- bridge/version.lua  (carregado no shared_scripts)
-local CURRENT_VERSION = "1.2.9"
+local CURRENT_VERSION = "1.3.0"
 local REPO_OWNER = "Pierremoraes-ofc"
 local REPO_NAME = "pr_bridge"
 

@@ -1,6 +1,6 @@
 name("pr_bridge")
 description("Adicione compatibilidade com frameworks, targets, inventarios, notificacoes, telefones e mais.")
-version("1.2.9")
+version("1.3.0")
 repository("https://github.com/Pierremoraes-ofc/pr_bridge")
 author("Pierremoraes-ofc")
 

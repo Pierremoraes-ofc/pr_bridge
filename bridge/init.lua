@@ -146,7 +146,8 @@ Bridge.mergeJson = PRCore.mergeJson
 Bridge.deleteJson = PRCore.deleteJson
 Bridge.jsonExists = PRCore.jsonExists
 Bridge.loadModule = PRCore.loadModule
-Bridge.callback = PRCore.callback
+Bridge.environment = PRCore.load("bridge.environment")
+PRCore.environment = Bridge.environment
 Bridge.debug = PRDebug
 Bridge.utils = PRCore.load("bridge.utils.shared") or {}
 Bridge.math = PRCore.load("bridge.utils.numbers") or {}
@@ -155,11 +156,24 @@ Bridge.string = PRCore.load("bridge.utils.strings") or {}
 Bridge.timer = PRCore.load("bridge.utils.timer")
 Bridge.ids = PRCore.load("bridge.utils.ids") or {}
 Bridge.callback = PRCore.load(("bridge.callback.%s"):format(PRCore.context)) or PRCore.callback
-if GetConvar("pr_bridge:callback:secure", "false") == "true" then
-    Bridge.callback = PRCore.load(("bridge.callback.secure_%s"):format(PRCore.context)) or Bridge.callback
+local callbackMode = "legacy"
+if Bridge.environment.isSecureCallbackEnabled() then
+    local secureCallback = PRCore.load(("bridge.callback.secure_%s"):format(PRCore.context))
+    if secureCallback then
+        Bridge.callback = secureCallback
+        callbackMode = "secure"
+    end
 end
+Bridge.callback.getMode = function() return callbackMode end
 Bridge.translator = PRCore.load(("bridge.translator.%s"):format(PRCore.context), env, true) or {}
 
+if IsDuplicityVersion() then
+    local limits = Bridge.environment.getCallbackLimits()
+    print(("^2[pr_bridge]^0 environment=%s callback=%s timeout=%sms maxPending=%s maxPendingPerPlayer=%s maxInboundPerPlayer=%s"):format(
+        Bridge.environment.getMode(), callbackMode, limits.timeout, limits.maxPending,
+        limits.maxPendingPerPlayer, limits.maxInboundPerPlayer
+    ))
+end
 
 if PRCore.context == "client" then
     function Bridge.setClipboard(value)
