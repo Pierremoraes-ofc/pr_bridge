@@ -33,6 +33,7 @@
       let progressState = null
       let activeInterface = ''
       let ready = false
+      let readyFallback = 0
 
       function normalizeInterface(value) {
         const name = String(value || 'svelte').toLowerCase().trim()
@@ -56,6 +57,7 @@
 
         activeInterface = target
         ready = false
+        window.clearTimeout(readyFallback)
         frame.src = `../dist/${target}/index.html`
       }
 
@@ -98,7 +100,21 @@
 
       frame.addEventListener('load', () => {
         ready = activeInterface === 'vue'
-        if (ready) flushQueue()
+        if (ready) {
+          flushQueue()
+          return
+        }
+
+        // Em algumas versoes do CEF do FiveM, a mensagem enviada pelo iframe
+        // chega sem uma referencia comparavel em event.source. O bundle ja foi
+        // carregado neste ponto; damos tempo para o Svelte montar os listeners
+        // e liberamos a fila mesmo quando o handshake nao for reconhecido.
+        window.clearTimeout(readyFallback)
+        readyFallback = window.setTimeout(() => {
+          if (ready || activeInterface !== 'svelte' || !frame.contentWindow) return
+          ready = true
+          flushQueue()
+        }, 250)
       })
 
       window.addEventListener('message', (event) => {
@@ -110,7 +126,8 @@
         }
 
 
-        if (event.source === frame.contentWindow && payload.action === 'ui:frame-ready') {
+        if (payload.action === 'ui:frame-ready' && activeInterface === 'svelte') {
+          window.clearTimeout(readyFallback)
           ready = true
           flushQueue()
           return

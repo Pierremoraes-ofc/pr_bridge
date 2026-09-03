@@ -50,6 +50,30 @@ local function isWhitelistName(value)
     return type(value) == "string" and value:sub(1, 10) == "pr_bridge:"
 end
 
+local function isAceAllowedResult(value)
+    return value == true or value == 1
+end
+
+local function isAceAllowed(source, aceName, aceApi)
+    if aceApi and type(aceApi.isPlayerAceAllowed) == "function" then
+        return isAceAllowedResult(aceApi.isPlayerAceAllowed(source, aceName))
+    end
+
+    local principal = ('player.%s'):format(tostring(tonumber(source) or source or ''))
+    if principal ~= 'player.' then
+        local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local numericSource = tonumber(source)
+    if numericSource and isAceAllowedResult(IsPlayerAceAllowed(numericSource, aceName)) then return true end
+
+    local textSource = tostring(source or "")
+    if textSource ~= "" and isAceAllowedResult(IsPlayerAceAllowed(textSource, aceName)) then return true end
+
+    return false
+end
+
 local function canRunCommand(source, commandName, properties)
     if source == 0 then return true end
 
@@ -62,9 +86,9 @@ local function canRunCommand(source, commandName, properties)
     if aceApi and properties.whitelist and aceApi.isWhitelisted(source, properties.whitelist) then return true end
     if aceApi and isWhitelistName(properties.restricted) and aceApi.isWhitelisted(source, properties.restricted) then return true end
 
-    if properties.ace and IsPlayerAceAllowed(source, properties.ace) then return true end
+    if properties.ace and isAceAllowed(source, properties.ace, aceApi) then return true end
     if properties.restricted and not isWhitelistName(properties.restricted) then
-        if IsPlayerAceAllowed(source, ("command.%s"):format(commandName)) then return true end
+        if isAceAllowed(source, ("command.%s"):format(commandName), aceApi) then return true end
     end
 
     if properties.groups or properties.jobs or properties.permission then

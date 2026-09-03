@@ -237,11 +237,31 @@ local function saveConfig(config)
     return SaveResourceFile(GetCurrentResourceName(), CONFIG_PATH, encoded, #encoded) ~= false
 end
 
+local function isAceAllowedResult(value)
+    return value == true or value == 1
+end
+
+local function isAceAllowed(source, aceName)
+    local principal = ('player.%s'):format(tostring(tonumber(source) or source or ''))
+    if principal ~= 'player.' then
+        local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local numericSource = tonumber(source)
+    if numericSource and isAceAllowedResult(IsPlayerAceAllowed(numericSource, aceName)) then return true end
+
+    local textSource = tostring(source or "")
+    if textSource ~= "" and isAceAllowedResult(IsPlayerAceAllowed(textSource, aceName)) then return true end
+
+    return false
+end
+
 local function isAdmin(source)
     if source == 0 then return true end
-    return IsPlayerAceAllowed(source, "command.pr_ui_admin")
-        or IsPlayerAceAllowed(source, "pr_bridge.ui.admin")
-        or IsPlayerAceAllowed(source, "group.admin")
+    return isAceAllowed(source, "command.pr_ui_admin")
+        or isAceAllowed(source, "pr_bridge.ui.admin")
+        or isAceAllowed(source, "group.admin")
 end
 
 local current = loadConfig()

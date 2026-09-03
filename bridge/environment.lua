@@ -3,6 +3,7 @@ local environment = {}
 local ENVIRONMENT_CONVAR = "pr_bridge:environment"
 local CALLBACK_SECURE_CONVAR = "pr_bridge:callback:secure"
 local DEVELOPER_ACE = "pr_bridge.developer"
+local ADMIN_ACE = "forge-core.admin"
 
 local aliases = {
     prod = "production",
@@ -38,15 +39,48 @@ function environment.normalizeBoolean(value, defaultValue) return normalizeBoole
 function environment.getCallbackMode() return secureCallback and "secure" or "legacy" end
 function environment.isSecureCallbackEnabled() return secureCallback end
 function environment.getDeveloperAce() return DEVELOPER_ACE end
+function environment.getAdminAce() return ADMIN_ACE end
 
-function environment.canUseDeveloperTools(playerSource)
-    if environment.isProduction() or not IsDuplicityVersion() then return false end
+local function isAceAllowedResult(value)
+    return value == true or value == 1
+end
+
+local function playerAceAllowed(source, aceName)
+    local principal = ('player.%s'):format(tostring(tonumber(source) or source or ''))
+    if principal ~= 'player.' then
+        local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local numericSource = tonumber(source)
+    if numericSource then
+        local ok, allowed = pcall(IsPlayerAceAllowed, numericSource, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local textSource = tostring(source or '')
+    if textSource ~= '' then
+        local ok, allowed = pcall(IsPlayerAceAllowed, textSource, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    return false
+end
+
+function environment.hasDeveloperAccess(playerSource)
+    if not IsDuplicityVersion() then return false end
 
     local sourceId = tonumber(playerSource)
     if sourceId == 0 then return true end
     if not sourceId or sourceId < 1 or type(IsPlayerAceAllowed) ~= "function" then return false end
 
-    return IsPlayerAceAllowed(sourceId, DEVELOPER_ACE) == true
+    return playerAceAllowed(sourceId, DEVELOPER_ACE)
+        or playerAceAllowed(sourceId, ADMIN_ACE)
+end
+
+function environment.canUseDeveloperTools(playerSource)
+    if environment.isProduction() or not IsDuplicityVersion() then return false end
+    return environment.hasDeveloperAccess(playerSource)
 end
 
 function environment.getCallbackLimits()

@@ -1,4 +1,5 @@
 local ace = {}
+local permissionRegistry = {}
 
 local function trim(value)
     return (tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", ""))
@@ -129,11 +130,37 @@ function ace.isWhitelisted(source, whitelistName)
     return false
 end
 
+local function isAceAllowedResult(value)
+    return value == true or value == 1
+end
+
+local function playerAceAllowed(source, aceName)
+    local principal = ('player.%s'):format(tostring(tonumber(source) or source or ''))
+    if principal ~= 'player.' then
+        local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local numericSource = tonumber(source)
+    if numericSource then
+        local ok, allowed = pcall(IsPlayerAceAllowed, numericSource, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    local textSource = tostring(source or '')
+    if textSource ~= '' then
+        local ok, allowed = pcall(IsPlayerAceAllowed, textSource, aceName)
+        if ok and isAceAllowedResult(allowed) then return true end
+    end
+
+    return false
+end
+
 function ace.isPlayerAceAllowed(source, aceName)
     if source == 0 then return true end
     if type(aceName) ~= "string" or aceName == "" then return false end
 
-    return IsPlayerAceAllowed(source, aceName) == true
+    return playerAceAllowed(source, aceName)
 end
 
 function ace.isIdentifierAceAllowed(source, aceName)
@@ -144,10 +171,10 @@ function ace.isIdentifierAceAllowed(source, aceName)
     for _, identifier in ipairs(identifiers) do
         if type(identifier) == "string" and identifier:find(":", 1, true) then
             local ok, allowed = pcall(IsPrincipalAceAllowed, ("identifier.%s"):format(identifier), aceName)
-            if ok and allowed == true then return true end
+            if ok and isAceAllowedResult(allowed) then return true end
 
             ok, allowed = pcall(IsPrincipalAceAllowed, identifier, aceName)
-            if ok and allowed == true then return true end
+            if ok and isAceAllowedResult(allowed) then return true end
         end
     end
 
@@ -156,14 +183,14 @@ end
 
 function ace.isCommandAllowed(source, commandName)
     if type(commandName) ~= "string" or commandName == "" then return false end
-    return ace.isPlayerAceAllowed(source, ("command.%s"):format(commandName:gsub("^/", "")))
+    return playerAceAllowed(source, ("command.%s"):format(commandName:gsub("^/", "")))
 end
 
 function ace.ensureAce(principal, aceName)
     if type(principal) ~= "string" or principal == "" then return false end
     if type(aceName) ~= "string" or aceName == "" then return false end
 
-    if not IsPrincipalAceAllowed(principal, aceName) then
+    if not isAceAllowedResult(IsPrincipalAceAllowed(principal, aceName)) then
         ExecuteCommand(("add_ace %s %s allow"):format(principal, aceName))
     end
 
@@ -284,7 +311,122 @@ function ace.removePrincipal(child, parent)
 end
 
 PRCore.callback.register('pr_bridge:checkPlayerAce', function(source, aceName)
-    return IsPlayerAceAllowed(source, aceName)
+    return ace.isPlayerAceAllowed(source, aceName)
 end)
+
+local function normalizePermissionName(value)
+    value = trim(value)
+    if value == '' or value:find('%s') or not value:match('^[%w_%.:%-]+$') then return nil end
+    return value
+end
+
+local function permissionLabel(value)
+    local label = tostring(value or ''):gsub('^group%.', 'Grupo '):gsub('^command%.', 'Comando ')
+    label = label:gsub('[_%.%-]+', ' ')
+    return (label:gsub('(%a)([%w]*)', function(first, rest)
+        return first:upper() .. rest
+    end))
+end
+
+local function addPermission(catalog, value, data)
+    value = normalizePermissionName(value)
+    if not value then return false end
+    data = type(data) == 'table' and data or {}
+    local existing = catalog[value]
+    if existing then
+        if data.label and (not existing.label or existing.label == permissionLabel(value)) then existing.label = data.label end
+        if data.description and not existing.description then existing.description = data.description end
+        return false
+    end
+    local entry = {
+        value = value,
+        label = data.label or permissionLabel(value),
+        description = data.description,
+        kind = data.kind or (value:find('^group%.') and 'principal' or 'ace'),
+        source = data.source or 'runtime',
+    }
+    catalog[value] = entry
+    catalog[#catalog + 1] = entry
+    return true
+end
+
+function ace.registerPermission(value, data)
+    local catalog = {}
+    if not addPermission(catalog, value, data) then return false end
+    permissionRegistry[catalog[1].value] = catalog[1]
+    return true
+end
+
+function ace.unregisterPermission(value)
+    value = normalizePermissionName(value)
+    if not value then return false end
+    local existed = permissionRegistry[value] ~= nil
+    permissionRegistry[value] = nil
+    return existed
+end
+
+local function serverRootPath()
+    local resourcePath = GetResourcePath(GetCurrentResourceName())
+    if type(resourcePath) ~= 'string' then return nil end
+    return resourcePath:match('^(.*)[/\\]resources[/\\]')
+end
+
+local function readServerConfig(relativePath, onLine)
+    relativePath = trim(relativePath):gsub('\\', '/')
+    if relativePath == '' or relativePath:find('..', 1, true) or relativePath:match('^[/\\]') or relativePath:match('^%a:') then return false end
+    local root = serverRootPath()
+    if not root or type(io) ~= 'table' or type(io.open) ~= 'function' then return false end
+    local ok, file = pcall(io.open, root .. '/' .. relativePath, 'r')
+    if not ok or not file then return false end
+    local readOk = pcall(function()
+        for line in file:lines() do onLine(line, relativePath) end
+    end)
+    file:close()
+    return readOk
+end
+
+local function parseConfigLine(catalog, line, sourceName)
+    line = tostring(line or ''):gsub('#.*$', ''):gsub('//.*$', '')
+    local _, aceName, decision = line:match('^%s*add_ace%s+(%S+)%s+(%S+)%s+(%S+)')
+    if aceName and tostring(decision):lower() == 'allow' then addPermission(catalog, aceName, { kind = 'ace', source = sourceName }) end
+    local _, parent = line:match('^%s*add_principal%s+(%S+)%s+(%S+)')
+    if parent and parent:find('^group%.') then addPermission(catalog, parent, { kind = 'principal', source = sourceName }) end
+end
+
+local function sortCatalog(left, right)
+    local function weight(entry)
+        if entry.value:find('^group%.') then return 1 end
+        if entry.value:find('^command%.') then return 3 end
+        return 2
+    end
+    local leftWeight, rightWeight = weight(left), weight(right)
+    if leftWeight ~= rightWeight then return leftWeight < rightWeight end
+    return tostring(left.label) < tostring(right.label)
+end
+
+function ace.getPermissionCatalog(options)
+    options = type(options) == 'table' and options or {}
+    local catalog = {}
+    for _, entry in pairs(permissionRegistry) do addPermission(catalog, entry.value, entry) end
+    for _, entry in ipairs(options.fallback or {}) do
+        if type(entry) == 'string' then addPermission(catalog, entry, { source = 'fallback' })
+        elseif type(entry) == 'table' then addPermission(catalog, entry.value or entry.name or entry.ace, entry) end
+    end
+    for _, fileName in ipairs(options.files or { 'server.cfg', 'permissions.cfg' }) do
+        readServerConfig(fileName, function(line, sourceName) parseConfigLine(catalog, line, sourceName) end)
+    end
+    for value in GetConvar('pr_bridge:ace:catalog', ''):gmatch('[^,%s]+') do addPermission(catalog, value, { source = 'convar' }) end
+    local hidden = options.hidden or {}
+    local filtered = {}
+    for i = 1, #catalog do
+        local entry = catalog[i]
+        if hidden[entry.value] ~= true then filtered[#filtered + 1] = entry end
+    end
+    table.sort(filtered, sortCatalog)
+    return filtered
+end
+
+ace.discoverPermissions = ace.getPermissionCatalog
+ace.listPermissions = ace.getPermissionCatalog
 
 return ace

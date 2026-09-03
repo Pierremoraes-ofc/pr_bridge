@@ -270,10 +270,18 @@ end
 
 local debugValue = GetResourceMetadata(resourceName, "pr_bridge_debug", 0)
 env.Config.Debug = debugValue == "true" or debugValue == "yes" or debugValue == "1"
+public.environment = PRCore.load("@pr_bridge/bridge/environment", env)
+PRCore.environment = public.environment
 public.callback = PRCore.load(("@pr_bridge/bridge/callback/%s"):format(PRCore.context), env) or PRCore.callback
-if GetConvar("pr_bridge:callback:secure", "false") == "true" then
-    public.callback = PRCore.load(("@pr_bridge/bridge/callback/secure_%s"):format(PRCore.context), env) or public.callback
+local callbackMode = "legacy"
+if public.environment.isSecureCallbackEnabled() then
+    local secureCallback = PRCore.load(("@pr_bridge/bridge/callback/secure_%s"):format(PRCore.context), env)
+    if secureCallback then
+        public.callback = secureCallback
+        callbackMode = "secure"
+    end
 end
+public.callback.getMode = function() return callbackMode end
 local normalizeInventoryBridge = PRCore.load("@pr_bridge/bridge/inventory_normalizer", env)
 local normalizeApi = PRCore.load("@pr_bridge/bridge/api_normalizer", env)
 
