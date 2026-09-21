@@ -16,6 +16,7 @@ shared_scripts({
 	"bridge/config.lua",
 	"bridge/debug.lua",
 	"bridge/init.lua",
+	"bridge/player_lifecycle.lua",
 	"bridge/notifications/cl_events.lua",
 })
 
@@ -38,6 +39,7 @@ client_scripts({
 ui_page("interface/loader/index.html")
 
 files({
+	"shared/progression.lua",
 	"init.lua",
 	"bridge/**/*.lua",
 	"bridge/**/**/*.lua",

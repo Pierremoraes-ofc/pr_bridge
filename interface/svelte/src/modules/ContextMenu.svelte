@@ -183,7 +183,7 @@
   .ctx__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .ctx__item-title { font-size: 13px; font-weight: 600; color: var(--fb-text); }
   .ctx__badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: var(--fb-radius-sm); background: var(--fb-orange-subtle); color: var(--fb-orange); border: 1px solid var(--fb-orange-glow-light); }
-  .ctx__desc { margin: 4px 0 0; font-size: 12px; color: var(--fb-text-grey); line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+  .ctx__desc { margin: 4px 0 0; font-size: 12px; color: var(--fb-text-grey); line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
   .ctx__progress { margin-top: 8px; height: 4px; border-radius: 999px; background: var(--fb-bg-dark); border: 1px solid var(--fb-border); overflow: hidden; }
   .ctx__progress-bar { height: 100%; }
   .ctx__aside { display: flex; flex-direction: column; align-items: flex-end; align-self: stretch; justify-content: center; gap: 4px; }
@@ -198,5 +198,5 @@
   .ctx__meta-image { width: 42px; height: 42px; object-fit: cover; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); }
   .ctx__meta-content { min-width: 0; display: grid; gap: 2px; }
   .ctx__meta-label { color: var(--fb-text-muted); font-size: 10px; text-transform: uppercase; }
-  .ctx__meta-value { color: var(--fb-text-grey); font-family: var(--fb-font-mono); overflow-wrap: anywhere; }
+  .ctx__meta-value { color: var(--fb-text-grey); font-family: var(--fb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>

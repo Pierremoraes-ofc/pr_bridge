@@ -15,12 +15,13 @@ if IsDuplicityVersion() then
     Bridge.notify.NotifyAll = function(data)
         TriggerClientEvent("bridge:notify", -1, data)
     end
-else
+elseif GetCurrentResourceName() == "pr_bridge" then
+    -- Este modulo tambem e importado por consumidores; apenas o host recebe o evento.
     RegisterNetEvent("bridge:notify", function(data)
         if pr_lib and pr_lib.Notify then
             pr_lib.Notify(data)
-        elseif Bridge.notify and Bridge.notify.Notify then
-            Bridge.notify.Notify(data)
+        elseif Bridge.Notify then
+            Bridge.Notify(data)
         end
     end)
 end

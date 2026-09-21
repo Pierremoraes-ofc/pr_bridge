@@ -1,7 +1,19 @@
 ActiveBridges = {}
 
 if IsDuplicityVersion() then
-    local bridgeLocale = GetConvar("pr_bridge:locale", "en-us")
+    local bridgeLocale = GetConvar("pr_bridge:locale", "")
+
+    if type(bridgeLocale) ~= "string" or bridgeLocale == "" then
+        bridgeLocale = GetConvar("locale", "")
+    end
+
+    if type(bridgeLocale) ~= "string" or bridgeLocale == "" then
+        bridgeLocale = GetConvar("qb_locale", "")
+    end
+
+    if type(bridgeLocale) ~= "string" or bridgeLocale == "" then
+        bridgeLocale = "en-us"
+    end
 
     if type(bridgeLocale) == "string" and bridgeLocale ~= "" then
         if GlobalState then
@@ -203,6 +215,7 @@ Bridge.cancelSkillCheck = skillCheckAdapter.CancelSkillCheck or skillCheckAdapte
 Bridge.textUIAdapter = Bridge.textuiAdapter
 Bridge.textuiBridge = Bridge.textuiAdapter
 Bridge.textUIBridge = Bridge.textuiAdapter
+Bridge.garage = PRCore.load(("bridge.garages.%s"):format(PRCore.context))(Bridge)
 Bridge.bank = Bridge.banking
 Bridge.adapters = { framework=Bridge.framework, inventory=Bridge.inventory, notification=Bridge.notify, menu=Bridge.menus, target=Bridge.target, textui=Bridge.textuiAdapter, banking=Bridge.banking, phone=Bridge.phone, progress=Bridge.progress, weather=Bridge.weather }
 Bridge.vehicleKey = Bridge.vehicle_key

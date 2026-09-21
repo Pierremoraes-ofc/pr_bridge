@@ -80,7 +80,7 @@ function database.query(query, parameters, cb)
     parameters = parameters or {}
 
     return call(function(resolve)
-        exports.ghmattimysql:fetchAll(query, parameters, resolve)
+        exports.ghmattimysql:execute(query, parameters, resolve)
     end, cb)
 end
 
@@ -203,13 +203,21 @@ function database.ready(cb)
         cb()
     end)
 end
-function database.transaction(_, _, cb)
-    if Debug then
-        Debug("WARNING", "ghmattimysql transaction is not implemented in pr_bridge.")
-    end
-
-    if type(cb) == "function" then cb(false) end
-    return false
+function database.transaction(queries, parameters, cb)
+    if type(parameters) == "function" then cb, parameters = parameters, nil end
+    return call(function(resolve)
+        local statements = {}
+        for i, statement in ipairs(queries) do
+            local query = type(statement) == "table" and statement.query or statement
+            local values = type(statement) == "table" and (statement.values or statement.parameters) or nil
+            values = values or parameters or {}
+            -- Both names support legacy and current driver versions.
+            statements[i] = { query = query, values = values, parameters = values }
+        end
+        exports.ghmattimysql:transaction(statements, {}, function(success)
+            resolve(success == true)
+        end)
+    end, cb)
 end
 
 function database.run(query, parameters, cb)
@@ -223,7 +231,17 @@ end
 database.read = database.query
 database.fetch = database.query
 database.fetchAll = database.query
-database.update = database.execute
+-- update returns affected rows, while execute retains the provider's raw result.
+function database.update(query, parameters, cb)
+    local function affectedRows(result)
+        if type(result) == "table" then return tonumber(result.affectedRows or result.affected_rows) end
+        return tonumber(result)
+    end
+    if type(cb) == "function" then
+        return database.execute(query, parameters, function(result) cb(affectedRows(result)) end)
+    end
+    return affectedRows(database.execute(query, parameters))
+end
 database.write = database.execute
 database.auto = database.run
 

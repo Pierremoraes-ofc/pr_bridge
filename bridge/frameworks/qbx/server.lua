@@ -33,6 +33,10 @@ function framework.GetPlayerFromIdentifier(identifier)
     return qbx_core:GetPlayerByCitizenId(identifier)
 end
 
+function framework.GetOfflinePlayer(identifier)
+    return qbx_core:GetOfflinePlayer(identifier)
+end
+
 function framework.getPlayerSourceFromPlayer(Player)
     return Player.PlayerData.source
 end

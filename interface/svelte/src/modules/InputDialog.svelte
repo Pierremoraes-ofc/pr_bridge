@@ -175,6 +175,32 @@
                 </div>
               {/if}
             </div>
+          {:else if row.type === 'multi-select' && row.tags}
+            <div class:is-open={openSelect === row.index} class="input__select">
+              <div class="fb-input input__tags">
+                {#each (Array.isArray(values[row.index]) ? values[row.index] : []) as selected}
+                  <button type="button" class="input__tag" disabled={row.disabled} aria-label={'Remover ' + (optionLabel(row, selected) || String(selected))} on:click={() => toggleMultiSelect(row.index, selected, row.maxSelectedValues)}>
+                    <span>{optionLabel(row, selected) || String(selected)}</span><BootstrapIcon name="x" />
+                  </button>
+                {/each}
+                <button type="button" class="input__tags-toggle" disabled={row.disabled} aria-label={row.label || 'Selecionar opções'} aria-expanded={openSelect === row.index} on:click={() => toggleSelect(row.index)}>
+                  {#if !values[row.index]?.length}<span>{row.placeholder || 'Selecione...'}</span>{/if}<BootstrapIcon name="chevron-down" />
+                </button>
+              </div>
+              {#if openSelect === row.index}
+                <div class="input__select-panel">
+                  {#if row.searchable}
+                    <div class="input__select-search"><BootstrapIcon name="search" /><input data-select-search={row.index} value={selectSearch[row.index] || ''} on:input|stopPropagation={(e) => (selectSearch = { ...selectSearch, [row.index]: (e.target as HTMLInputElement).value })} on:keydown|stopPropagation={() => undefined} type="text" placeholder={row.searchPlaceholder || 'Buscar...'} autocomplete="off" /></div>
+                  {/if}
+                  {#each filteredSelectOptions(row, selectSearch[row.index]) as opt}
+                    <button type="button" class:is-selected={isMultiSelected(row.index, optionValue(opt))} class="input__multi-option" aria-pressed={isMultiSelected(row.index, optionValue(opt))} disabled={row.disabled} on:click={() => toggleMultiSelect(row.index, optionValue(opt), row.maxSelectedValues)}>
+                      <span class="input__multi-check">{#if isMultiSelected(row.index, optionValue(opt))}<BootstrapIcon name="check-lg" />{/if}</span><span>{optionText(opt)}</span>
+                    </button>
+                  {/each}
+                  {#if filteredSelectOptions(row, selectSearch[row.index]).length === 0}<div class="input__select-empty">Nenhuma opção encontrada.</div>{/if}
+                </div>
+              {/if}
+            </div>
           {:else if row.type === 'multi-select'}
             <div class:is-disabled={row.disabled} class="input__multi">
               {#if row.searchable}
@@ -212,6 +238,11 @@
 </div>
 
 <style>
+  .input__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; }
+  .input__tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid var(--fb-border-hover); border-radius: 5px; padding: 3px 7px; background: var(--fb-orange-subtle); color: var(--fb-text); cursor: pointer; }
+  .input__tag span { overflow-wrap: anywhere; }
+  .input__tags-toggle { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 25px; border: 0; background: transparent; color: var(--fb-text-muted); cursor: pointer; }
+
   .input-backdrop { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 18px; background: transparent; animation: fb-fade-in .2s ease; }
   .input { width: min(460px,92vw); max-height: min(80vh,720px); display: flex; flex-direction: column; background: var(--fb-nui-surface); animation: fb-pop-in .24s cubic-bezier(.1,.8,.25,1); }
   .input--xs { width: min(340px,92vw); } .input--sm { width: min(400px,92vw); } .input--md { width: min(520px,92vw); } .input--lg { width: min(640px,92vw); } .input--xl { width: min(760px,92vw); }
@@ -222,7 +253,7 @@
   .input__fields input, .input__fields textarea { user-select: text; -webkit-user-select: text; }
   .input__label { display: block; font-size: 13px; font-weight: 500; color: var(--fb-text-grey); margin-bottom: 6px; }
   .input__req { color: var(--fb-error); }
-  .input__desc { font-size: 12px; color: var(--fb-text-muted); margin-bottom: 6px; }
+  .input__desc { font-size: 12px; color: var(--fb-text-muted); margin-bottom: 6px; white-space: pre-wrap; }
   .input__actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid var(--fb-border); }
   .input__check { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--fb-border); background: var(--fb-nui-field); font-size: 13px; cursor: pointer; }
   .input__check input { display: none; }

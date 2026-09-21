@@ -2,10 +2,11 @@ if ActiveBridges["target"] ~= "native" then return end
 
 local api = PRCore.load("bridge.targets.native.api")
 local Zones = api._zones()
+local Pickups = PRCore.load("bridge.targets.native.pickups")
 local collections = api._collections()
 local state = api._state()
 
-local current = { entity = 0, coords = vector3(0.0, 0.0, 0.0), distance = 0.0 }
+local current = { entity = 0, pickup = nil, pickupType = nil, model = nil, coords = vector3(0.0, 0.0, 0.0), distance = 0.0 }
 local currentMenu
 local menuHistory = {}
 local activeGroups = {}
@@ -16,6 +17,30 @@ local renderNearby = {}
 local renderHasOptions = false
 local markerEntities = {}
 local markerZones = {}
+local sessionGeneration = 0
+local lastMarkerCount, lastMarkerAt = 0, 0
+local visibility = {}
+local function entityTypeOf(entity)
+    if type(entity) ~= "number" or entity <= 0 or not DoesEntityExist(entity) then return 0 end
+    local ok, entityType = pcall(GetEntityType, entity)
+    entityType = ok and tonumber(entityType) or 0
+    return entityType and entityType > 0 and entityType or 0
+end
+
+local function hasKeyedOptions(collection)
+    for _, options in pairs(collection or {}) do
+        if type(options) == "table" and #options > 0 then return true end
+    end
+    return false
+end
+
+local function pickupDiscoveryNeeded()
+    return #collections.pickupsGlobal > 0 or hasKeyedOptions(collections.pickupTypes)
+end
+
+local function pickupTrackingNeeded()
+    return pickupDiscoveryNeeded() or hasKeyedOptions(collections.pickups)
+end
 local backOptions = {
     {
         name = "pr_bridge:target:back",
@@ -46,10 +71,18 @@ end
 
 local function setActive(value)
     value = value == true and not state.disabled
-    if state.active == value then return end
+    if state.active == value and value then return end
+    sessionGeneration = sessionGeneration + 1
     state.active = value
     targetMessage("target:visible", { state = value })
-    if not value then setFocus(false) end
+    if not value then
+        setFocus(false)
+        markerEntities, markerZones, visibility = {}, {}, {}
+        activeGroups, activeZones = {}, {}
+        renderNearby, renderHasOptions = {}, false
+        targetMessage("target:markers", { markers = {} })
+        targetMessage("target:left")
+    end
 end
 
 local function groupGrade(entry)
@@ -186,7 +219,92 @@ local function addVisibleGroup(output, key, options, distance, entity, model)
     if #group.options > 0 then output[#output + 1] = group end
 end
 
-local function collectEntityGroups(entity, entityType, model, distance)
+local function markerWorldPoint(entity)
+    local model = GetEntityModel(entity)
+    local offset = markerModelOffsets[model]
+    if not offset then
+        local minimum, maximum = GetModelDimensions(model)
+        offset = (minimum + maximum) * 0.5
+        markerModelOffsets[model] = offset
+    end
+    return GetOffsetFromEntityInWorldCoords(entity, offset.x, offset.y, offset.z)
+end
+
+-- The same probes gate markers, options and dispatch. Never move zone coordinates
+-- toward the viewer: doing so can move a wall-mounted target through its wall.
+-- Coordinate targets are often placed exactly on a wall/furniture surface by
+-- the placement laser. Hitting that endpoint is not a wall BEFORE the target.
+-- Never use zone size/contains here: job boxes can straddle an entire wall.
+local function reachesTargetSurface(zone, endpoint, hitCoords)
+    return zone ~= nil and hitCoords ~= nil and #(hitCoords - endpoint) <= 0.025
+end
+
+local function visibilitySettings()
+    local config = (GlobalState.pr_bridge_ui_config or {}).target or {}
+    return config.wallDetection ~= false,
+        math.max(1, math.min(511, math.floor(tonumber(config.wallRayFlags) or 277))) & ~12
+end
+
+-- This check must finish in the same tick. The client capture showed only
+-- invalid asynchronous handles (no clear/blocked results), suppressing all UI.
+-- Keep synchronous probes bounded: two background checks per update, plus the
+-- explicit user click. Do not relax collision flags on a failed native result.
+local function probeVisibility(entity, zone, flags)
+    if not zone and (not entity or entity == 0 or not DoesEntityExist(entity)) then return 'blocked' end
+    local point = zone and zone.coords or markerWorldPoint(entity)
+    local ped = PlayerPedId()
+    local origin = GetPedBoneCoords(ped, 31086, 0.0, 0.0, 0.0)
+    local handle = StartExpensiveSynchronousShapeTestLosProbe(
+        origin.x, origin.y, origin.z, point.x, point.y, point.z, flags, ped, 4)
+    local status, hit, hitCoords, _, hitEntity = GetShapeTestResult(handle)
+    if status ~= 2 then return 'invalid', status end
+    return (hit == false or hit == 0 or (not zone and hitEntity == entity)
+        or reachesTargetSurface(zone, point, hitCoords)) and 'clear' or 'blocked', status
+end
+
+local function updateVisibility()
+    local enabled, flags = visibilitySettings()
+    if not enabled then return end
+    local now, waiting = GetGameTimer(), {}
+    for key, entry in pairs(visibility) do
+        if now - entry.requested > 1000 then
+            visibility[key] = nil
+        else
+            if entry.flags ~= flags then
+                entry.allowed, entry.confirmed, entry.nextProbe = false, nil, 0
+                entry.flags = flags
+            end
+            if now >= (entry.nextProbe or 0) then waiting[#waiting + 1] = entry end
+        end
+    end
+    table.sort(waiting, function(a, b) return (a.nextProbe or 0) < (b.nextProbe or 0) end)
+    for i = 1, math.min(2, #waiting) do
+        local entry = waiting[i]
+        local result, status = probeVisibility(entry.entity, entry.zone, flags)
+        entry.result, entry.nativeStatus, entry.nextProbe = result, status, now + 100
+        if result ~= 'invalid' then
+            entry.allowed, entry.confirmed = result == 'clear', now
+        end
+    end
+end
+
+local function targetVisible(entity, zone, fresh)
+    local enabled, flags = visibilitySettings()
+    if not enabled then return true end
+    if not zone and (not entity or entity == 0 or not DoesEntityExist(entity)) then return false end
+    if fresh then return probeVisibility(entity, zone, flags) == 'clear' end
+    local key, now = zone or entity, GetGameTimer()
+    local entry = visibility[key]
+    if not entry then
+        entry = { entity = entity, zone = zone, flags = flags }
+        visibility[key] = entry
+    end
+    entry.requested = now
+    return entry.flags == flags and entry.allowed == true and entry.confirmed ~= nil
+        and now - entry.confirmed <= 1000
+end
+
+local function collectEntityGroups(entity, entityType, model, distance, pickupRecord)
     activeGroups = {}
     local output = {}
     if currentMenu then
@@ -194,11 +312,18 @@ local function collectEntityGroups(entity, entityType, model, distance)
         addVisibleGroup(output, "back", backOptions, 0.0, entity, model)
     end
     addVisibleGroup(output, "global", collections.global, distance, entity, model)
-    if entity and entity > 0 then
+    if entity and entity > 0 and entityType > 0 and targetVisible(entity) then
         local global = entityType == 1 and (IsPedAPlayer(entity) and collections.players or collections.peds)
             or entityType == 2 and collections.vehicles or collections.objects
         addVisibleGroup(output, "type", global, distance, entity, model)
+        if pickupRecord then
+            addVisibleGroup(output, "globalPickup", collections.pickupsGlobal, distance, entity, model)
+        end
         addVisibleGroup(output, "model", collections.models[model], distance, entity, model)
+        if pickupRecord then
+            addVisibleGroup(output, "pickupType", collections.pickupTypes[pickupRecord.pickupType], distance, entity, model)
+            addVisibleGroup(output, "pickup", collections.pickups[pickupRecord.key or pickupRecord.pickup], distance, entity, model)
+        end
         local netId = NetworkGetEntityIsNetworked(entity) and NetworkGetNetworkIdFromEntity(entity) or nil
         addVisibleGroup(output, "entity", netId and collections.entities[netId], distance, entity, model)
         addVisibleGroup(output, "localEntity", collections.localEntities[entity], distance, entity, model)
@@ -212,7 +337,7 @@ local function collectZones(endCoords, distance, entity, markerCoords)
     local nearby = Zones.getNearby(endCoords)
     for i = 1, #nearby do
         local zone = nearby[i]
-        if zone:contains(endCoords) then
+        if zone:contains(endCoords) and targetVisible(nil, zone) then
             local zoneIndex = #activeZones + 1
             activeZones[zoneIndex] = zone
             local visible = { id = zone.id, options = {} }
@@ -266,117 +391,63 @@ local function markerOptionAllowed(option, entity, distance, coords)
     if option.items and not hasItems(option.items, option.anyItem == true) then return false end
     if option.canInteract then
         local ok, allowed = pcall(option.canInteract, entity, distance, coords, option.name, nil)
-        return ok and allowed == true
+        return ok and not not allowed
     end
     return true
 end
 
-local function markerWorldPoint(entity)
-    local model = GetEntityModel(entity)
-    local markerOffset = markerModelOffsets[model]
-    if not markerOffset then
-        local _, maximum = GetModelDimensions(model)
-        markerOffset = (maximum and maximum.z or 0.5) + 0.12
-        markerModelOffsets[model] = markerOffset
-    end
-    return GetOffsetFromEntityInWorldCoords(entity, 0.0, 0.0, markerOffset)
-end
-
-local function filterVisibleMarkerEntities(entities, targetConfig)
-    if targetConfig.wallDetection == false or #entities == 0 then return entities end
-
-    local rayFlags = math.floor(tonumber(targetConfig.wallRayFlags) or 277)
-    rayFlags = math.max(1, math.min(511, rayFlags))
-    local origin = GetFinalRenderedCamCoord()
-    local ped = PlayerPedId()
-    local pending = {}
-    local visible = {}
-
-    for i = 1, #entities do
-        local entity = entities[i]
-        if DoesEntityExist(entity) then
-            local point = markerWorldPoint(entity)
-            pending[#pending + 1] = {
-                index = i,
-                entity = entity,
-                handle = StartShapeTestLosProbe(
-                    origin.x, origin.y, origin.z,
-                    point.x, point.y, point.z,
-                    rayFlags, ped, 7
-                ),
-            }
-        end
-    end
-
-    local expires = GetGameTimer() + 100
-    while #pending > 0 and GetGameTimer() < expires do
-        for i = #pending, 1, -1 do
-            local ray = pending[i]
-            local status, hit, _, _, entityHit = GetShapeTestResult(ray.handle)
-            if status ~= 1 then
-                if hit == 0 or hit == false or entityHit == ray.entity then
-                    visible[ray.index] = ray.entity
-                end
-                table.remove(pending, i)
-            end
-        end
-        if #pending > 0 then Wait(0) end
-    end
-
-    local output = {}
-    for i = 1, #entities do
-        if visible[i] then output[#output + 1] = visible[i] end
-    end
-    return output
-end
-
 local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
-    if drawSpriteLimit == 0 then
-        markerEntities = {}
-        return
+    markerEntities = {}
+    if drawSpriteLimit == 0 then return end
+    local candidates, seen, pickupEntities = {}, {}, {}
+    for _, record in pairs(Pickups.list()) do
+        if not record.pending and record.entity and record.entity > 0 then
+            pickupEntities[record.entity] = record
+        end
     end
-
-    local candidates = {}
-    local objects = GetGamePool("CObject")
-    for i = 1, #objects do
-        local entity = objects[i]
-        if DoesEntityExist(entity) then
-            local model = GetEntityModel(entity)
-            local options = collections.models[model]
-            if options and #options > 0 then
-                local coords = GetEntityCoords(entity)
-                local distance = #(playerCoords - coords)
-                if distance <= markerDistance then
-                    for optionIndex = 1, #options do
-                        if markerOptionAllowed(options[optionIndex], entity, distance, coords) then
-                            candidates[#candidates + 1] = { entity = entity, distance = distance }
-                            break
-                        end
-                    end
+    local ped = PlayerPedId()
+    local function consider(entity)
+        if seen[entity] or entity == ped or not DoesEntityExist(entity) then return end
+        seen[entity] = true
+        local coords = GetEntityCoords(entity)
+        local distance = #(playerCoords - coords)
+        if distance > markerDistance then return end
+        local kind, model = entityTypeOf(entity), GetEntityModel(entity)
+        local record = pickupEntities[entity]
+        local netId = NetworkGetEntityIsNetworked(entity) and NetworkGetNetworkIdFromEntity(entity)
+        local lists = {}
+        local function add(options) if options then lists[#lists + 1] = options end end
+        add(kind == 1 and (IsPedAPlayer(entity) and collections.players or collections.peds)
+            or kind == 2 and collections.vehicles or collections.objects)
+        add(collections.models[model])
+        add(collections.localEntities[entity])
+        add(netId and collections.entities[netId])
+        if record then
+            add(collections.pickupsGlobal)
+            add(collections.pickupTypes[record.pickupType])
+            add(collections.pickups[record.key or record.pickup])
+        end
+        for _, options in ipairs(lists) do
+            for _, option in ipairs(options) do
+                if markerOptionAllowed(option, entity, distance, coords) then
+                    candidates[#candidates + 1] = { entity = entity, distance = distance }
+                    return
                 end
             end
         end
     end
-    table.sort(candidates, function(a, b)
-        if a.distance == b.distance then return a.entity < b.entity end
-        return a.distance < b.distance
-    end)
-
-    -- Check more candidates than can be rendered. A hidden object must not
-    -- consume the quota and suppress another valid target behind it in the
-    -- unordered CObject pool.
-    local scanLimit = math.min(#candidates, math.max(32, drawSpriteLimit * 3))
-    local nextEntities = {}
-    for i = 1, scanLimit do nextEntities[i] = candidates[i].entity end
-
-    local visible = filterVisibleMarkerEntities(nextEntities, targetConfig)
-    markerEntities = {}
-    for i = 1, math.min(#visible, drawSpriteLimit) do
-        markerEntities[i] = visible[i]
+    for _, pool in ipairs({ 'CObject', 'CPed', 'CVehicle' }) do
+        for _, entity in ipairs(GetGamePool(pool)) do consider(entity) end
     end
+    for entity in pairs(pickupEntities) do consider(entity) end
+    table.sort(candidates, function(a, b)
+        return a.distance == b.distance and a.entity < b.entity or a.distance < b.distance
+    end)
+    local scanLimit = math.min(#candidates, math.max(32, drawSpriteLimit * 3))
+    for i = 1, scanLimit do markerEntities[i] = candidates[i].entity end
 end
 
-local function refreshMarkerZones(playerCoords, markerDistance)
+local function refreshMarkerZones(playerCoords, markerDistance, targetConfig)
     if drawSpriteLimit == 0 then
         markerZones = {}
         return
@@ -403,7 +474,7 @@ local function refreshMarkerZones(playerCoords, markerDistance)
     end)
 
     markerZones = {}
-    for i = 1, math.min(#candidates, drawSpriteLimit) do markerZones[i] = candidates[i].zone end
+    for _, candidate in ipairs(candidates) do markerZones[#markerZones + 1] = candidate.zone end
 end
 
 local function sendScreenMarkers(playerCoords, markerDistance)
@@ -417,12 +488,12 @@ local function sendScreenMarkers(playerCoords, markerDistance)
 
     for i = 1, #markerEntities do
         local entity = markerEntities[i]
-        if DoesEntityExist(entity) then
+        if DoesEntityExist(entity) and targetVisible(entity) then
             local coords = GetEntityCoords(entity)
             if #(playerCoords - coords) <= markerDistance then
                 local point = markerWorldPoint(entity)
                 local visible, screenX, screenY = GetScreenCoordFromWorldCoord(point.x, point.y, point.z)
-                if visible then
+                if visible and #markers < drawSpriteLimit then
                     markers[#markers + 1] = {
                         id = ("entity:%s"):format(entity), x = screenX, y = screenY,
                         targeted = entity == current.entity and renderHasOptions,
@@ -435,9 +506,9 @@ local function sendScreenMarkers(playerCoords, markerDistance)
     for i = 1, #markerZones do
         local zone = markerZones[i]
         local coords = zone.coords
-        if #(playerCoords - coords) <= markerDistance or zone:contains(playerCoords) then
+        if (#(playerCoords - coords) <= markerDistance or zone:contains(playerCoords)) and targetVisible(nil, zone) then
             local visible, screenX, screenY = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
-            if visible then
+            if visible and #markers < drawSpriteLimit then
                 markers[#markers + 1] = {
                     id = ("zone:%s"):format(zone.id), x = screenX, y = screenY,
                     targeted = targetedZones[zone.id] == true,
@@ -445,6 +516,7 @@ local function sendScreenMarkers(playerCoords, markerDistance)
             end
         end
     end
+    lastMarkerCount, lastMarkerAt = #markers, GetGameTimer()
     targetMessage("target:markers", { markers = markers })
 end
 local function response(option, server, zone)
@@ -457,6 +529,9 @@ local function response(option, server, zone)
         end
     end
     output.entity = current.entity
+    output.pickup = current.pickup
+    output.pickupType = current.pickupType
+    output.model = current.model
     output.zone = zone and zone.id or nil
     output.coords = current.coords
     output.distance = current.distance
@@ -494,13 +569,15 @@ end
 local function startTargeting()
     if state.disabled or state.active or IsNuiFocused() or IsPauseMenuActive() then return end
     setActive(true)
+    local session = sessionGeneration
     lastSignature = nil
     currentMenu = nil
     menuHistory = {}
 
     renderNearby, renderHasOptions = {}, false
+    if pickupTrackingNeeded() then Pickups.refresh(pickupDiscoveryNeeded(), collections.pickupTypes) end
     CreateThread(function()
-        while state.active do
+        while state.active and sessionGeneration == session do
             drawNearbyZones(renderNearby)
             DisablePlayerFiring(PlayerId(), true)
             DisableControlAction(0, 24, true)
@@ -522,60 +599,102 @@ local function startTargeting()
     end)
 
     CreateThread(function()
-        local nextScan = 0
-        while state.active do
+        local nextMarkerScan, nextPickupScan = 0, 0
+        while state.active and sessionGeneration == session do
             local playerCoords = GetEntityCoords(PlayerPedId())
             local config = GlobalState.pr_bridge_ui_config or {}
             local targetConfig = config.target or {}
             local markerDistance = tonumber(targetConfig.markerDistance) or 5.0
             local now = GetGameTimer()
-            if now >= nextScan then
-                refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
-                refreshMarkerZones(playerCoords, markerDistance)
-                nextScan = now + 500
+            if now >= nextPickupScan and pickupTrackingNeeded() then
+                Pickups.refresh(pickupDiscoveryNeeded(), collections.pickupTypes)
+                nextPickupScan = now + 750
             end
+            if now >= nextMarkerScan then
+                refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
+                refreshMarkerZones(playerCoords, markerDistance, targetConfig)
+                nextMarkerScan = now + 500
+            end
+            updateVisibility()
             sendScreenMarkers(playerCoords, markerDistance)
             Wait(markerUpdateInterval)
         end
+        if sessionGeneration ~= session then return end
         markerEntities = {}
         markerZones = {}
+        visibility = {}
         targetMessage("target:markers", { markers = {} })
     end)
 
     CreateThread(function()
         local flag = 511
         local lastEntity = 0
-        while state.active do
+        while state.active and sessionGeneration == session do
             local ped = PlayerPedId()
             local playerCoords = GetEntityCoords(ped)
-            local hit, entity, endCoords = Bridge.raycast.fromCamera(20.0, flag, 4, ped)
-            entity = entity or 0
-            endCoords = endCoords or (playerCoords + GetEntityForwardVector(ped) * 20.0)
-            local distance = #(playerCoords - endCoords)
+            flag = 511 -- A sondagem principal sempre inclui paredes, mesmo apos um fallback.
+            local hit, entity, endCoords, distance
             local entityType, model = 0, nil
-            if entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) == 0 then
-                local alternateFlag = flag == 511 and 26 or 511
-                local alternateHit, alternateEntity, alternateCoords = Bridge.raycast.fromCamera(20.0, alternateFlag, 4, ped)
-                alternateEntity = alternateEntity or 0
-                alternateCoords = alternateCoords or endCoords
-                local alternateDistance = #(playerCoords - alternateCoords)
-
-                if alternateEntity > 0 and DoesEntityExist(alternateEntity) and alternateDistance < distance then
-                    flag, hit, entity, endCoords, distance = alternateFlag, alternateHit, alternateEntity, alternateCoords, alternateDistance
+            local pickupRecord
+            if nuiFocused then
+                hit, entity, endCoords = true, current.entity, current.coords
+                distance = #(playerCoords - endCoords)
+                entityType, model = entityTypeOf(entity), current.model
+                if current.pickup then
+                    pickupRecord = { pickup = current.pickup, pickupType = current.pickupType,
+                        entity = entity, entityType = entityType, model = model, coords = endCoords }
                 end
+            else
+                hit, entity, endCoords = Bridge.raycast.fromCamera(20.0, flag, 4, ped)
+                entity = entity or 0
+                endCoords = endCoords or (playerCoords + GetEntityForwardVector(ped) * 20.0)
+                distance = #(playerCoords - endCoords)
+                if entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) == 0 then
+                    local alternateFlag = flag == 511 and 26 or 511
+                    local alternateHit, alternateEntity, alternateCoords = Bridge.raycast.fromCamera(20.0, alternateFlag, 4, ped)
+                    alternateEntity = alternateEntity or 0
+                    alternateCoords = alternateCoords or endCoords
+                    local alternateDistance = #(playerCoords - alternateCoords)
+
+                    if alternateEntity > 0 and DoesEntityExist(alternateEntity) and alternateDistance < distance then
+                        flag, hit, entity, endCoords, distance = alternateFlag, alternateHit, alternateEntity, alternateCoords, alternateDistance
+                    end
+                end
+
+
+                if pickupTrackingNeeded() then
+                    pickupRecord = Pickups.resolveHit(entity, endCoords, collections.pickupTypes, collections.pickups)
+                end
+                if pickupRecord and not pickupRecord.pending and pickupRecord.entity > 0 then
+                    entity = pickupRecord.entity
+                    endCoords = pickupRecord.coords or endCoords
+                    distance = #(playerCoords - endCoords)
+                    entityType = pickupRecord.entityType or 3
+                    model = pickupRecord.model
+                elseif entity > 0 then
+                    entityType = entityTypeOf(entity)
+                    if entityType > 0 then
+                        local okModel, resultModel = pcall(GetEntityModel, entity)
+                        model = okModel and resultModel or nil
+                    else
+                        entity = 0
+                    end
+                end
+
+                if entityType > 0 and entity > 0 and DoesEntityExist(entity) and flag ~= 511 and not HasEntityClearLosToEntity(entity, ped, 7) then
+                    entity = 0
+                    pickupRecord = nil
+                end
+
             end
 
-
-            if entity > 0 and DoesEntityExist(entity) then
-                local okType, resultType = pcall(GetEntityType, entity)
-                entityType = okType and resultType or 0
-                local okModel, resultModel = pcall(GetEntityModel, entity)
-                model = okModel and resultModel or nil
-                if flag ~= 511 and not HasEntityClearLosToEntity(entity, ped, 7) then entity = 0 end
-            end
-
-            current.entity, current.coords, current.distance = entity, endCoords, distance
-            local groups = collectEntityGroups(entity, entityType, model, distance)
+            if sessionGeneration ~= session then return end
+            current.entity, current.pickup, current.pickupType, current.model = entity,
+                pickupRecord and pickupRecord.pickup or nil,
+                pickupRecord and pickupRecord.pickupType or nil,
+                model
+            current.coords, current.distance = endCoords, distance
+            local groups = collectEntityGroups(entity, entityType, model, distance, pickupRecord)
             local zones, nearby = collectZones(endCoords, distance, entity, playerCoords)
             local nextSignature = signature(groups, zones)
             local hasOptions = #groups > 0 or #zones > 0
@@ -593,14 +712,14 @@ local function startTargeting()
             end
 
             if toggleHotkey and IsPauseMenuActive() then stopTargeting() end
-            if not hasOptions then flag = flag == 511 and 26 or 511 end
             Wait(hit and 40 or 80)
         end
 
+        if sessionGeneration ~= session then return end
         if nuiFocused then setFocus(false) end
         targetMessage("target:visible", { state = false })
         targetMessage("target:left")
-        current = { entity = 0, coords = vector3(0.0, 0.0, 0.0), distance = 0.0 }
+        current = { entity = 0, pickup = nil, pickupType = nil, model = nil, coords = vector3(0.0, 0.0, 0.0), distance = 0.0 }
         activeGroups, activeZones = {}, {}
         renderNearby, renderHasOptions = {}, false
         lastSignature = nil
@@ -614,7 +733,26 @@ RegisterNUICallback("target:select", function(data, cb)
     local zone = data.zoneIndex and activeZones[tonumber(data.zoneIndex)] or nil
     local options = zone and zone.options or activeGroups[tonumber(data.groupIndex)]
     local option = options and options[tonumber(data.optionIndex)]
-    if not option then return end
+    if not option or (zone and Zones.get(zone.id) ~= zone) then return end
+
+    local selectedEntity, selectedSession = current.entity, sessionGeneration
+    -- Recheck after the menu was opened (doors/player/camera can have moved).
+    if zone or (current.entity and current.entity > 0) then
+        if not targetVisible(current.entity, zone, true) then
+            lastSignature = nil
+            setFocus(false)
+            return
+        end
+    end
+    if not state.active or sessionGeneration ~= selectedSession or current.entity ~= selectedEntity then return end
+    if zone and (Zones.get(zone.id) ~= zone or activeZones[tonumber(data.zoneIndex)] ~= zone) then return end
+    if not zone then
+        local selectedOptions = activeGroups[tonumber(data.groupIndex)]
+        if not selectedOptions or selectedOptions[tonumber(data.optionIndex)] ~= option then return end
+    end
+    local coords = zone and zone.coords or current.coords
+    local distance = #(GetEntityCoords(PlayerPedId()) - coords)
+    if not shouldShow(option, distance, coords, current.entity, zone and nil or current.model) then return end
 
     if option.openMenu then
         if option.name == "pr_bridge:target:back" then
@@ -638,8 +776,34 @@ RegisterNUICallback("target:closeFocus", function(_, cb)
 end)
 
 AddEventHandler("pr_bridge:target:stateChanged", function()
-    if state.disabled and state.active then stopTargeting() end
+    if state.disabled then stopTargeting() end
 end)
+
+-- Opt-in capture for client-native failures that cannot be reproduced outside
+-- FiveM. One summary only; normal targeting never spams the console.
+if Bridge.addCommand then
+    Bridge.addCommand('pr_targetdiag', { help = 'Captura o target por 5 segundos; mantenha ALT pressionado.' }, function()
+        CreateThread(function()
+            local samples, active, rendered, clear, blocked, invalid, pending = 0, 0, 0, 0, 0, 0, 0
+            local expires = GetGameTimer() + 5000
+            while GetGameTimer() < expires do
+                samples = samples + 1
+                if state.active then active = active + 1 end
+                if state.active and GetGameTimer() - lastMarkerAt < 250 then rendered = math.max(rendered, lastMarkerCount) end
+                for _, entry in pairs(visibility) do
+                    if not entry.result then pending = pending + 1 end
+                    if entry.result == 'clear' then clear = clear + 1
+                    elseif entry.result == 'blocked' then blocked = blocked + 1
+                    elseif entry.result == 'invalid' then invalid = invalid + 1 end
+                end
+                Wait(100)
+            end
+            local nearby = Zones.getNearby(GetEntityCoords(PlayerPedId()))
+            print(('[pr_bridge:target:diag] mode=sync samples=%s active=%s zonesNearby=%s entityCandidates=%s zoneCandidates=%s maxRendered=%s clear=%s blocked=%s invalid=%s pending=%s'):format(
+                samples, active, #nearby, #markerEntities, #markerZones, rendered, clear, blocked, invalid, pending))
+        end)
+    end)
+end
 
 local bind = Bridge.addKeybind({
     name = "pr_bridge_native_target",

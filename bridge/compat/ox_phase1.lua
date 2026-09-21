@@ -28,10 +28,13 @@ return function(public, options)
     local targetFunctions = {
         "addGlobalOption", "removeGlobalOption",
         "addGlobalObject", "removeGlobalObject",
+        "addGlobalPickup", "removeGlobalPickup",
         "addGlobalPed", "removeGlobalPed",
         "addGlobalPlayer", "removeGlobalPlayer",
         "addGlobalVehicle", "removeGlobalVehicle",
         "addModel", "removeModel",
+        "addPickupType", "removePickupType",
+        "addPickup", "removePickup",
         "addEntity", "removeEntity",
         "addLocalEntity", "removeLocalEntity",
         "addSphereZone", "addBoxZone", "addPolyZone",

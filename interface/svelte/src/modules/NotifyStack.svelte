@@ -56,6 +56,6 @@
   .notify__icon { width: 30px; height: 30px; flex: 0 0 30px; align-self: center; display: grid; place-items: center; }
   .notify__content { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .notify__title { display: block; font-family: var(--fb-font-heading); font-size: 14px; font-weight: 600; }
-  .notify__desc { font-size: 12px; color: var(--fb-text-grey); line-height: 1.4; }
+  .notify__desc { font-size: 12px; color: var(--fb-text-grey); line-height: 1.4; white-space: pre-wrap; }
   .notify__progress { position: absolute; bottom: 0; left: 0; height: 3px; transition: width .05s linear; }
 </style>

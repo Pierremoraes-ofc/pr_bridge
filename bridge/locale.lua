@@ -197,6 +197,14 @@ local function getConfiguredLocale()
         localeName = stateLocale
     end
 
+    if type(localeName) ~= "string" or localeName == "" then
+        localeName = GetConvar("locale", "")
+    end
+
+    if type(localeName) ~= "string" or localeName == "" then
+        localeName = GetConvar("qb_locale", "")
+    end
+
     return normalizeLocaleName(localeName or "en-us")
 end
 

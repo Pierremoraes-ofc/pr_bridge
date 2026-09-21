@@ -24,6 +24,27 @@ export async function fetchNui<T = unknown>(
 
 type NuiHandler = (data: any) => void
 
+/** Converts escaped Lua/JSON line separators without enabling HTML rendering. */
+export function normalizeMultilinePayload<T>(payload: T): T {
+  if (typeof payload === 'string') {
+    return payload.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n') as T
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => normalizeMultilinePayload(item)) as T
+  }
+
+  if (payload && typeof payload === 'object') {
+    const normalized: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      normalized[key] = normalizeMultilinePayload(value)
+    }
+    return normalized as T
+  }
+
+  return payload
+}
+
 const handlers = new Map<string, Set<NuiHandler>>()
 
 export function onNuiMessage(action: string, handler: NuiHandler): () => void {
@@ -45,6 +66,6 @@ window.addEventListener('message', (event) => {
   if (!set) return
 
   for (const handler of set) {
-    handler(payload.data)
+    handler(normalizeMultilinePayload(payload.data))
   }
 })

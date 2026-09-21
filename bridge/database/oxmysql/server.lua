@@ -136,6 +136,7 @@ function database.ready(cb)
     end)
 end
 function database.transaction(queries, parameters, cb)
+    if type(parameters) == "function" then cb, parameters = parameters, nil end
     parameters = parameters or {}
 
     return call(function(resolve)
@@ -154,7 +155,17 @@ end
 database.read = database.query
 database.fetch = database.query
 database.fetchAll = database.query
-database.update = database.execute
+-- update returns affected rows, while execute retains the provider's raw result.
+function database.update(query, parameters, cb)
+    local function affectedRows(result)
+        if type(result) == "table" then return tonumber(result.affectedRows or result.affected_rows) end
+        return tonumber(result)
+    end
+    if type(cb) == "function" then
+        return database.execute(query, parameters, function(result) cb(affectedRows(result)) end)
+    end
+    return affectedRows(database.execute(query, parameters))
+end
 database.write = database.execute
 database.auto = database.run
 

@@ -77,11 +77,12 @@ end
 local function canRunCommand(source, commandName, properties)
     if source == 0 then return true end
 
+    local aceApi = PRAce or Bridge and Bridge.ace or PRCore.load("@pr_bridge/bridge/ace/server", _ENV)
+    if aceApi and aceApi.isAdminWhitelisted(source) then return true end
+
     if type(properties.canAccess) == "function" then
         return properties.canAccess(source, commandName, properties) == true
     end
-
-    local aceApi = PRAce or Bridge and Bridge.ace
 
     if aceApi and properties.whitelist and aceApi.isWhitelisted(source, properties.whitelist) then return true end
     if aceApi and isWhitelistName(properties.restricted) and aceApi.isWhitelisted(source, properties.restricted) then return true end
@@ -366,7 +367,8 @@ local function createCommand(commandName, properties, cb)
 
     local restricted = properties.restricted
     local definitions = properties.params or {}
-    local registerRestricted = restricted and not isWhitelistName(restricted) and true or false
+    -- A validacao abaixo inclui a lista admin, antes das ACEs do comando.
+    local registerRestricted = false
 
     RegisterCommand(commandName, function(source, args, raw)
         if not canRunCommand(source, commandName, properties) then

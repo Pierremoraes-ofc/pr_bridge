@@ -237,29 +237,17 @@ local function saveConfig(config)
     return SaveResourceFile(GetCurrentResourceName(), CONFIG_PATH, encoded, #encoded) ~= false
 end
 
-local function isAceAllowedResult(value)
-    return value == true or value == 1
-end
-
+local aceApi = PRCore.load("@pr_bridge/bridge/ace/server", _ENV)
 local function isAceAllowed(source, aceName)
-    local principal = ('player.%s'):format(tostring(tonumber(source) or source or ''))
-    if principal ~= 'player.' then
-        local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
-        if ok and isAceAllowedResult(allowed) then return true end
-    end
-
-    local numericSource = tonumber(source)
-    if numericSource and isAceAllowedResult(IsPlayerAceAllowed(numericSource, aceName)) then return true end
-
-    local textSource = tostring(source or "")
-    if textSource ~= "" and isAceAllowedResult(IsPlayerAceAllowed(textSource, aceName)) then return true end
-
-    return false
+    return aceApi.isPlayerAceAllowed(source, aceName)
 end
 
 local function isAdmin(source)
-    if source == 0 then return true end
-    return isAceAllowed(source, "command.pr_ui_admin")
+    local sourceId = tonumber(source)
+    if sourceId == 0 then return true end
+    if not sourceId or sourceId < 1 then return false end
+    return isAceAllowed(sourceId, "forge-core.admin")
+        or isAceAllowed(sourceId, "command.pr_ui_admin")
         or isAceAllowed(source, "pr_bridge.ui.admin")
         or isAceAllowed(source, "group.admin")
 end
@@ -267,11 +255,11 @@ end
 local current = loadConfig()
 GlobalState.pr_bridge_ui_config = current
 
-PRCore.callback.register("pr_bridge:ui:isAdmin", function(source)
+Bridge.callback.register("pr_bridge:ui:isAdmin", function(source)
     return isAdmin(source)
 end)
 
-PRCore.callback.register("pr_bridge:ui:saveConfig", function(source, input)
+Bridge.callback.register("pr_bridge:ui:saveConfig", function(source, input)
     if not isAdmin(source) then return false, "no_permission" end
 
     local nextConfig = sanitize(input)
@@ -282,7 +270,7 @@ PRCore.callback.register("pr_bridge:ui:saveConfig", function(source, input)
     return true, current
 end)
 
-PRCore.callback.register("pr_bridge:ui:resetConfig", function(source)
+Bridge.callback.register("pr_bridge:ui:resetConfig", function(source)
     if not isAdmin(source) then return false, "no_permission" end
 
     local nextConfig = clone(defaults)
@@ -296,7 +284,9 @@ end)
 local commandApi = PRCore.load("@pr_bridge/bridge/addCommand/server", _ENV)
 commandApi.add("pr_ui_admin", {
     help = "Abre as configuracoes visuais globais do pr_bridge",
-    restricted = { "group.admin" },
+    -- ACEs sao verificadas abaixo pela mesma regra dos callbacks do painel.
+    restricted = false,
 }, function(source)
+    if not isAdmin(source) or tonumber(source) == 0 then return end
     TriggerClientEvent("pr_bridge:ui:openAdmin", source)
 end)

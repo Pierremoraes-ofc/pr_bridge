@@ -4,6 +4,45 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
     local frameworkResources = { qb="qb-core", qbx="qbx_core", esx="es_extended", ox="ox_core", nd="ND_Core", tmc="core", default="standalone" }
     if not framework.GetResourceName then function framework.GetResourceName() return frameworkResources[activeFramework] or activeFramework end end
 
+    -- Vehicle catalog stays authoritative in the selected framework.
+    if not framework.GetVehiclesByHash then
+        function framework.GetVehiclesByHash(model)
+            local hash = model ~= nil and (tonumber(model) or joaat(model)) or nil
+            if activeFramework == "qbx" then
+                return exports.qbx_core:GetVehiclesByHash(hash)
+            end
+            local vehicles = {}
+            if activeFramework == "qb" then
+                local core = exports["qb-core"]:GetCoreObject()
+                for name, data in pairs(core.Shared and core.Shared.Vehicles or {}) do
+                    local vehicleHash = tonumber(data.hash) or joaat(data.model or name)
+                    vehicles[vehicleHash] = data
+                end
+            end
+            if hash ~= nil then return vehicles[hash] end
+            return vehicles
+        end
+    end
+    if not framework.GetVehicleData then
+        function framework.GetVehicleData(model)
+            if type(model) ~= "string" and type(model) ~= "number" then return nil end
+            return framework.GetVehiclesByHash(model)
+        end
+    end
+    if context == "server" and not framework.SetVehiclePersistence then
+        function framework.SetVehiclePersistence(vehicle, enabled)
+            if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false end
+            if activeFramework == "qbx" then
+                local result
+                if enabled then result = exports.qbx_core:EnablePersistence(vehicle)
+                else result = exports.qbx_core:DisablePersistence(vehicle) end
+                return result ~= false
+            end
+            SetEntityOrphanMode(vehicle, enabled and 2 or 0)
+            return true
+        end
+    end
+
     local function alias(canonical, ...)
         if type(framework[canonical]) == "function" then return end
         for index = 1, select("#", ...) do
@@ -46,6 +85,22 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
 
     if context == "server" then
         framework.GetPlayerData = framework.GetPlayerData or framework.GetPlayer
+        -- Identity contract for phone consumers. Provider details stay in PR Bridge.
+        if not framework.GetPhoneProfile then
+            function framework.GetPhoneProfile(source)
+                local player = framework.GetPlayer and framework.GetPlayer(source)
+                local data = player and (player.PlayerData or player)
+                if not data then return nil end
+                local info = data.charinfo or data
+                local metadata = data.metadata or {}
+                local identifier = framework.GetIdentifier and framework.GetIdentifier(source)
+                local phone = info.phone or data.phone_number or metadata.phoneNumber or metadata.phone
+                if not identifier or phone == nil or tostring(phone) == '' then return nil end
+                return { source = tonumber(source), identifier = identifier, phoneNumber = tostring(phone),
+                    firstname = info.firstname or info.firstName or '', lastname = info.lastname or info.lastName or '' }
+            end
+        end
+
         if not framework.GetPlayerStatus then
             function framework.GetPlayerStatus(source, status)
                 return framework.GetPlayerMetadata and framework.GetPlayerMetadata(source, status)

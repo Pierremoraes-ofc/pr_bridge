@@ -441,6 +441,10 @@ public.activeBridges = env.ActiveBridges
 public.config = env.Config
 
 public.inventories = public.inventory
+if PRCore.context == "server" then
+    -- A API publica de notificacoes usa sempre a interface nativa do PR Bridge.
+    public.notify = PRCore.load("@pr_bridge/bridge/notifications/default/server", env)
+end
 public.notifications = public.notify
 public.notification = public.notify
 public.menu = public.menus
@@ -462,6 +466,7 @@ end
 public.textUIAdapter = public.textuiAdapter
 public.textuiBridge = public.textuiAdapter
 public.textUIBridge = public.textuiAdapter
+public.garage = PRCore.load(("@pr_bridge/bridge/garages/%s"):format(PRCore.context), env)(public)
 public.bank = public.banking
 public.adapters = { framework=public.framework, inventory=public.inventory, notification=public.notify, menu=public.menus, target=public.target, interact=public.interact, textui=public.textuiAdapter, banking=public.banking, phone=public.phone, progress=public.progress, weather=public.weather }
 public.vehicleKey = public.vehicle_key
@@ -615,6 +620,7 @@ if PRCore.context == "client" then
         public.InputDialog = UI.InputDialog
         public.inputDialog = UI.inputDialog or UI.InputDialog
         public.Notify = UI.Notify
+        public.notify.Notify = UI.Notify
         public.NotifyBubble = UI.NotifyBubble
         public.notifyBubble = UI.notifyBubble or UI.NotifyBubble
         public.HideNotifyBubble = UI.HideNotifyBubble

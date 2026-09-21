@@ -115,7 +115,37 @@ function ace.hasIdentifier(source, identifier)
     return identifiers[identifier] == true
 end
 
+-- Consulta bruta: nao chama as APIs de autorizacao para evitar recursao.
+local checkingAdmin = {}
+local function isAdminListed(source)
+    source = tonumber(source)
+    if not source or source <= 0 or source % 1 ~= 0 then return false end
+    if checkingAdmin[source] then return false end
+    local allowed = ace.parseConvarList(GetConvar("pr_bridge:admin", ""))
+    if not next(allowed) then return false end
+    local identifiers = {}
+    for _, identifier in ipairs(GetPlayerIdentifiers(source) or {}) do
+        addIdentifier(identifiers, identifier)
+    end
+    for _, identifier in ipairs(identifiers) do
+        if allowed[identifier] then return true end
+    end
+    -- Permite bootstrap por license mesmo antes de o framework carregar o personagem.
+    checkingAdmin[source] = true
+    local ok = pcall(addFrameworkIdentifiers, identifiers, source)
+    checkingAdmin[source] = nil
+    if not ok then return false end
+    for _, identifier in ipairs(identifiers) do
+        if allowed[identifier] then return true end
+    end
+    return false
+end
+
+ace.isAdminWhitelisted = isAdminListed
+
 function ace.isWhitelisted(source, whitelistName)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     if source == 0 then return true end
     if type(whitelistName) ~= "string" or whitelistName == "" then return false end
 
@@ -157,6 +187,8 @@ local function playerAceAllowed(source, aceName)
 end
 
 function ace.isPlayerAceAllowed(source, aceName)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     if source == 0 then return true end
     if type(aceName) ~= "string" or aceName == "" then return false end
 
@@ -164,6 +196,8 @@ function ace.isPlayerAceAllowed(source, aceName)
 end
 
 function ace.isIdentifierAceAllowed(source, aceName)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     if source == 0 then return true end
     if type(aceName) ~= "string" or aceName == "" then return false end
 
@@ -182,6 +216,8 @@ function ace.isIdentifierAceAllowed(source, aceName)
 end
 
 function ace.isCommandAllowed(source, commandName)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     if type(commandName) ~= "string" or commandName == "" then return false end
     return playerAceAllowed(source, ("command.%s"):format(commandName:gsub("^/", "")))
 end
@@ -221,6 +257,8 @@ local function listContains(list, value)
 end
 
 function ace.hasFrameworkAccess(source, options)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     options = options or {}
 
     if source == 0 then return true end
@@ -258,6 +296,8 @@ function ace.hasFrameworkAccess(source, options)
 end
 
 function ace.canAccess(source, options)
+    source = tonumber(source) or source
+    if isAdminListed(source) then return true end
     options = options or {}
     if source == 0 then return true end
 

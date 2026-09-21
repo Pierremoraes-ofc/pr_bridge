@@ -1,4 +1,4 @@
----UI nativa: RegisterContext → Renderer → NUI host → Vue
+---UI nativa: RegisterContext â†’ Renderer â†’ NUI host â†’ Vue
 
 local BRIDGE = "pr_bridge"
 local resourceName = GetCurrentResourceName()
@@ -406,8 +406,13 @@ end
 
 function UI.OpenVisualAdminMenu(parentMenu)
     CreateThread(function()
-        local allowed = Bridge.callback.await("pr_bridge:ui:isAdmin", 10000)
-        if not allowed then
+        local allowed, reason = Bridge.callback.await("pr_bridge:ui:isAdmin", 10000)
+        if allowed == nil then
+            print(("[pr_bridge:ui] Falha ao consultar acesso: %s"):format(tostring(reason or "sem resposta")))
+            UI.Notify({ title = "pr_bridge", description = "Nao foi possivel consultar o acesso. Tente novamente.", type = "error" })
+            return
+        end
+        if allowed ~= true then
             UI.Notify({ title = "pr_bridge", description = "Acesso negado.", type = "error" })
             return
         end
@@ -513,7 +518,7 @@ if resourceName == BRIDGE then
                         end,
                     },
                     {
-                        title = "Notificação",
+                        title = "NotificaÃ§Ã£o",
                         description = "Dispara Notify nativo",
                         icon = "bell",
                         onSelect = function()
@@ -546,7 +551,7 @@ if resourceName == BRIDGE then
                     },
                     {
                         title = "Input Dialog",
-                        description = "Abre um formulário",
+                        description = "Abre um formulÃ¡rio",
                         icon = "keyboard",
                         onSelect = function()
                             CreateThread(function()

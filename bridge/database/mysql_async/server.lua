@@ -18,16 +18,6 @@ local function isReadQuery(query)
     return command and readCommands[command:upper()] == true
 end
 
-local function firstValue(row)
-    if type(row) ~= "table" then return nil end
-
-    for _, value in pairs(row) do
-        return value
-    end
-
-    return nil
-end
-
 local function awaitCall(start)
     local p = promise.new()
 
@@ -68,12 +58,10 @@ local function call(start, cb)
     return awaitCall(start)
 end
 
-local function hasMySQL()
-    return MySQL and MySQL.Async
-end
-
 function database.isReady()
-    return GetResourceState(database.resource):find("start") ~= nil and hasMySQL()
+    if GetResourceState(database.resource) ~= "started" then return false end
+    local ok, ready = pcall(function() return exports["mysql-async"]:is_ready() end)
+    return ok and ready == true
 end
 
 function database.GetResourceName()
@@ -81,68 +69,27 @@ function database.GetResourceName()
 end
 
 function database.query(query, parameters, cb)
-    parameters = parameters or {}
-
     return call(function(resolve)
-        if not hasMySQL() then
-            resolve(nil)
-            return
-        end
-
-        MySQL.Async.fetchAll(query, parameters, resolve)
+        exports["mysql-async"]:mysql_fetch_all(query, parameters or {}, resolve)
     end, cb)
 end
 
 function database.execute(query, parameters, cb)
-    parameters = parameters or {}
-
     return call(function(resolve)
-        if not hasMySQL() then
-            resolve(nil)
-            return
-        end
-
-        MySQL.Async.execute(query, parameters, resolve)
+        exports["mysql-async"]:mysql_execute(query, parameters or {}, resolve)
     end, cb)
 end
 
 function database.insert(query, parameters, cb)
-    parameters = parameters or {}
-
     return call(function(resolve)
-        if not hasMySQL() then
-            resolve(nil)
-            return
-        end
-
-        if MySQL.Async.insert then
-            MySQL.Async.insert(query, parameters, resolve)
-            return
-        end
-
-        MySQL.Async.execute(query, parameters, function(_, lastInsertId)
-            resolve(lastInsertId)
-        end)
+        exports["mysql-async"]:mysql_insert(query, parameters or {}, resolve)
     end, cb)
 end
 
 function database.scalar(query, parameters, cb)
-    parameters = parameters or {}
-
-    if hasMySQL() and MySQL.Async.fetchScalar then
-        return call(function(resolve)
-            MySQL.Async.fetchScalar(query, parameters, resolve)
-        end, cb)
-    end
-
-    if type(cb) == "function" then
-        return database.query(query, parameters, function(rows)
-            cb(rows and firstValue(rows[1]) or nil)
-        end)
-    end
-
-    local rows = database.query(query, parameters)
-    return rows and firstValue(rows[1]) or nil
+    return call(function(resolve)
+        exports["mysql-async"]:mysql_fetch_scalar(query, parameters or {}, resolve)
+    end, cb)
 end
 
 function database.single(query, parameters, cb)
@@ -230,13 +177,21 @@ function database.ready(cb)
         cb()
     end)
 end
-function database.transaction(_, _, cb)
-    if Debug then
-        Debug("WARNING", "mysql-async transaction is not implemented in pr_bridge.")
-    end
-
-    if type(cb) == "function" then cb(false) end
-    return false
+function database.transaction(queries, parameters, cb)
+    if type(parameters) == "function" then cb, parameters = parameters, nil end
+    return call(function(resolve)
+        local statements = {}
+        for i, statement in ipairs(queries) do
+            local query = type(statement) == "table" and statement.query or statement
+            local values = type(statement) == "table" and (statement.values or statement.parameters) or nil
+            values = values or parameters or {}
+            -- Both names support legacy and current driver versions.
+            statements[i] = { query = query, values = values, parameters = values }
+        end
+        exports["mysql-async"]:mysql_transaction(statements, {}, function(success)
+            resolve(success == true)
+        end)
+    end, cb)
 end
 
 function database.run(query, parameters, cb)
@@ -250,7 +205,17 @@ end
 database.read = database.query
 database.fetch = database.query
 database.fetchAll = database.query
-database.update = database.execute
+-- update returns affected rows, while execute retains the provider's raw result.
+function database.update(query, parameters, cb)
+    local function affectedRows(result)
+        if type(result) == "table" then return tonumber(result.affectedRows or result.affected_rows) end
+        return tonumber(result)
+    end
+    if type(cb) == "function" then
+        return database.execute(query, parameters, function(result) cb(affectedRows(result)) end)
+    end
+    return affectedRows(database.execute(query, parameters))
+end
 database.write = database.execute
 database.auto = database.run
 

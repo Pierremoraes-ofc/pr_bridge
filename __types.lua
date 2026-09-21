@@ -78,8 +78,14 @@
 ---@field SetItemMetadata? fun(inv: any, slot: number, metadata: table): any
 
 ---@class PRTarget
+---@field addGlobalPickup? fun(options: table)
+---@field removeGlobalPickup? fun(optionNames?: string|string[])
 ---@field addModel? fun(models: string|string[]|number|number[], options: table)
 ---@field removeModel? fun(models: string|string[]|number|number[], optionNames?: string|string[])
+---@field addPickupType? fun(pickupTypes: string|string[]|number|number[], options: table)
+---@field removePickupType? fun(pickupTypes: string|string[]|number|number[], optionNames?: string|string[])
+---@field addPickup? fun(pickups: number|number[], options: table)
+---@field removePickup? fun(pickups: number|number[], optionNames?: string|string[])
 ---@field inspectModels? fun(models: string|string[]|number|number[]): table[]
 ---@field addEntity? fun(netIds: number|number[], options: table)
 ---@field removeEntity? fun(netIds: number|number[], optionNames?: string|string[])

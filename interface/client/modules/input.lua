@@ -27,6 +27,7 @@ return function(Renderer)
         "searchable",
         "searchPlaceholder",
         "maxSelectedValues",
+        "tags",
         "minLength",
         "maxLength",
     }
