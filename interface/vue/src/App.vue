@@ -7,6 +7,7 @@ import InputDialog from './modules/InputDialog.vue'
 import NotifyStack from './modules/NotifyStack.vue'
 import TextUI from './modules/TextUI.vue'
 import { applyVisualConfig } from './lib/theme'
+import { normalizeMultilinePayload } from './lib/forgebox'
 
 const context = ref<any>(null)
 const alert = ref<any>(null)
@@ -23,28 +24,28 @@ onMounted(() => {
       applyVisualConfig(data)
     }),
     onNuiMessage('context:open', (data) => {
-      context.value = data
+      context.value = normalizeMultilinePayload(data)
     }),
     onNuiMessage('context:close', () => {
       context.value = null
     }),
     onNuiMessage('alert:open', (data) => {
-      alert.value = data
+      alert.value = normalizeMultilinePayload(data)
     }),
     onNuiMessage('alert:close', () => {
       alert.value = null
     }),
     onNuiMessage('input:open', (data) => {
-      input.value = data
+      input.value = normalizeMultilinePayload(data)
     }),
     onNuiMessage('input:close', () => {
       input.value = null
     }),
     onNuiMessage('notify:push', (data) => {
-      notifies.value = [...notifies.value, data]
+      notifies.value = [...notifies.value, normalizeMultilinePayload(data)]
     }),
     onNuiMessage('textui:show', (data) => {
-      textui.value = data
+      textui.value = normalizeMultilinePayload(data)
     }),
     onNuiMessage('textui:hide', () => {
       textui.value = null

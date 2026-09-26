@@ -63,7 +63,10 @@ local function targetMessage(action, data)
 end
 
 local function setFocus(value)
-    nuiFocused = value == true
+    value = value == true
+    -- A late target close must not release the UI opened by the selected action.
+    if nuiFocused == value then return end
+    nuiFocused = value
     if nuiFocused then SetCursorLocation(0.5, 0.5) end
     SetNuiFocus(nuiFocused, nuiFocused)
     SetNuiFocusKeepInput(nuiFocused)
@@ -71,7 +74,7 @@ end
 
 local function setActive(value)
     value = value == true and not state.disabled
-    if state.active == value and value then return end
+    if state.active == value then return end
     sessionGeneration = sessionGeneration + 1
     state.active = value
     targetMessage("target:visible", { state = value })

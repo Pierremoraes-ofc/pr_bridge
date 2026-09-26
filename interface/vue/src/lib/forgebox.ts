@@ -158,6 +158,30 @@ export type MetaItem = {
   colorScheme?: string
 }
 
+/**
+ * Normalizes escaped line breaks received from Lua/JSON before rendering.
+ * Real line breaks are kept intact and Vue continues escaping HTML normally.
+ */
+export function normalizeMultilinePayload<T>(payload: T): T {
+  if (typeof payload === 'string') {
+    return payload.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n') as T
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => normalizeMultilinePayload(item)) as T
+  }
+
+  if (payload && typeof payload === 'object') {
+    const normalized: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      normalized[key] = normalizeMultilinePayload(value)
+    }
+    return normalized as T
+  }
+
+  return payload
+}
+
 export function metaItems(metadata: unknown): MetaItem[] {
   if (!metadata) return []
   if (typeof metadata === 'string') return [{ label: '', value: metadata }]

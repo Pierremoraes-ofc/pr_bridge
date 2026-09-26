@@ -517,6 +517,7 @@ function clearSelect(row: (typeof props.data.rows)[number], event: MouseEvent) {
   font-size: 12px;
   color: var(--fb-text-muted);
   margin-bottom: 6px;
+  white-space: pre-wrap;
 }
 
 .input__check {

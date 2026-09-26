@@ -98,8 +98,24 @@ function weather.IsStarted()
     return isStarted()
 end
 
+local function getWeeklyForecast()
+    local ok, result = callExport('GetWeeklyForecast')
+    if not ok then return false, result end
+    return true, type(result) == 'table' and result or {}
+end
+
 function weather.GetWeatherList()
     return getWeatherList()
+end
+
+function weather.GetWeeklyForecast()
+    return getWeeklyForecast()
+end
+
+function weather.GetRegionalWeather(regionId)
+    local ok, result = callExport('GetRegionalWeather', regionId)
+    if not ok then return false, result end
+    return true, result
 end
 
 function weather.GetState()
@@ -112,6 +128,8 @@ function weather.GetState()
         currentTime = GlobalState.currentTime or { hour = 0, minute = 0 },
         timeScale = tonumber(GlobalState.timeScale) or 0,
         freezeTime = GlobalState.freezeTime == true,
+        splitRegions = GlobalState.weather and GlobalState.weather.splitRegions == true,
+        regions = GlobalState.weather and GlobalState.weather.regions or nil,
     }
 end
 
@@ -240,6 +258,8 @@ weather.removeWeatherEvent = weather.RemoveWeatherEvent
 weather.setTime = weather.SetTime
 weather.setTimeScale = weather.SetTimeScale
 weather.setFreezeTime = weather.SetFreezeTime
+weather.getWeeklyForecast = weather.GetWeeklyForecast
+weather.getRegionalWeather = weather.GetRegionalWeather
 
 if ActiveBridges["weather"] == "renewed" then
     Debug('SUCCESS', Lang:t('Debug.WeatherDetected', { weather = 'Renewed Weather' }))

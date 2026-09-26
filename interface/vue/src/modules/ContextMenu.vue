@@ -658,7 +658,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
   font-size: 12px;
   color: var(--fb-text-grey);
   line-height: 1.4;
-  white-space: normal;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -757,6 +757,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
 .ctx__meta-value {
   color: var(--fb-text-grey);
   font-family: var(--fb-font-mono);
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 

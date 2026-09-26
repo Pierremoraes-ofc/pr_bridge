@@ -153,6 +153,7 @@ function notifyIcon(type?: string) {
   font-size: 12px;
   color: var(--fb-text-grey);
   line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .notify__progress {
