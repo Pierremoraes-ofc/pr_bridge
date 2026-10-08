@@ -1,4 +1,14 @@
 return{
+    ui = {
+        logo_title = "City logo",
+        logo_description = "Set the image shown at the top of every context menu.",
+        logo_url = "Logo URL (PNG)",
+        logo_help = "Paste the direct HTTPS image link. Leave empty to use the default logo.",
+        saved = "Visual configuration saved.",
+        invalid_logo_url = "Invalid URL. Use a direct HTTP/HTTPS link without spaces, or leave empty.",
+        save_failed = "Unable to save the configuration. No changes were applied.",
+        not_ready = "The configuration is still loading. Try again in a few seconds.",
+    },
     Debug = {
         FrameworkDetected = "Framework detected: %{framework}",
         FuelDetected = "Fuel system detected: %{fuel}",

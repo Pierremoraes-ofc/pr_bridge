@@ -267,11 +267,10 @@ end)
 
 CreateThread(function()
     applyUiInterface()
-    while type(GlobalState.pr_bridge_ui_config) ~= "table" do Wait(100) end
-    applyGlobalConfig(GlobalState.pr_bridge_ui_config)
+    applyGlobalConfig(Bridge.settings.get("interface"))
 end)
 
-AddStateBagChangeHandler("pr_bridge_ui_config", "global", function(_, _, value)
+Bridge.cache.OnResourceState("pr_bridge", "interface", function(value)
     applyGlobalConfig(value)
 end)
 
@@ -280,7 +279,7 @@ local NativeUI = PRCore.load("@pr_bridge/interface/client/ui", _ENV)
 RegisterNUICallback("ui:ready", function(_, cb)
     cb(1)
     applyUiInterface()
-    applyGlobalConfig(GlobalState.pr_bridge_ui_config)
+    applyGlobalConfig(Bridge.settings.get("interface"))
     if NativeUI and NativeUI.modules and NativeUI.modules.textui then
         NativeUI.modules.textui.Refresh()
     end

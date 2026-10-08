@@ -1,6 +1,7 @@
 import { alphaColor } from './forgebox'
 
 export type VisualConfig = {
+  branding?: { logoUrl?: string }
   palette?: Record<string, string | number>
   layout?: Record<string, string>
   target?: Record<string, string | number | boolean>
@@ -28,7 +29,8 @@ const defaults: VisualConfig = {
     markerDistance: 5, markerSize: 30, markerScale: 1, markerTargetScale: 1, markerEffect: 'pulse-glow', markerEffectSpeed: 1.2, markerEffectStrength: 1.25, wallDetection: true, wallRayFlags: 277,
   },
   interact: {
-    style: 'obtaizen_ui', scale: 1, pinSize: 32, keySize: 38, bulletSize: 17,
+    pinOpacity: 1, keyOpacity: 1, selectedOpacity: 1, unselectedOpacity: 1, textOpacity: 1, secondaryOpacity: 1,
+    secondaryColor: '#00ffff', style: 'obtaizen_ui', scale: 1, pinSize: 32, keySize: 38, bulletSize: 17,
     optionWidth: 180, optionHeight: 30, optionGap: 3, fontSize: 14,
     pinColor: '#7656ff', keyColor: '#7656ff', selectedColor: '#7656ff',
     unselectedColor: '#777777', textColor: '#ffffff', backgroundOpacity: 0.92,
@@ -100,6 +102,7 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--pr-target-marker-target-scale', String(Number(target.markerTargetScale)))
   root.style.setProperty('--pr-target-marker-effect-speed', `${Number(target.markerEffectSpeed)}s`)
   root.style.setProperty('--pr-target-marker-effect-strength', String(Number(target.markerEffectStrength)))
+  root.style.setProperty('--pr-interact-pin-opacity', String(interact.pinOpacity))
   root.style.setProperty('--pr-interact-scale', String(Number(interact.scale)))
   root.style.setProperty('--pr-interact-pin-size', String(Number(interact.pinSize)) + 'px')
   root.style.setProperty('--pr-interact-key-size', String(Number(interact.keySize)) + 'px')
@@ -108,11 +111,22 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--pr-interact-option-height', String(Number(interact.optionHeight)) + 'px')
   root.style.setProperty('--pr-interact-option-gap', String(Number(interact.optionGap)) + 'px')
   root.style.setProperty('--pr-interact-font-size', String(Number(interact.fontSize)) + 'px')
-  root.style.setProperty('--pr-interact-pin-color', String(interact.pinColor))
-  root.style.setProperty('--pr-interact-key-color', String(interact.keyColor))
-  root.style.setProperty('--pr-interact-selected-color', String(interact.selectedColor))
-  root.style.setProperty('--pr-interact-unselected-color', String(interact.unselectedColor))
-  root.style.setProperty('--pr-interact-text-color', String(interact.textColor))
+  const interactColor = (color: unknown, opacity: unknown) => {
+    const hex = String(color).replace('#', '')
+    const alpha = Math.max(0, Math.min(1, Number(opacity ?? 1)))
+    return /^[0-9a-f]{6}$/i.test(hex)
+      ? 'rgba(' + [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16), alpha].join(',') + ')'
+      : String(color)
+  }
+  for (const part of ['key', 'selected', 'unselected']) {
+    root.style.setProperty('--pr-interact-' + part + '-secondary-color', interactColor(interact[part+'SecondaryColor'] ?? interact.secondaryColor, interact[part+'SecondaryOpacity'] ?? interact.secondaryOpacity))
+  }
+  root.style.setProperty('--pr-interact-secondary-color', interactColor(interact.secondaryColor, interact.secondaryOpacity))
+  root.style.setProperty('--pr-interact-pin-color', interactColor(interact.pinColor, interact.pinOpacity))
+  root.style.setProperty('--pr-interact-key-color', interactColor(interact.keyColor, interact.keyOpacity))
+  root.style.setProperty('--pr-interact-selected-color', interactColor(interact.selectedColor, interact.selectedOpacity))
+  root.style.setProperty('--pr-interact-unselected-color', interactColor(interact.unselectedColor, interact.unselectedOpacity))
+  root.style.setProperty('--pr-interact-text-color', interactColor(interact.textColor, interact.textOpacity))
   root.style.setProperty('--pr-interact-background-opacity', String(Number(interact.backgroundOpacity)))
   root.style.setProperty('--pr-bubble-background-color', alphaColor(String(bubble.background), Number(bubble.backgroundOpacity)))
   root.style.setProperty('--pr-bubble-border-color', alphaColor(String(bubble.border), Number(bubble.borderOpacity)))

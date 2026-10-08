@@ -4,19 +4,34 @@
   import { alphaColor, iconName, metaItems } from '../lib/forgebox'
   import BootstrapIcon from '../components/BootstrapIcon.svelte'
   import forgeSymbol from '../assets/forge-symbol.webp'
+  import { metadataLayout, menuLogo } from '../lib/contextLayout'
 
   export let data: any
+  export let visualConfig: any = {}
 
   let hoveredOption: any = null
-  let tooltipRect = { top: 0, left: 0 }
+  let tooltipRect: { top: number; left: number; element?: HTMLElement } = { top: 0, left: 0 }
   let searchOpen = false
   let searchQuery = ''
   let searchInput: HTMLInputElement
 
   $: hoveredMetadata = metaItems(hoveredOption?.metadata)
-  $: metadataOnLeft = document.documentElement.dataset.metadataSide === 'left'
+  $: metadataOnLeft = visualConfig?.layout?.metadata === 'left'
+  $: logoUrl = menuLogo(visualConfig?.branding?.logoUrl, forgeSymbol)
   $: hoveredImage = typeof hoveredOption?.image === 'string' ? hoveredOption.image : ''
   $: filteredOptions = filterOptions(data?.options || [], searchQuery)
+  let contextId: string
+  $: if (data?.id !== contextId) {
+    contextId = data?.id
+    hoveredOption = null
+    searchOpen = false
+    searchQuery = ''
+  }
+
+  function logoFallback(event: Event) {
+    const img = event.currentTarget as HTMLImageElement
+    if (img.getAttribute('src') !== forgeSymbol) img.src = forgeSymbol
+  }
 
   function normalizeSearch(value: unknown): string {
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
@@ -84,13 +99,13 @@
     }
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
     hoveredOption = option
-    tooltipRect = { top: rect.top + rect.height / 2, left: metadataOnLeft ? rect.left - 12 : rect.right + 12 }
+    tooltipRect = { top: rect.top + rect.height / 2, left: metadataOnLeft ? rect.left - 12 : rect.right + 12, element: event.currentTarget as HTMLElement }
   }
 </script>
 
 <div class="ctx-shell">
   <div class={`ctx pr-interactive ${positionClass(data.position)}`}>
-    <div class="ctx__brand" aria-hidden="true"><img class="ctx__brand-image" src={forgeSymbol} alt="" /></div>
+    <div class="ctx__brand" aria-hidden="true"><img class="ctx__brand-image" src={logoUrl} alt="" on:error={logoFallback} /></div>
     <header class="ctx__header">
       {#if data.hasParent}
         <button class="ctx__nav" type="button" aria-label="Voltar" on:click={onBack}><BootstrapIcon name="chevron-left" /></button>
@@ -141,8 +156,7 @@
   </div>
 
   {#if hoveredMetadata.length || hoveredImage}
-    <div class:is-left={metadataOnLeft} class="ctx__tooltip pr-interactive" style={`top: ${tooltipRect.top}px; left: ${tooltipRect.left}px;`}>
-      <div class="ctx__tooltip-arrow" />
+    <div class="ctx__tooltip pr-interactive" use:metadataLayout={{ ...tooltipRect, side: metadataOnLeft ? 'left' : 'right' }}>
       {#if hoveredImage}<img class="ctx__meta-preview" src={hoveredImage} alt="" />{/if}
       <ul class="ctx__meta">
         {#each hoveredMetadata as m}
@@ -190,13 +204,14 @@
   .ctx__check { width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); color: transparent; } .ctx__check.is-on { color: var(--fb-text); background: var(--fb-orange); border-color: var(--fb-orange); }
   .ctx__keybind { font-size: 10px; color: var(--fb-text-muted); background: var(--fb-bg-darkest); padding: 2px 6px; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); font-family: var(--fb-font-mono); }
   .ctx__empty { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 12px; color: var(--fb-text-muted); font-size: 12px; }
-  .ctx__tooltip { position: absolute; z-index: 30; width: 270px; max-height: 300px; padding: 10px; border-radius: var(--fb-radius-md); border: 1px solid var(--fb-orange-border); background: var(--fb-nui-surface); box-shadow: 0 18px 48px rgba(0,0,0,.62); pointer-events: none; transform: translate(0,-50%); }
-  .ctx__tooltip.is-left { transform: translate(-100%,-50%); }
-  .ctx__meta { list-style: none; display: grid; gap: 8px; max-height: 280px; overflow-y: auto; }
+  .ctx__tooltip { position: absolute; z-index: 30; box-sizing: border-box; width: min(270px, calc(100vw - 24px)); height: auto; max-height: calc(100vh - 24px); padding: 10px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; pointer-events: auto; border-radius: var(--fb-radius-md); border: 1px solid var(--fb-orange-border); background: var(--fb-nui-surface); box-shadow: 0 18px 48px rgba(0,0,0,.62); }
+  .ctx__tooltip::-webkit-scrollbar { width: 6px; }
+  .ctx__tooltip::-webkit-scrollbar-thumb { background: var(--fb-orange); border-radius: 6px; }
+  .ctx__meta { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .ctx__meta-preview { display: block; width: 100%; max-height: 160px; margin-bottom: 9px; object-fit: contain; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); }
   .ctx__meta-item { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; }
-  .ctx__meta-image { width: 42px; height: 42px; object-fit: cover; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); }
-  .ctx__meta-content { min-width: 0; display: grid; gap: 2px; }
-  .ctx__meta-label { color: var(--fb-text-muted); font-size: 10px; text-transform: uppercase; }
+  .ctx__meta-image { width: 42px; height: 42px; flex: 0 0 42px; object-fit: cover; border-radius: var(--fb-radius-sm); border: 1px solid var(--fb-border); }
+  .ctx__meta-content { min-width: 0; flex: 1; display: grid; gap: 2px; }
+  .ctx__meta-label { color: var(--fb-text-muted); font-size: 10px; text-transform: uppercase; white-space: pre-wrap; overflow-wrap: anywhere; }
   .ctx__meta-value { color: var(--fb-text-grey); font-family: var(--fb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>

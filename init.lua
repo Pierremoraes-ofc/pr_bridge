@@ -51,6 +51,13 @@ public.updateJson = PRCore.updateJson
 public.mergeJson = PRCore.mergeJson
 public.deleteJson = PRCore.deleteJson
 public.jsonExists = PRCore.jsonExists
+public.jsonDraft = PRCore.jsonDraft
+public.withJsonLock = PRCore.withJsonLock
+public.wrapJsonMutations = PRCore.wrapJsonMutations
+public.loadJsonRecovery = PRCore.loadJsonRecovery
+public.saveJsonRecovery = PRCore.saveJsonRecovery
+public.recordJsonIncident = PRCore.recordJsonIncident
+public.saveJsonBatch = PRCore.saveJsonBatch
 public.loadModule = PRCore.loadModule
 public.callback = PRCore.callback
 
@@ -536,15 +543,6 @@ if PRCore.context == "client" then
         return nearby
     end
 
-    public.player = {}
-    function public.player:new()
-        local state = LocalPlayer.state
-        return {
-            get = function(_, key) return state[key] end,
-            set = function(_, key, value) state:set(key, value, false) end,
-            setr = function(_, key, value) state:set(key, value, true) end,
-        }
-    end
     if public.raycast then
         public.raycast.cam = function(flags, ignoreFlags, distance)
             return public.raycast.fromCamera(distance or 10.0, flags, ignoreFlags, PlayerPedId())
@@ -567,6 +565,7 @@ if PRCore.context == "client" then
     public.disableControls = disableControls
 end
 public.ui = public.fivem.ui
+public.nui = public.fivem.nui
 public.editorCamera = public.fivem.editorCamera
 public.gizmo = public.fivem.gizmo
 public.devlaser = public.fivem.devlaser
@@ -887,10 +886,18 @@ if createAutomaticCache then
     prCache = createAutomaticCache(public, env.ActiveBridges)
     local centralizeCache = PRCore.load("@pr_bridge/bridge/cache/central", env)
     if centralizeCache then centralizeCache(prCache) end
+    local resourceCache = PRCore.load("@pr_bridge/bridge/cache/resources", env)
+    if resourceCache then resourceCache(prCache) end
     public.cache = prCache
     public.onCache = prCache.onChange
     public.getCacheMetrics = prCache.getMetrics
 end
+if PRCore.context == "client" then
+    -- The facade captures the provider cache: initialize it only after the
+    -- automatic cache and resource subscriptions have replaced the fallback.
+    public.player = PRCore.load('@pr_bridge/bridge/cache/player_client', env)(public)
+end
+public.settings = PRCore.load("@pr_bridge/bridge/settings", env)(public)
 if PRCore.context == "client" then
     local normalizeEntities = PRCore.load("@pr_bridge/bridge/compat/entities_client", env)
     if normalizeEntities then normalizeEntities(public) end

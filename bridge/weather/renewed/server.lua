@@ -58,12 +58,9 @@ local function getWeatherList()
 end
 
 local function setCurrentWeather(weatherType, duration)
-    GlobalState.weather = {
-        weather = weatherType,
-        time = normalizeDuration(duration or (GlobalState.weather and GlobalState.weather.time) or 10),
-    }
-
-    return true, weatherType
+    local ok,result=callExport('SetWeatherType',1,weatherType)
+    if not ok or result==false then return false,result end
+    return true,result
 end
 
 local function resolveIndex(index, match)
@@ -122,14 +119,17 @@ function weather.GetState()
     local ok, weatherList = getWeatherList()
     if not ok then return false, weatherList end
 
+    local snapshotOk,snapshot=weather.GetSnapshot()
+    if not snapshotOk then return false,snapshot end
     return true, {
         weatherList = weatherList,
-        currentWeather = GlobalState.weather,
-        currentTime = GlobalState.currentTime or { hour = 0, minute = 0 },
-        timeScale = tonumber(GlobalState.timeScale) or 0,
-        freezeTime = GlobalState.freezeTime == true,
-        splitRegions = GlobalState.weather and GlobalState.weather.splitRegions == true,
-        regions = GlobalState.weather and GlobalState.weather.regions or nil,
+        currentWeather = snapshot.weather,
+        currentTime = snapshot.currentTime,
+        timeScale = snapshot.timeScale,
+        freezeTime = snapshot.freezeTime == true,
+        blackOut = snapshot.blackOut == true,
+        splitRegions = snapshot.weather and snapshot.weather.splitRegions == true,
+        regions = snapshot.weather and snapshot.weather.regions or nil,
     }
 end
 
@@ -166,7 +166,8 @@ function weather.SetEventTime(index, duration, match)
     if normalizeIndex(index) == 1 then
         local exportOk, result = callExport('SetEventTime', 1, normalizeDuration(duration))
         if exportOk and result then return true, result end
-        local currentWeather = type(match) == 'table' and match.weather or (GlobalState.weather and GlobalState.weather.weather)
+        local snapshotOk,snapshot=weather.GetSnapshot()
+        local currentWeather = type(match) == 'table' and match.weather or (snapshotOk and snapshot.weather and snapshot.weather.weather)
         if currentWeather then return setCurrentWeather(currentWeather, duration) end
     end
 
@@ -220,10 +221,7 @@ end
 function weather.SetTime(hour, minute)
     hour, minute = normalizeHour(hour), normalizeMinute(minute)
     local ok, result = callExport('SetTime', hour, minute)
-    if ok then return true, result end
-
-    GlobalState.currentTime = { hour = hour, minute = minute }
-    return true, GlobalState.currentTime
+    return ok and result~=false, result
 end
 
 function weather.SetTimeScale(scale)
@@ -232,20 +230,19 @@ function weather.SetTimeScale(scale)
     if scale > 60000 then scale = 60000 end
 
     local ok, result = callExport('SetTimeScale', scale)
-    if ok then return true, result end
-
-    GlobalState.timeScale = scale
-    return true, scale
+    return ok and result~=false, result
 end
 
 function weather.SetFreezeTime(enabled)
     enabled = boolValue(enabled)
     local ok, result = callExport('SetFreezeTime', enabled)
-    if ok then return true, result end
-
-    GlobalState.freezeTime = enabled
-    return true, GlobalState.freezeTime
+    if not ok then return false,result end
+    local snapshotOk,snapshot=weather.GetSnapshot()
+    return snapshotOk and snapshot.freezeTime==enabled, result
 end
+
+function weather.GetSnapshot() return callExport('GetSnapshot') end
+function weather.OnChange(fn) return AddEventHandler('pr_bridge:weather:changed',fn) end
 
 weather.getResourceName = weather.GetResourceName
 weather.isStarted = weather.IsStarted

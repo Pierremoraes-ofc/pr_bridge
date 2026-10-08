@@ -279,6 +279,7 @@
 ---@field addCommand fun(commandName: string|string[], properties: PRCommandProperties|false, cb: fun(source: number, params: PRCommandParams, raw: string, values: table<string, any>)): boolean|table, string?
 
 ---@class PRAce
+---@field isPrincipalAceAllowed fun(principal: string, aceName: string): boolean
 ---@field parseConvarList fun(raw: string): table<string, boolean>
 ---@field getIdentifiers fun(source: number): table
 ---@field hasIdentifier fun(source: number, identifier: string): boolean
@@ -395,7 +396,14 @@
 ---@field performAction fun(data: PRFivemStreamingInteractionData): boolean, table|string?
 ---@field playAction fun(data: PRFivemStreamingInteractionData): boolean, table|string?
 
+---@class PRConsumerNui
+---@field send fun(action: string, data?: any): boolean Sends to the resource that imported pr_bridge.
+---@field focus fun(enabled: boolean, cursor?: boolean, keepInput?: boolean): boolean
+---@field isFocused fun(): boolean
+---@field register fun(name: string, handler: fun(data: table, reply: fun(value: any))): void
+
 ---@class PRFivem
+---@field nui PRConsumerNui
 ---@field net PRFivemNet
 ---@field vehicleCache PRFivemVehicleCache
 ---@field vehicle PRFivemVehicle
@@ -440,6 +448,7 @@
 ---@field hideTextUI fun(): boolean
 ---@field isTextUIOpen fun(): boolean
 ---@class PRLib
+---@field nui PRConsumerNui
 ---@field debug PRDebug
 ---@field callback PRCallback
 ---@field database PRDatabase

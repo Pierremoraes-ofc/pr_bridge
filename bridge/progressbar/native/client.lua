@@ -80,7 +80,7 @@ local function runProgress(data, style)
         label = data.label,
         duration = data.duration,
         style = style,
-        position = data.position or ((((GlobalState.pr_bridge_ui_config or {}).layout or {}).progressBar) or "bottom-center"),
+        position = data.position or (((Bridge.settings.get("interface", {}).layout or {}).progressBar) or "bottom-center"),
         color = data.color,
         canCancel = state.canCancel,
     })

@@ -178,23 +178,25 @@ local function addLocaleCandidate(list, seen, localeName)
     end
 end
 
-local function getGlobalStateLocale()
-    if not GlobalState then return nil end
-
-    local localeName = GlobalState.pr_bridge_locale
+local function getCachedLocale()
+    local record
+    if Bridge and Bridge.settings then
+        record = Bridge.settings.get("locale")
+    elseif GetResourceState("pr_bridge") == "started" then
+        local ok, snapshot = pcall(function() return exports.pr_bridge:GetCachedState("locale") end)
+        if ok and type(snapshot) == "table" then record = snapshot.data end
+    end
+    local localeName = type(record) == "table" and record.name or nil
     if type(localeName) == "string" and localeName ~= "" then
         return localeName
     end
 end
 
 local function getConfiguredLocale()
-    local localeName = GetConvar("pr_bridge:locale", "")
-    local stateLocale = getGlobalStateLocale()
+    local localeName = getCachedLocale()
 
     if type(localeName) ~= "string" or localeName == "" then
-        localeName = stateLocale
-    elseif normalizeLocaleName(localeName) == "en-us" and stateLocale then
-        localeName = stateLocale
+        localeName = GetConvar("pr_bridge:locale", "")
     end
 
     if type(localeName) ~= "string" or localeName == "" then
@@ -207,6 +209,8 @@ local function getConfiguredLocale()
 
     return normalizeLocaleName(localeName or "en-us")
 end
+
+Locale.getConfiguredName = getConfiguredLocale
 
 function Locale.init(invokingResource)
     local resource = invokingResource or GetInvokingResource() or GetCurrentResourceName()

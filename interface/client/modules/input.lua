@@ -5,6 +5,7 @@ return function(Renderer)
 
     local SERIALIZE_ROW_KEYS = {
         "type",
+        "section",
         "label",
         "description",
         "placeholder",

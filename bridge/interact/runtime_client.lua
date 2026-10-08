@@ -49,7 +49,7 @@ end
 
 local function isDisabled()
     local ped = PlayerPedId()
-    local config = (GlobalState.pr_bridge_ui_config or {}).interact or {}
+    local config = Bridge.settings.get("interface", {}).interact or {}
     if api._disabled() or LocalPlayer.state.interactionsDisabled then return true end
     if config.disableOnDeath ~= false and (IsPedDeadOrDying(ped, true) or LocalPlayer.state.isDead) then return true end
     if config.disableOnNuiFocus ~= false and IsNuiFocused() then return true end
@@ -82,7 +82,7 @@ local function interactionCoords(record, entity)
 end
 
 local function visibleThroughWalls(record, coords, entity, config)
-    if record.ignoreLos or config.wallDetection == false then return true end
+    if record.ignoreLos or (record.wallDetection ~= true and config.wallDetection == false) then return true end
     local origin = GetPedBoneCoords(PlayerPedId(), 31086, 0.0, 0.0, 0.0)
     local flags = math.max(1, math.min(511, math.floor(tonumber(config.wallRayFlags) or 277)))
     local ray = StartShapeTestLosProbe(origin.x, origin.y, origin.z, coords.x, coords.y, coords.z, flags, PlayerPedId(), 7)
@@ -142,7 +142,7 @@ local function refreshNearby()
     if interactKeybind then interactKeyLabel = interactKeybind.currentKey or interactKeyLabel end
     if isDisabled() then nearby = {} return end
     local playerCoords = GetEntityCoords(PlayerPedId())
-    local config = (GlobalState.pr_bridge_ui_config or {}).interact or {}
+    local config = Bridge.settings.get("interface", {}).interact or {}
     local output = {}
     local modelRecords, globalVehicles, globalPlayers = {}, {}, {}
 
@@ -270,7 +270,7 @@ CreateThread(function()
                 end
             end
 
-            local showUi = (((GlobalState.pr_bridge_ui_config or {}).interact or {}).showUI ~= false)
+            local showUi = ((Bridge.settings.get("interface", {}).interact or {}).showUI ~= false)
             if showUi then
                 local entries = {}
                 for i = 1, #nearby do

@@ -186,6 +186,12 @@ local function playerAceAllowed(source, aceName)
     return false
 end
 
+function ace.isPrincipalAceAllowed(principal, aceName)
+    if type(principal) ~= 'string' or principal == '' or type(aceName) ~= 'string' or aceName == '' then return false end
+    local ok, allowed = pcall(IsPrincipalAceAllowed, principal, aceName)
+    return ok and isAceAllowedResult(allowed) or false
+end
+
 function ace.isPlayerAceAllowed(source, aceName)
     source = tonumber(source) or source
     if isAdminListed(source) then return true end

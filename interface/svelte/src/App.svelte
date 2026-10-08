@@ -146,7 +146,7 @@
 </script>
 
 <div class="pr-root">
-  {#if context}<ContextMenu data={context} />{/if}
+  {#if context}<ContextMenu data={context} {visualConfig} />{/if}
   {#if alert}<AlertDialog data={alert} />{/if}
   {#if input}<InputDialog data={input} />{/if}
   <NotifyStack items={notifies} on:remove={(event) => removeNotify(event.detail)} />

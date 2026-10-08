@@ -77,8 +77,15 @@
     return date.getTime()
   }
 
+  function normalizeColor(value: unknown): string {
+    let hex = String(value ?? '').trim().replace(/^#/, '')
+    if (/^[0-9a-f]{3}$/i.test(hex)) hex = hex.split('').map(c => c + c).join('')
+    return /^[0-9a-f]{6}$/i.test(hex) ? '#' + hex.toLowerCase() : ''
+  }
+
   function outputValue(row: any): unknown {
     const value = values[row.index]
+    if (row.type === 'color') return normalizeColor(value)
     if (row.type === 'number' || row.type === 'slider') return value === '' ? null : Number(value)
     if (row.type === 'date') return row.returnString ? formatDate(String(value || ''), row.format) : dateTimestamp(String(value || ''))
     if (row.type === 'date-range') {
@@ -151,6 +158,7 @@
 
     <div class="input__fields">
       {#each data.rows || [] as row}
+        {#if row.section}<h3 class="input__section">{row.section}</h3>{/if}
         <div class="input__field">
           {#if row.label && row.type !== 'checkbox'}<label class="input__label">{row.label}{#if row.required}<span class="input__req">*</span>{/if}</label>{/if}
           {#if row.description}<p class="input__desc">{row.description}</p>{/if}
@@ -220,7 +228,7 @@
           {:else if row.type === 'slider'}
             <div class="input__slider"><input value={values[row.index]} on:input={(e) => updateValue(row.index, Number((e.target as HTMLInputElement).value))} type="range" disabled={row.disabled} min={row.min ?? 0} max={row.max ?? 100} step={numberStep(row)} /><output>{values[row.index]}</output></div>
           {:else if row.type === 'color'}
-            <div class="input__color"><input type="color" value={safeColor(values[row.index])} disabled={row.disabled} on:input={(e) => updateValue(row.index, (e.target as HTMLInputElement).value)} /><input value={values[row.index]} on:input={(e) => updateValue(row.index, (e.target as HTMLInputElement).value)} class="fb-input" type="text" disabled={row.disabled} /></div>
+            <div class="input__color"><input type="color" value={safeColor(values[row.index])} disabled={row.disabled} on:change={(e) => updateValue(row.index, (e.target as HTMLInputElement).value)} on:input={(e) => updateValue(row.index, (e.target as HTMLInputElement).value)} /><input value={values[row.index]} on:input={(e) => updateValue(row.index, (e.target as HTMLInputElement).value)} class="fb-input" type="text" required={row.required} pattern={'[ ]*#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})[ ]*'} title="Use uma cor hexadecimal, por exemplo #ff7a1a." disabled={row.disabled} /></div>
           {:else if row.type === 'date-range'}
             <div class="input__date-range"><input class="fb-input" type="date" value={values[row.index]?.[0]} disabled={row.disabled} min={row.min} max={row.max} on:input={(e) => updateValue(row.index, [(e.target as HTMLInputElement).value, values[row.index]?.[1] || ''])} /><input class="fb-input" type="date" value={values[row.index]?.[1]} disabled={row.disabled} min={row.min} max={row.max} on:input={(e) => updateValue(row.index, [values[row.index]?.[0] || '', (e.target as HTMLInputElement).value])} /></div>
           {:else}
@@ -238,6 +246,7 @@
 </div>
 
 <style>
+ .input__section { margin:14px 0 0; padding:12px 0 8px; border-bottom:1px solid #ffffff25; color:#ff7a1a; font-size:15px; }
   .input__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; }
   .input__tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid var(--fb-border-hover); border-radius: 5px; padding: 3px 7px; background: var(--fb-orange-subtle); color: var(--fb-text); cursor: pointer; }
   .input__tag span { overflow-wrap: anywhere; }

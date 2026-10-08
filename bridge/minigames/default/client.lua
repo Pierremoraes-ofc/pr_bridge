@@ -98,7 +98,7 @@ function minigame.SkillCheck(difficulties, keys, options)
         keys = normalizeKeys(keys),
         timeout = timeout,
         label = options.label or "TESTE DE HABILIDADE",
-        position = options.position or ((((GlobalState.pr_bridge_ui_config or {}).layout or {}).skillCheck) or "bottom-center"),
+        position = options.position or (((Bridge.settings.get("interface", {}).layout or {}).skillCheck) or "bottom-center"),
     })
 
     SetTimeout(timeout + 1000, function() finish(check, false, "timeout") end)

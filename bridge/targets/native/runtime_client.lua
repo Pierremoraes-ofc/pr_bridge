@@ -209,13 +209,14 @@ local function uiOption(option, groupIndex, optionIndex, zoneIndex)
     }
 end
 
+local targetVisible
 local function addVisibleGroup(output, key, options, distance, entity, model)
     if not options or #options == 0 then return end
     local group = { key = key, options = {} }
     local groupIndex = #activeGroups + 1
     activeGroups[groupIndex] = options
     for i = 1, #options do
-        if shouldShow(options[i], key == "global" and 0.0 or distance, current.coords, entity, model) then
+        if (not entity or entity==0 or targetVisible(entity,nil,false,options[i])) and shouldShow(options[i], key == "global" and 0.0 or distance, current.coords, entity, model) then
             group.options[#group.options + 1] = uiOption(options[i], groupIndex, i)
         end
     end
@@ -243,7 +244,7 @@ local function reachesTargetSurface(zone, endpoint, hitCoords)
 end
 
 local function visibilitySettings()
-    local config = (GlobalState.pr_bridge_ui_config or {}).target or {}
+    local config = Bridge.settings.get("interface", {}).target or {}
     return config.wallDetection ~= false,
         math.max(1, math.min(511, math.floor(tonumber(config.wallRayFlags) or 277))) & ~12
 end
@@ -267,7 +268,6 @@ end
 
 local function updateVisibility()
     local enabled, flags = visibilitySettings()
-    if not enabled then return end
     local now, waiting = GetGameTimer(), {}
     for key, entry in pairs(visibility) do
         if now - entry.requested > 1000 then
@@ -291,9 +291,29 @@ local function updateVisibility()
     end
 end
 
-local function targetVisible(entity, zone, fresh)
+local function ignoresWalls(option)
+    return option and (option.ignoreLos==true or option.wallDetection==false)
+end
+local function hasWallException(entity,zone,point)
+    local function any(options)
+        for _,option in ipairs(options or {}) do
+            if ignoresWalls(option) and (not point or shouldShow(option,
+                #(GetEntityCoords(PlayerPedId())-point),point,entity,GetEntityModel(entity))) then return true end
+        end
+    end
+    if zone then return zone.ignoreLos==true or zone.wallDetection==false or any(zone.options)end
+    if not entity or entity==0 or not DoesEntityExist(entity)then return false end
+    local model=GetEntityModel(entity)
+    local net=NetworkGetEntityIsNetworked(entity) and NetworkGetNetworkIdFromEntity(entity)
+    local kind=GetEntityType(entity)
+    return any(collections.localEntities[entity]) or any(net and collections.entities[net]) or any(collections.models[model])
+        or any(kind==1 and (IsPedAPlayer(entity) and collections.players or collections.peds) or kind==2 and collections.vehicles or collections.objects)
+end
+targetVisible=function(entity, zone, fresh, option)
     local enabled, flags = visibilitySettings()
-    if not enabled then return true end
+    if ignoresWalls(option) or (zone and (zone.ignoreLos==true or zone.wallDetection==false) and not (option and option.wallDetection==true)) then return true end
+    if not option and hasWallException(entity,zone)then return true end
+    if not enabled and not (option and option.wallDetection==true) then return true end
     if not zone and (not entity or entity == 0 or not DoesEntityExist(entity)) then return false end
     if fresh then return probeVisibility(entity, zone, flags) == 'clear' end
     local key, now = zone or entity, GetGameTimer()
@@ -338,15 +358,27 @@ local function collectZones(endCoords, distance, entity, markerCoords)
     activeZones = {}
     local output = {}
     local nearby = Zones.getNearby(endCoords)
+    local seen = {}
+    for _,zone in ipairs(nearby) do seen[zone.id]=true end
+    for _,zone in ipairs(Zones.getNearby(markerCoords or endCoords)) do
+        if not seen[zone.id] and hasWallException(nil,zone) then
+            nearby[#nearby+1]=zone
+            seen[zone.id]=true
+        end
+    end
     for i = 1, #nearby do
         local zone = nearby[i]
-        if zone:contains(endCoords) and targetVisible(nil, zone) then
+        local pointVisible,x,y=GetScreenCoordFromWorldCoord(zone.coords.x,zone.coords.y,zone.coords.z)
+        local throughWall=hasWallException(nil,zone) and pointVisible and math.abs(x-0.5)<0.035 and math.abs(y-0.5)<0.035
+        if (zone:contains(endCoords) or throughWall) and targetVisible(nil, zone) then
+            local optionCoords = zone:contains(endCoords) and endCoords or zone.coords
+            local optionDistance = zone:contains(endCoords) and distance or #(GetEntityCoords(PlayerPedId())-zone.coords)
             local zoneIndex = #activeZones + 1
             activeZones[zoneIndex] = zone
             local visible = { id = zone.id, options = {} }
             for optionIndex = 1, #zone.options do
                 local option = zone.options[optionIndex]
-                if shouldShow(option, distance, endCoords, entity, nil) then
+                if targetVisible(nil,zone,false,option) and shouldShow(option, optionDistance, optionCoords, entity, nil) then
                     visible.options[#visible.options + 1] = uiOption(option, nil, optionIndex, zoneIndex)
                 end
             end
@@ -401,7 +433,6 @@ end
 
 local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
     markerEntities = {}
-    if drawSpriteLimit == 0 then return end
     local candidates, seen, pickupEntities = {}, {}, {}
     for _, record in pairs(Pickups.list()) do
         if not record.pending and record.entity and record.entity > 0 then
@@ -605,7 +636,7 @@ local function startTargeting()
         local nextMarkerScan, nextPickupScan = 0, 0
         while state.active and sessionGeneration == session do
             local playerCoords = GetEntityCoords(PlayerPedId())
-            local config = GlobalState.pr_bridge_ui_config or {}
+            local config = Bridge.settings.get("interface", {})
             local targetConfig = config.target or {}
             local markerDistance = tonumber(targetConfig.markerDistance) or 5.0
             local now = GetGameTimer()
@@ -684,13 +715,27 @@ local function startTargeting()
                     end
                 end
 
-                if entityType > 0 and entity > 0 and DoesEntityExist(entity) and flag ~= 511 and not HasEntityClearLosToEntity(entity, ped, 7) then
+                if entityType > 0 and entity > 0 and DoesEntityExist(entity) and flag ~= 511 and not hasWallException(entity) and not HasEntityClearLosToEntity(entity, ped, 7) then
                     entity = 0
                     pickupRecord = nil
                 end
 
             end
 
+            if not nuiFocused then
+                local best=0.045
+                for _,candidate in ipairs(markerEntities)do
+                    if DoesEntityExist(candidate) and hasWallException(candidate)then
+                        local point=markerWorldPoint(candidate)
+                        local onScreen,x,y=GetScreenCoordFromWorldCoord(point.x,point.y,point.z)
+                        local delta=onScreen and math.sqrt((x-0.5)^2+(y-0.5)^2) or 1
+                        if delta<best and hasWallException(candidate,nil,point) then
+                            best=delta;entity=candidate;endCoords=point;distance=#(playerCoords-point)
+                            entityType=GetEntityType(candidate);model=GetEntityModel(candidate);pickupRecord=nil
+                        end
+                    end
+                end
+            end
             if sessionGeneration ~= session then return end
             current.entity, current.pickup, current.pickupType, current.model = entity,
                 pickupRecord and pickupRecord.pickup or nil,
@@ -741,7 +786,7 @@ RegisterNUICallback("target:select", function(data, cb)
     local selectedEntity, selectedSession = current.entity, sessionGeneration
     -- Recheck after the menu was opened (doors/player/camera can have moved).
     if zone or (current.entity and current.entity > 0) then
-        if not targetVisible(current.entity, zone, true) then
+        if not targetVisible(current.entity, zone, true, option) then
             lastSignature = nil
             setFocus(false)
             return

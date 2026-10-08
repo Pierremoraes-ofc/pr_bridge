@@ -4,8 +4,10 @@ import { fetchNui } from '../nui/bridge'
 import { alphaColor, iconName, metaItems } from '../lib/forgebox'
 import BootstrapIcon from '../components/BootstrapIcon.vue'
 import forgeSymbol from '../assets/forge-symbol.webp'
+import { metadataLayout, menuLogo } from '../lib/contextLayout'
 
 const props = defineProps<{
+  visualConfig?: any
   data: {
     id: string
     __resource?: string
@@ -37,21 +39,28 @@ const props = defineProps<{
 }>()
 
 const hoveredOption = ref<any | null>(null)
-const tooltipRect = ref({ top: 0, left: 0 })
+const tooltipRect = ref<{ top: number; left: number; element?: HTMLElement }>({ top: 0, left: 0 })
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
 
 const hoveredMetadata = computed(() => metaItems(hoveredOption.value?.metadata))
-const metadataOnLeft = computed(() => document.documentElement.dataset.metadataSide === 'left')
+const metadataOnLeft = computed(() => props.visualConfig?.layout?.metadata === 'left')
+const logoUrl = computed(() => menuLogo(props.visualConfig?.branding?.logoUrl, forgeSymbol))
+function logoFallback(event: Event) {
+  const img = event.currentTarget as HTMLImageElement
+  if (img.getAttribute('src') !== forgeSymbol) img.src = forgeSymbol
+}
+const layouts = new WeakMap<HTMLElement, ReturnType<typeof metadataLayout>>()
+const vMetadataLayout = {
+  mounted(el: HTMLElement, binding: any) { layouts.set(el, metadataLayout(el, binding.value)) },
+  updated(el: HTMLElement, binding: any) { layouts.get(el)?.update(binding.value) },
+  unmounted(el: HTMLElement) { layouts.get(el)?.destroy(); layouts.delete(el) },
+}
 const hoveredImage = computed(() => {
   const image = hoveredOption.value?.image
   return typeof image === 'string' ? image : ''
 })
-const tooltipStyle = computed(() => ({
-  top: `${tooltipRect.value.top}px`,
-  left: `${tooltipRect.value.left}px`,
-}))
 const filteredOptions = computed(() => {
   const query = normalizeSearch(searchQuery.value)
   if (!query) return props.data.options || []
@@ -165,6 +174,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
   tooltipRect.value = {
     top: rect.top + rect.height / 2,
     left: metadataOnLeft.value ? rect.left - 12 : rect.right + 12,
+    element: event.currentTarget as HTMLElement,
   }
 }
 </script>
@@ -173,7 +183,7 @@ function onOptionEnter(option: any, event: MouseEvent) {
   <div class="ctx-shell">
     <div class="ctx pr-interactive" :class="positionClass(data.position)">
     <div class="ctx__brand" aria-hidden="true">
-      <img class="ctx__brand-image" :src="forgeSymbol" alt="" />
+      <img class="ctx__brand-image" :src="logoUrl" alt="" @error="logoFallback" />
     </div>
 
     <header class="ctx__header">
@@ -299,10 +309,8 @@ function onOptionEnter(option: any, event: MouseEvent) {
     <div
       v-if="hoveredMetadata.length || hoveredImage"
       class="ctx__tooltip pr-interactive"
-      :class="{ 'is-left': metadataOnLeft }"
-      :style="tooltipStyle"
+      v-metadata-layout="{ ...tooltipRect, side: metadataOnLeft ? 'left' : 'right' }"
     >
-      <div class="ctx__tooltip-arrow" />
       <img v-if="hoveredImage" class="ctx__meta-preview" :src="hoveredImage" alt="" />
       <ul class="ctx__meta">
         <li v-for="(m, i) in hoveredMetadata" :key="i" class="ctx__meta-item">
@@ -666,8 +674,13 @@ function onOptionEnter(option: any, event: MouseEvent) {
 .ctx__tooltip {
   position: absolute;
   z-index: 30;
-  width: 270px;
-  max-height: 300px;
+  box-sizing: border-box;
+  width: min(270px, calc(100vw - 24px));
+  height: auto;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 10px;
   border-radius: var(--fb-radius-md);
   border: 1px solid var(--fb-orange-border);
@@ -676,42 +689,19 @@ function onOptionEnter(option: any, event: MouseEvent) {
     0 18px 48px rgba(0, 0, 0, 0.62),
     0 0 0 1px var(--fb-orange-subtle);
   opacity: 0;
-  pointer-events: none;
-  transform: translate(8px, -50%);
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: auto;
   opacity: 1;
-  transform: translate(0, -50%);
 }
 
-.ctx__tooltip.is-left {
-  transform: translate(-100%, -50%);
-}
-
-.ctx__tooltip.is-left .ctx__tooltip-arrow {
-  left: auto;
-  right: -6px;
-  transform: translateY(-50%) rotate(225deg);
-}
-
-.ctx__tooltip-arrow {
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  border-left: 1px solid var(--fb-orange-border);
-  border-bottom: 1px solid var(--fb-orange-border);
-  background: var(--fb-nui-surface);
-  transform: translateY(-50%) rotate(45deg);
-}
+.ctx__tooltip::-webkit-scrollbar { width: 6px; }
+.ctx__tooltip::-webkit-scrollbar-thumb { background: var(--fb-orange); border-radius: 6px; }
 
 .ctx__meta {
+  margin: 0;
+  padding: 0;
   list-style: none;
   display: grid;
   gap: 8px;
-  max-height: 280px;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .ctx__meta-preview {
@@ -743,11 +733,14 @@ function onOptionEnter(option: any, event: MouseEvent) {
 
 .ctx__meta-content {
   min-width: 0;
+  flex: 1;
   display: grid;
   gap: 2px;
 }
 
 .ctx__meta-label {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: var(--fb-text-muted);
   font-size: 10px;
   text-transform: uppercase;

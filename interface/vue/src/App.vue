@@ -10,6 +10,7 @@ import { applyVisualConfig } from './lib/theme'
 import { normalizeMultilinePayload } from './lib/forgebox'
 
 const context = ref<any>(null)
+const visualConfig = ref<any>({})
 const alert = ref<any>(null)
 const input = ref<any>(null)
 const textui = ref<any>(null)
@@ -21,6 +22,7 @@ onMounted(() => {
   applyVisualConfig()
   unsubscribers.push(
     onNuiMessage('theme:apply', (data) => {
+      visualConfig.value = data || {}
       applyVisualConfig(data)
     }),
     onNuiMessage('context:open', (data) => {
@@ -202,7 +204,7 @@ function removeNotify(id: string | number) {
 
 <template>
   <div class="pr-root">
-    <ContextMenu v-if="context" :data="context" />
+    <ContextMenu v-if="context" :data="context" :visual-config="visualConfig" />
     <AlertDialog v-if="alert" :data="alert" />
     <InputDialog v-if="input" :data="input" />
     <NotifyStack :items="notifies" @remove="removeNotify" />

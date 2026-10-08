@@ -1,6 +1,7 @@
 local CONFIG_PATH = "interface/data/config.json"
 
 local defaults = {
+    branding = { logoUrl = "" },
     palette = {
         primary = "#ff7a1a",
         primaryHover = "#ff8c2a",
@@ -64,7 +65,8 @@ local defaults = {
         style = "obtaizen_ui",
         scale = 1.0, pinSize = 32.0, keySize = 38.0, bulletSize = 17.0,
         optionWidth = 180.0, optionHeight = 30.0, optionGap = 3.0, fontSize = 14.0,
-        pinColor = "#7656ff", keyColor = "#7656ff", selectedColor = "#7656ff",
+        pinOpacity = 1, keyOpacity = 1, selectedOpacity = 1, unselectedOpacity = 1, textOpacity = 1, secondaryOpacity = 1,
+        secondaryColor = "#00ffff", pinColor = "#7656ff", keyColor = "#7656ff", selectedColor = "#7656ff",
         unselectedColor = "#777777", textColor = "#ffffff", backgroundOpacity = 0.92,
         wallDetection = true, wallRayFlags = 277,
         showUI = true,
@@ -79,7 +81,7 @@ local defaults = {
 }
 
 local allowedInteractStyles = {
-    blue_circle = true, gold_circle = true, green_square = true, glitch = true,
+    blue_circle = true, circle=true, ["record-circle"]=true, crosshair=true, bullseye=true, ["geo-alt-fill"]=true, ["cursor-fill"]=true, diamond=true, green_square = true, glitch = true,
     obtaizen_ui = true,
 }
 
@@ -130,13 +132,32 @@ local function clone(value)
     return copy
 end
 
+local function normalizeColor(value)
+    if type(value) ~= "string" then return nil end
+    value = value:match("^%s*(.-)%s*$"):gsub("^#", "")
+    if value:match("^%x%x%x$") then value = value:gsub(".", "%0%0") end
+    if value:match("^%x%x%x%x%x%x$") then return "#" .. value:lower() end
+end
+
 local function validColor(value)
     return type(value) == "string" and value:match("^#%x%x%x%x%x%x$") ~= nil
+end
+
+local function normalizeLogoUrl(value)
+    if type(value) ~= "string" then return nil end
+    value = value:match("^%s*(.-)%s*$")
+    if value == "" then return "" end
+    if #value > 2048 or value:find('[%s%c<>"\\]') then return nil end
+    local scheme, authority = value:match("^(https?)://([^/?#]+)")
+    if not scheme or not authority or authority:find("@", 1, true) then return nil end
+    return value
 end
 
 local function sanitize(input)
     input = type(input) == "table" and input or {}
     local output = clone(defaults)
+    local branding = type(input.branding) == "table" and input.branding or {}
+    output.branding.logoUrl = normalizeLogoUrl(branding.logoUrl) or ""
     local palette = type(input.palette) == "table" and input.palette or {}
 
     for key, fallback in pairs(defaults.palette) do
@@ -187,6 +208,7 @@ local function sanitize(input)
 
     local interact = type(input.interact) == "table" and input.interact or {}
     local interactRanges = {
+        pinOpacity = {0,1}, keyOpacity = {0,1}, selectedOpacity = {0,1}, unselectedOpacity = {0,1}, textOpacity = {0,1}, secondaryOpacity = {0,1},
         scale = { 0.25, 3 }, pinSize = { 10, 120 }, keySize = { 10, 120 }, bulletSize = { 8, 60 },
         optionWidth = { 80, 600 }, optionHeight = { 18, 80 }, optionGap = { 0, 30 }, fontSize = { 8, 36 },
         backgroundOpacity = { 0, 1 }, wallRayFlags = { 1, 511 },
@@ -196,10 +218,15 @@ local function sanitize(input)
         output.interact[key] = math.max(range[1], math.min(range[2], value))
     end
     local style = tostring(interact.style or defaults.interact.style)
+    if style == "gold_circle" then style = "blue_circle" end
     if style == "green_obtaizen" then style = "obtaizen_ui" end
     output.interact.style = allowedInteractStyles[style] and style or defaults.interact.style
-    for _, key in ipairs({ "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor" }) do
-        output.interact[key] = validColor(interact[key]) and interact[key]:lower() or defaults.interact[key]
+    for _, key in ipairs({ "secondaryColor", "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor" }) do
+        output.interact[key] = normalizeColor(interact[key]) or defaults.interact[key]
+    end
+    for _, part in ipairs({"key","selected","unselected"}) do
+        output.interact[part.."SecondaryColor"] = normalizeColor(interact[part.."SecondaryColor"]) or output.interact.secondaryColor
+        output.interact[part.."SecondaryOpacity"] = math.max(0,math.min(1,tonumber(interact[part.."SecondaryOpacity"]) or output.interact.secondaryOpacity))
     end
     for _, key in ipairs({ "wallDetection", "showUI", "disableOnDeath", "disableOnNuiFocus", "disableInVehicle", "disableWhenCuffed" }) do
         output.interact[key] = interact[key] ~= false
@@ -224,17 +251,12 @@ local function sanitize(input)
 end
 
 local function loadConfig()
-    local raw = LoadResourceFile(GetCurrentResourceName(), CONFIG_PATH)
-    if not raw or raw == "" then return clone(defaults) end
-
-    local ok, decoded = pcall(json.decode, raw)
-    return ok and sanitize(decoded) or clone(defaults)
+    local decoded = PRCore.loadJsonRecovery("@pr_bridge/" .. CONFIG_PATH)
+    return sanitize(decoded)
 end
 
 local function saveConfig(config)
-    local encoded = json.encode(config)
-    if not encoded then return false end
-    return SaveResourceFile(GetCurrentResourceName(), CONFIG_PATH, encoded, #encoded) ~= false
+    return PRCore.saveJsonRecovery("@pr_bridge/" .. CONFIG_PATH, config)
 end
 
 local aceApi = PRCore.load("@pr_bridge/bridge/ace/server", _ENV)
@@ -253,7 +275,7 @@ local function isAdmin(source)
 end
 
 local current = loadConfig()
-GlobalState.pr_bridge_ui_config = current
+Bridge.settings.publish("interface", current)
 
 Bridge.callback.register("pr_bridge:ui:isAdmin", function(source)
     return isAdmin(source)
@@ -262,11 +284,22 @@ end)
 Bridge.callback.register("pr_bridge:ui:saveConfig", function(source, input)
     if not isAdmin(source) then return false, "no_permission" end
 
+    if type(input) ~= "table" then return false, "invalid_config" end
+    if input.branding ~= nil and (type(input.branding) ~= "table"
+        or normalizeLogoUrl(input.branding.logoUrl) == nil) then return false, "invalid_logo_url" end
+
+    if type(input) == "table" and type(input.interact) == "table" then
+        for _, key in ipairs({"secondaryColor", "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor"}) do
+            if input.interact[key] ~= nil and not normalizeColor(input.interact[key]) then
+                return false, "Cor invalida: use um codigo como #ff7a1a."
+            end
+        end
+    end
     local nextConfig = sanitize(input)
     if not saveConfig(nextConfig) then return false, "save_failed" end
 
     current = nextConfig
-    GlobalState.pr_bridge_ui_config = current
+    Bridge.settings.publish("interface", current)
     return true, current
 end)
 
@@ -277,7 +310,7 @@ Bridge.callback.register("pr_bridge:ui:resetConfig", function(source)
     if not saveConfig(nextConfig) then return false, "save_failed" end
 
     current = nextConfig
-    GlobalState.pr_bridge_ui_config = current
+    Bridge.settings.publish("interface", current)
     return true, current
 end)
 

@@ -1,10 +1,31 @@
 local minigame = {}
 
-if ActiveBridges["minigames"] ~= "glitch" then return end
+-- Also usable explicitly by consumers requiring GTA-native Glitch games.
 
 local function getResourceName()
-    if GetResourceState("glitch-minigames"):find("start") then return "glitch-minigames" end
-    return "glitch-minigame"
+    if GetResourceState("glitch-minigames")=="started" then return "glitch-minigames" end
+    if GetResourceState("glitch-minigame")=="started" then return "glitch-minigame" end
+end
+local function startDrill(glitch,game,difficulty)
+    pr_lib.requestAnimDict('anim@heists@fleeca_bank@drilling')
+    pr_lib.requestModel('hei_prop_heist_drill')
+    -- Fleeca's installed Init only allows short scaleform retries. Warm the GTA
+    -- movie before calling the export so a cold client does not fail immediately.
+    local movieName=game=='PlasmaDrilling' and 'VAULT_LASER' or 'DRILLING'
+    local movie=RequestScaleformMovie(movieName)
+    local deadline=GetGameTimer()+10000
+    while not HasScaleformMovieLoaded(movie) and GetGameTimer()<deadline do Wait(50) end
+    if not HasScaleformMovieLoaded(movie) then
+        SetScaleformMovieAsNoLongerNeeded(movie)
+        error('Não foi possível carregar o scaleform '..movieName..'.',2)
+    end
+    local ok,result=pcall(function()
+        if game=='FleecaDrilling' then return glitch:StartDrilling() end
+        return glitch:StartPlasmaDrilling(difficulty)
+    end)
+    SetScaleformMovieAsNoLongerNeeded(movie)
+    if not ok then error(result,2) end
+    return result==true
 end
 
 function minigame.Start(config, mode)
@@ -15,7 +36,9 @@ function minigame.Start(config, mode)
         or {}
 
     local game = config.game or "Lockpick"
-    local glitch = exports[getResourceName()]
+    local resource=getResourceName()
+    if not resource then error('Glitch minigames indisponível: aguarde o recurso iniciar.',2) end
+    local glitch = exports[resource]
 
     if game == "BarHit" then return glitch:StartBarHitGame(data.rounds, data.speed, data.zoneSize, data.maxFailures, data.timeLimit) == true end
     if game == "SkillCheck" then return glitch:StartSkillCheckGame(data.speed, data.timeLimit, data.zoneSize, data.perfectZoneSize, data.maxFailures, data.randomizeZone) == true end
@@ -48,8 +71,10 @@ function minigame.Start(config, mode)
     if game == "BruteForce" then return glitch:StartBruteForce(data.numLives) == true end
     if game == "DataCrack" then return glitch:StartDataCrack(data.difficulty) == true end
     if game == "CircuitBreaker" then return glitch:StartCircuitBreaker(data.levelNumber, data.difficultyLevel, data.delayStartMs, data.minFailureDelayTimeMs, data.maxFailureDelayTimeMs, data.disconnectChance, data.disconnectCheckRateMs, data.minReconnectTimeMs, data.maxReconnectTimeMs) == true end
+    -- Fleeca owns its model, animation, scaleform and awaited result. Keep this
+    -- identical to its documented zero-argument export, without a second init.
     if game == "FleecaDrilling" then return glitch:StartDrilling() == true end
-    if game == "PlasmaDrilling" then return glitch:StartPlasmaDrilling(data.difficulty) == true end
+    if game == "PlasmaDrilling" then return startDrill(glitch,game,math.max(1,math.min(10,tonumber(data.difficulty) or 5))) end
 
     return false
 end

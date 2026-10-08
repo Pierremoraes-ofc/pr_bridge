@@ -67,17 +67,25 @@ local function clone(value)
 end
 
 local function getGlobalConfig()
-    return clone(GlobalState.pr_bridge_ui_config or {})
+    return clone(Bridge.settings.get("interface", {}))
+end
+
+local uiLocale
+local function uiText(key)
+    uiLocale = uiLocale or Bridge.locale("pr_bridge")
+    return uiLocale:t("ui." .. key)
 end
 
 local function saveGlobalConfig(config)
     local ok, saved = Bridge.callback.await("pr_bridge:ui:saveConfig", 10000, config)
     if not ok then
-        UI.Notify({ title = "pr_bridge", description = tostring(saved or "save_failed"), type = "error" })
+        local key = tostring(saved or "save_failed")
+        uiLocale = uiLocale or Bridge.locale("pr_bridge")
+        UI.Notify({ title = "pr_bridge", description = uiLocale:has("ui." .. key) and uiText(key) or key, type = "error" })
         return false
     end
 
-    UI.Notify({ title = "pr_bridge", description = "Configuracao visual salva.", type = "success" })
+    UI.Notify({ title = "pr_bridge", description = uiText("saved"), type = "success" })
     return true
 end
 
@@ -333,13 +341,19 @@ end
 local function openInteractEditor()
     local config = getGlobalConfig()
     local interact = config.interact or {}
-    local values = UI.InputDialog("Visual do interact", {
+    local rows = {
         { type = "select", label = "Modelo visual", default = interact.style or "obtaizen_ui", options = {
-            { value = "blue_circle", label = "Circulo azul" },
-            { value = "gold_circle", label = "Circulo dourado" },
-            { value = "green_square", label = "Quadrado verde" },
+            { value = "blue_circle", label = "Pino" },
+            { value = "green_square", label = "Quadrado" },
             { value = "glitch", label = "Glitch" },
-            { value = "obtaizen_ui", label = "Obtaizen roxo" },
+            { value = "circle", label = "Círculo" },
+            { value = "record-circle", label = "Círculo marcado" },
+            { value = "crosshair", label = "Mira" },
+            { value = "bullseye", label = "Alvo" },
+            { value = "geo-alt-fill", label = "Localização" },
+            { value = "cursor-fill", label = "Ponteiro" },
+            { value = "diamond", label = "Diamante" },
+            { value = "obtaizen_ui", label = "Obteizen" },
         }, required = true },
         { type = "number", label = "Escala geral", default = interact.scale or 1, min = 0.25, max = 3, step = 0.05, precision = 2, required = true },
         { type = "number", label = "Tamanho do ponto proximo (px)", default = interact.pinSize or 32, min = 10, max = 120, step = 1, precision = 1, required = true },
@@ -362,7 +376,42 @@ local function openInteractEditor()
         { type = "checkbox", label = "Desativar dentro de veiculos", checked = interact.disableInVehicle ~= false },
         { type = "checkbox", label = "Desativar quando estiver algemado", checked = interact.disableWhenCuffed ~= false },
         { type = "checkbox", label = "Exibir indicadores do interact na tela", checked = interact.showUI ~= false },
-    }, { size = "lg", allowCancel = true })
+        { type = "color", label = "Cor secundária (camada inferior)", default = interact.secondaryColor or "#00ffff", required = true },
+        { type = "slider", label = "Opacidade: Ponto proximo (%)", default = math.floor((interact.pinOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+        { type = "slider", label = "Opacidade: Tecla de interacao (%)", default = math.floor((interact.keyOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+        { type = "slider", label = "Opacidade: Opcao selecionada (%)", default = math.floor((interact.selectedOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+        { type = "slider", label = "Opacidade: Opcoes nao selecionadas (%)", default = math.floor((interact.unselectedOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+        { type = "slider", label = "Opacidade: Texto (%)", default = math.floor((interact.textOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+        { type = "slider", label = "Opacidade: Camada secundaria (%)", default = math.floor((interact.secondaryOpacity or 1) * 100 + 0.5), min = 0, max = 100, step = 1, required = true },
+    }
+    rows[#rows+1]={type="color",label="Cor secundaria",default=interact.keySecondaryColor or interact.secondaryColor or "#00ffff",required=true}
+    rows[#rows+1]={type="slider",label="Opacidade secundaria (%)",default=math.floor((interact.keySecondaryOpacity or interact.secondaryOpacity or 1)*100+0.5),min=0,max=100,step=1,required=true}
+    rows[#rows+1]={type="color",label="Cor secundaria",default=interact.selectedSecondaryColor or interact.secondaryColor or "#00ffff",required=true}
+    rows[#rows+1]={type="slider",label="Opacidade secundaria (%)",default=math.floor((interact.selectedSecondaryOpacity or interact.secondaryOpacity or 1)*100+0.5),min=0,max=100,step=1,required=true}
+    rows[#rows+1]={type="color",label="Cor secundaria",default=interact.unselectedSecondaryColor or interact.secondaryColor or "#00ffff",required=true}
+    rows[#rows+1]={type="slider",label="Opacidade secundaria (%)",default=math.floor((interact.unselectedSecondaryOpacity or interact.secondaryOpacity or 1)*100+0.5),min=0,max=100,step=1,required=true}
+    local groups = {
+        {title="Modelo e escala", ids={1,2}},
+        {title="Ponto de interesse - cor primaria", ids={3,10,24,23,29}},
+        {title="Botao de interacao - cor primaria", ids={4,11,25,30,31}},
+        {title="Opcao selecionada", ids={12,26,32,33}},
+        {title="Opcoes nao selecionadas", ids={13,27,34,35}},
+        {title="Texto", ids={14,28,9}},
+        {title="Tamanho e fundo das opcoes", ids={5,6,7,8,15}},
+        {title="Visibilidade e comportamento", ids={22,16,17,18,19,20,21}},
+    }
+    local ordered, indices = {}, {}
+    for _, group in ipairs(groups) do
+        for i,index in ipairs(group.ids) do
+            local row=rows[index]
+            if i==1 then row.section=group.title end
+            ordered[#ordered+1],indices[#indices+1]=row,index
+        end
+    end
+    local submitted=UI.InputDialog("Visual do interact",ordered,{size="lg",allowCancel=true})
+    if not submitted then return end
+    local values={}
+    for i,index in ipairs(indices) do values[index]=submitted[i] end
 
     if not values then return end
     config.interact = {
@@ -372,7 +421,16 @@ local function openInteractEditor()
         textColor = values[14], backgroundOpacity = values[15], wallDetection = values[16] == true, wallRayFlags = values[17],
         disableOnDeath = values[18] == true, disableOnNuiFocus = values[19] == true,
         disableInVehicle = values[20] == true, disableWhenCuffed = values[21] == true,
-        showUI = values[22] == true,
+        showUI = values[22] == true, secondaryColor = values[23],
+        keySecondaryColor=values[30],keySecondaryOpacity=values[31]/100,
+        selectedSecondaryColor=values[32],selectedSecondaryOpacity=values[33]/100,
+        unselectedSecondaryColor=values[34],unselectedSecondaryOpacity=values[35]/100,
+        pinOpacity = (tonumber(values[24]) or 100) / 100,
+        keyOpacity = (tonumber(values[25]) or 100) / 100,
+        selectedOpacity = (tonumber(values[26]) or 100) / 100,
+        unselectedOpacity = (tonumber(values[27]) or 100) / 100,
+        textOpacity = (tonumber(values[28]) or 100) / 100,
+        secondaryOpacity = (tonumber(values[29]) or 100) / 100,
     }
     saveGlobalConfig(config)
 end
@@ -404,6 +462,17 @@ local function openBubbleEditor()
     saveGlobalConfig(config)
 end
 
+local function openLogoEditor()
+    local config = getGlobalConfig()
+    local values = UI.InputDialog(uiText("logo_title"), {
+        { type = "input", label = uiText("logo_url"), description = uiText("logo_help"),
+            default = (config.branding or {}).logoUrl or "", maxLength = 2048, required = false },
+    }, { allowCancel = true })
+    if not values then return end
+    config.branding = { logoUrl = values[1] or "" }
+    saveGlobalConfig(config)
+end
+
 function UI.OpenVisualAdminMenu(parentMenu)
     CreateThread(function()
         local allowed, reason = Bridge.callback.await("pr_bridge:ui:isAdmin", 10000)
@@ -416,6 +485,10 @@ function UI.OpenVisualAdminMenu(parentMenu)
             UI.Notify({ title = "pr_bridge", description = "Acesso negado.", type = "error" })
             return
         end
+        if not Bridge.settings.get("interface") then
+            UI.Notify({ title = "pr_bridge", description = uiText("not_ready"), type = "error" })
+            return
+        end
 
         local id = ("pr_bridge_visual_admin_%s"):format(resourceName)
         UI.RegisterContext({
@@ -423,6 +496,7 @@ function UI.OpenVisualAdminMenu(parentMenu)
             title = "Interface global",
             menu = parentMenu,
             options = {
+                { title = uiText("logo_title"), description = uiText("logo_description"), icon = "image", onSelect = openLogoEditor },
                 { title = "Paleta de cores", description = "Cores e opacidade usadas por todos os componentes.", icon = "palette-fill", onSelect = openPaletteEditor },
                 { title = "Posicoes", description = "Lado dos menus, metadata, notificacoes e indicadores.", icon = "layout-sidebar-inset", onSelect = openLayoutEditor },
                 { title = "Target", description = "Posicao, escala, cores, opacidade e marcadores do sistema de interacao.", icon = "crosshair", onSelect = openTargetEditor },

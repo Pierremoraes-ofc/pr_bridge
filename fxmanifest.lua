@@ -39,6 +39,10 @@ client_scripts({
 ui_page("interface/loader/index.html")
 
 files({
+	"bridge/minigames/glitch/client.lua",
+	"bridge/emotes/client.lua",
+	"bridge/doorlock/client.lua",
+	"bridge/doorlock/server.lua",
 	"shared/progression.lua",
 	"init.lua",
 	"bridge/**/*.lua",

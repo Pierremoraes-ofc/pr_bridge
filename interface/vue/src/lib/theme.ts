@@ -1,6 +1,7 @@
 import { alphaColor } from './forgebox'
 
 export type VisualConfig = {
+  branding?: { logoUrl?: string }
   palette?: Record<string, string | number>
   layout?: Record<string, string>
 }

@@ -299,7 +299,7 @@ end
 function framework.addPlayerMoney(source, moneyWallet, amount, reason)
     if moneyWallet == 'money' then moneyWallet = 'cash' end
     if moneyWallet == 'black_money' then moneyWallet = 'blackmoney' end
-    qbx_core:AddMoney(source, moneyWallet, amount, reason or "Unknown")
+    return qbx_core:AddMoney(source, moneyWallet, amount, reason or "Unknown")
 end
 
 function framework.removePlayerMoney(source, moneyWallet, amount, reason)

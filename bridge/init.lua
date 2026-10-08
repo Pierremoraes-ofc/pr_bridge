@@ -16,10 +16,6 @@ if IsDuplicityVersion() then
     end
 
     if type(bridgeLocale) == "string" and bridgeLocale ~= "" then
-        if GlobalState then
-            GlobalState.pr_bridge_locale = bridgeLocale
-        end
-
         if SetConvarReplicated then
             SetConvarReplicated("pr_bridge:locale", bridgeLocale)
         end
@@ -152,6 +148,13 @@ Bridge.loadFile = PRCore.loadFile
 Bridge.loadJson = PRCore.loadJson
 Bridge.readJson = PRCore.readJson
 Bridge.saveJson = PRCore.saveJson
+Bridge.jsonDraft = PRCore.jsonDraft
+Bridge.withJsonLock = PRCore.withJsonLock
+Bridge.wrapJsonMutations = PRCore.wrapJsonMutations
+Bridge.loadJsonRecovery = PRCore.loadJsonRecovery
+Bridge.saveJsonRecovery = PRCore.saveJsonRecovery
+Bridge.recordJsonIncident = PRCore.recordJsonIncident
+Bridge.saveJsonBatch = PRCore.saveJsonBatch
 Bridge.writeJson = PRCore.writeJson
 Bridge.updateJson = PRCore.updateJson
 Bridge.mergeJson = PRCore.mergeJson
@@ -551,9 +554,15 @@ if createAutomaticCache then
     bridgeCache = createAutomaticCache(Bridge, ActiveBridges)
     local centralizeCache = PRCore.load("bridge.cache.central")
     if centralizeCache then centralizeCache(bridgeCache) end
+    local resourceCache = PRCore.load("bridge.cache.resources")
+    if resourceCache then resourceCache(bridgeCache) end
     Bridge.cache = bridgeCache
     Bridge.onCache = bridgeCache.onChange
     Bridge.getCacheMetrics = bridgeCache.getMetrics
+end
+Bridge.settings = PRCore.load("bridge.settings")(Bridge)
+if PRCore.context == "server" then
+    Bridge.settings.publish("locale", { name = Locale.getConfiguredName() })
 end
 if PRCore.context == "client" then
     local normalizeEntities = PRCore.load("bridge.compat.entities_client")
@@ -598,6 +607,9 @@ end
 
 exports("getCacheSnapshot", function()
     return Bridge.cache and Bridge.cache.getSnapshot and Bridge.cache.getSnapshot() or {}
+end)
+exports("GetResourceState", function(resource,key)
+    return Bridge.cache.GetResourceState(resource,key)
 end)
 
 exports("getCachedEntity", function(identifier)

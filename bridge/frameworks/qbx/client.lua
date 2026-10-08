@@ -139,8 +139,14 @@ end
 
 ---@return boolean
 function framework.IsPlayerLoaded()
+    -- Preserve the existing authenticated-character contract: the spawn UI
+    -- and appearance may run before the world-ready notification.
     return type(QBX.PlayerData) == "table"
         and next(QBX.PlayerData) ~= nil
+end
+
+function framework.IsSessionReady()
+    return qbx_core:IsPlayerLoaded() == true
 end
 
 -- Documentation implementation

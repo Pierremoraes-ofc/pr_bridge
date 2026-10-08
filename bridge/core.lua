@@ -158,12 +158,12 @@ function PRCore.saveJson(path, value, options)
     if type(SaveResourceFile) ~= "function" then return false, "write_unavailable" end
 
     local resource, fileName = getDataFileInfo(path, ".json", true)
-    local encoded = json.encode(value)
+    local ok, encoded = pcall(json.encode, value)
 
-    if not encoded then return false, "encode_failed" end
+    if not ok or type(encoded) ~= 'string' then return false, "encode_failed" end
 
-    local saved = SaveResourceFile(resource, fileName, encoded, #encoded)
-    if saved == false then return false, "save_failed" end
+    local success, saved = pcall(SaveResourceFile, resource, fileName, encoded, #encoded)
+    if not success or (saved ~= true and saved ~= 1) then return false, "save_failed" end
 
     return true, {
         resource = resource,
@@ -200,6 +200,10 @@ end
 
 PRCore.mergeJson = PRCore.updateJson
 
+if PRCore.context == 'server' then
+    PRCore.loadFile('pr_bridge', 'bridge/persistence.lua')()(PRCore, getDataFileInfo)
+end
+
 function PRCore.deleteJson(path)
     if type(SaveResourceFile) ~= "function" then return false, "write_unavailable" end
 
@@ -207,7 +211,7 @@ function PRCore.deleteJson(path)
     local content = "null"
     local saved = SaveResourceFile(resource, fileName, content, #content)
 
-    if saved == false then return false, "save_failed" end
+    if saved ~= true and saved ~= 1 then return false, "save_failed" end
     return true, { resource = resource, path = fileName }
 end
 

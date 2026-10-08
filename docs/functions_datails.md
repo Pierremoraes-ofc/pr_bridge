@@ -1,8 +1,47 @@
 # PR Bridge — Catálogo detalhado de funções
 
+## Complemento Forge DK: NUI do consumidor (2026-10-06)
+
+Estas cinco entradas são adições à auditoria histórica de setembro; `fivem.nui` e `nui` apontam para o mesmo módulo.
+
+### Function: `pr_lib.nui.send(action, data)`
+- Detail: envia a mensagem `{ action, data }` à ui_page do recurso consumidor; retorna boolean. Não usa a interface de context/menu do bridge.
+- Related/Dependents: `nui.register`, `nui.focus`; exemplo `/prtest_nui_own`.
+- Directory: `bridge/fivem/nui/client.lua`, carregado por `bridge/fivem/client.lua` no ambiente do consumidor.
+- Context: client.
+- Tags: NUI, consumer, message.
+
+### Function: `pr_lib.nui.focus(enabled, cursor, keepInput)`
+- Detail: adquire foco NUI e controla cursor/input do consumidor. Fechar sem foco próprio é no-op; stop do recurso libera seu foco. Outros recursos ainda precisam respeitar foco/locks ao abrir suas interfaces.
+- Related/Dependents: `nui.isFocused`, `nui.send`.
+- Directory: `bridge/fivem/nui/client.lua`.
+- Context: client.
+- Tags: NUI, focus, lifecycle.
+
+### Function: `pr_lib.nui.isFocused()`
+- Detail: retorna boolean indicando foco adquirido por este consumidor através do módulo. Não representa todos os recursos do FiveM.
+- Related/Dependents: `nui.focus`.
+- Directory: `bridge/fivem/nui/client.lua`.
+- Context: client.
+- Tags: NUI, focus.
+
+### Function: `pr_lib.nui.register(name, handler)`
+- Detail: registra callback da NUI própria. `handler(data, reply)` deve responder uma vez; respostas repetidas são ignoradas; erro Lua gera `callback_failed` se ainda não houve resposta.
+- Related/Dependents: `tests/nui_consumer_test.lua`, `pr_scriptTest/client_consumer_nui.lua`.
+- Directory: `bridge/fivem/nui/client.lua`.
+- Context: client.
+- Tags: NUI, callback, safety.
+
+### Function: `pr_lib.ace.isPrincipalAceAllowed(principal, aceName)`
+- Detail: consulta ACE nativa do principal, validando strings. Não usa whitelist de admin jogador e não concede permissões. Útil para autorizar exports entre recursos.
+- Related/Dependents: `ace.isPlayerAceAllowed`, `ace.addAce`.
+- Directory: `bridge/ace/server.lua`.
+- Context: server.
+- Tags: permissions, ACE, resource.
+
 > Auditoria consolidada em 2026-09-03 a partir dos módulos Lua ativos, `API_FUNCTIONS.md`, do catálogo anterior e dos complementos técnicos.
 
-Este documento contém **967 entradas por assinatura/contexto** e **820 caminhos funcionais únicos**. A mesma função pode aparecer em client e server quando os contratos ou a autoridade forem diferentes.
+A auditoria histórica abaixo contém **967 entradas por assinatura/contexto** e **820 caminhos funcionais únicos**, além dos complementos datados. A mesma função pode aparecer em client e server quando os contratos ou a autoridade forem diferentes.
 
 Caminhos com `*` ou `{client,server}` representam famílias de adapters selecionadas em tempo de execução.
 
