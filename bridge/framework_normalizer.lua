@@ -94,10 +94,15 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
                 local info = data.charinfo or data
                 local metadata = data.metadata or {}
                 local identifier = framework.GetIdentifier and framework.GetIdentifier(source)
-                local phone = info.phone or data.phone_number or metadata.phoneNumber or metadata.phone
-                if not identifier or phone == nil or tostring(phone) == '' then return nil end
-                return { source = tonumber(source), identifier = identifier, phoneNumber = tostring(phone),
-                    firstname = info.firstname or info.firstName or '', lastname = info.lastname or info.lastName or '' }
+                local phone = info.phone or data.phone_number or data.phonenumber or metadata.phoneNumber or metadata.phone
+                if identifier == nil or tostring(identifier) == '' then return nil end
+                local name = framework.GetPlayerName and framework.GetPlayerName(source) or {}
+                if type(name) ~= 'table' then name = {} end
+                -- Frameworks need not own a phone number; the consumer uses its storage.
+                return { source = tonumber(source), identifier = tostring(identifier),
+                    phoneNumber = phone ~= nil and tostring(phone) or nil,
+                    firstname = info.firstname or info.firstName or name.firstName or '',
+                    lastname = info.lastname or info.lastName or name.lastName or '' }
             end
         end
 

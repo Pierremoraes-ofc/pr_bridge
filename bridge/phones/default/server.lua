@@ -1,8 +1,7 @@
 local phone = {}
 
 local function getForgePhoneResource()
-    if GetResourceState('forge-phone'):find('start') then return 'forge-phone' end
-    if GetResourceState('npwd'):find('start') then return 'npwd' end
+    if GetResourceState('forge-npwd'):find('start') then return 'forge-npwd' end
 end
 
 function phone.GetActiveContext(source)

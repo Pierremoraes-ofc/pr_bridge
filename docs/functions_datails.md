@@ -1,6 +1,2134 @@
 # PR Bridge — Catálogo detalhado de funções
 
-## Complemento Forge DK: NUI do consumidor (2026-10-06)
+**Versão atual:** 1.4.2 · **Total de funções documentadas:** 953 caminhos de API únicos · **Entradas por assinatura/contexto:** 1117
+
+**Conferido em:** 2026-10-09. O total considera os caminhos presentes nas entradas Function, normaliza chamadas com ponto/dois-pontos e não soma novamente os aliases de módulos da tabela final. Caminhos alternativos explicitamente documentados e APIs opt-in fazem parte do catálogo; o total não representa funções disponíveis simultaneamente em todo adapter.
+
+## Atualização do catálogo — 1.4.2 (2026-10-09)
+
+Complemento conferido com o código local e com a tag pública [1.3.0](https://github.com/Pierremoraes-ofc/pr_bridge/releases/tag/1.3.0). As seções históricas foram preservadas; as entradas abaixo cobrem APIs adicionadas e lacunas encontradas. A disponibilidade depende do contexto e do adapter indicado.
+
+Módulos opt-in não são inicializados pelo simples carregamento de init.lua. Portas, emotes e prisão podem ser carregados assim, no contexto indicado:
+
+```lua
+local doorlock = pr_lib.loadModule('@pr_bridge/bridge/doorlock/server')
+-- No cliente:
+-- local emotes = pr_lib.loadModule('@pr_bridge/bridge/emotes/client')
+-- No servidor:
+-- local prison = pr_lib.loadModule('@pr_bridge/bridge/prison/server')
+```
+
+Os nomes doorlock/emotes/prison abaixo representam as tabelas retornadas, não propriedades automáticas de pr_lib. Police e PRProgression usam a inclusão explícita descrita nas respectivas seções.
+
+### Persistência JSON protegida
+
+Carregado por bridge/core.lua somente no servidor. As APIs existentes saveJson/writeJson também passam a distinguir corretamente os retornos nativos true/1 de false/0.
+
+### Function: **`pr_lib.jsonDraft(value, branches?)`**
+
+**Detail:** Cria cópia profunda do valor, ou copia somente as ramificações selecionadas; não salva. Útil para validar uma edição antes de publicar o estado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.withJsonLock(path, action, ...)`**
+
+**Detail:** Executa action com lock local do arquivo. É reentrante na mesma corrotina; concorrência retorna false, "busy". Libera o lock mesmo em erro. Não é lock entre recursos.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.wrapJsonMutations(path, service, methods)`**
+
+**Detail:** Substitui os métodos nomeados do serviço por wrappers de withJsonLock. methods é uma lista de nomes de funções existentes.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.loadJsonRecovery(path)`**
+
+**Detail:** Carrega JSON primário válido ou o arquivo .bak; recuperação retorna também "recovered_backup". Se ambos estiverem corrompidos, lança erro e não sobrescreve com defaults.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.saveJsonRecovery(path, value, options?)`**
+
+**Detail:** Salva com lock, validação de JSON e backup. options.backup="on_failure" reduz backups em rotinas frequentes. Retorna sucesso e detalhes ou false e motivo. Não promete gravação atômica contra queda de energia.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.saveJsonBatch(changes)`**
+
+**Detail:** Recebe tabela path→value, trava os arquivos em ordem e tenta restaurar os anteriores se uma gravação posterior falhar. Retorna false, "reconciliation_required" se a restauração falhar. Não é transação de banco.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Function: **`pr_lib.recordJsonIncident(path, key, details)`**
+
+**Detail:** Registra diagnóstico excepcional em path .. ".incidents.json", utilizando recuperação JSON; retorna sucesso/motivo e não envia dados financeiros aos clientes.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/persistence.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, persistência json protegida
+
+---
+
+### Ambiente, permissões e callbacks
+
+### Function: **`pr_lib.environment.getMode()`**
+
+**Detail:** Retorna production, development ou test; lê pr_bridge:environment na inicialização e usa production por padrão.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.isProduction()`**
+
+**Detail:** Retorna se o ambiente inicializado é production.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.isDevelopment()`**
+
+**Detail:** Retorna se o ambiente inicializado é development.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.isTest()`**
+
+**Detail:** Retorna se o ambiente inicializado é test.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.normalizeBoolean(value, defaultValue?)`**
+
+**Detail:** Normaliza boolean ou texto true/1/yes/on e false/0/no/off; valores desconhecidos usam o default booleano.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.getCallbackMode()`**
+
+**Detail:** Retorna secure ou legacy conforme pr_bridge:callback:secure; padrão legacy.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.isSecureCallbackEnabled()`**
+
+**Detail:** Retorna se o transporte reforçado foi habilitado pela convar na inicialização.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.getDeveloperAce()`**
+
+**Detail:** Retorna o nome da ACE pr_bridge.developer.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.getAdminAce()`**
+
+**Detail:** Retorna o nome da ACE forge-core.admin.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.hasDeveloperAccess(playerSource)`**
+
+**Detail:** No servidor, permite console (source 0) ou jogador com ACE de desenvolvedor/admin; no cliente sempre retorna false.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.canUseDeveloperTools(playerSource)`**
+
+**Detail:** Só permite no servidor, fora de production e com hasDeveloperAccess aprovado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Function: **`pr_lib.environment.getCallbackLimits()`**
+
+**Detail:** Retorna timeout, maxPending, maxPendingPerPlayer e maxInboundPerPlayer, com limites mínimos e valores definidos nas convars pr_bridge:callback:*.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/environment.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, ambiente, permissões e callbacks
+
+---
+
+### Transporte efetivamente carregado
+
+### Function: **`pr_lib.callback.getMode()`**
+
+**Detail:** Retorna o transporte efetivamente carregado (legacy ou secure), inclusive após fallback. Diferente de environment.getCallbackMode, que expressa a configuração desejada.
+
+**Related/Dependents:** `pr_lib.environment.getCallbackMode`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, transporte efetivamente carregado
+
+---
+
+### Cache entre recursos
+
+### Function: **`pr_lib.cache.GetResourceState(resource, key)`**
+
+**Detail:** Consulta o export GetCachedState(key) de um recurso iniciado e retorna cópia defensiva de record.data; recurso parado, export ausente ou registro inválido retornam nil. Aceita chamada com ponto ou dois-pontos.
+
+**Related/Dependents:** `pr_lib.cache.OnResourceState`
+
+**Directory:** `bridge/cache/resources.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, cache entre recursos
+
+---
+
+### Function: **`pr_lib.cache.OnResourceState(resource, key, callback)`**
+
+**Detail:** Escuta pr_bridge:resourceState:changed e entrega cópia defensiva dos dados desse domínio. Retorna função para cancelar a assinatura. Não faz snapshot inicial nem cria replicação automática.
+
+**Related/Dependents:** `pr_lib.cache.GetResourceState`
+
+**Directory:** `bridge/cache/resources.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, cache entre recursos
+
+---
+
+### Configuração global em memória
+
+### Function: **`pr_lib.settings.get(domain, fallback?)`**
+
+**Detail:** Retorna dados locais de locale ou interface, ou fallback. A tabela é referência interna somente para leitura; consumidores externos devem preferir cache.GetResourceState.
+
+**Related/Dependents:** `pr_lib.cache.GetResourceState`
+
+**Directory:** `bridge/settings.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, configuração global em memória
+
+---
+
+### Function: **`pr_lib.settings.snapshot(domain)`**
+
+**Detail:** Retorna cópia defensiva do registro completo { epoch, revision, data } ou nil.
+
+**Related/Dependents:** `pr_lib.settings.get`
+
+**Directory:** `bridge/settings.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, configuração global em memória
+
+---
+
+### Publicação de configuração global
+
+### Function: **`pr_lib.settings.publish(domain, data)`**
+
+**Detail:** Publica locale ou interface com revisão/geração, atualiza cache e envia mudança aos clientes. Não existe no objeto settings de recursos consumidores; não substitui validação administrativa nem persistência.
+
+**Related/Dependents:** `pr_lib.settings.snapshot`
+
+**Directory:** `bridge/settings.lua`
+
+**Context:** Server — somente host pr_bridge
+
+**Tags:** 1.4.2, publicação de configuração global
+
+---
+
+### Estado local do jogador
+
+A instância não é o LocalPlayer nativo: setr é alias de set nesta facade, e não uma promessa de replicação. Sem provider, invBusy fica true por segurança.
+
+### Function: **`pr_lib.player.new()`**
+
+**Detail:** Cria facade com métodos player:get(field), player:set(field, value) e player:setr(field, value). Campos de inventário são lidos do provider ox_inventory e escritos por SetPlayerState; outros campos usam cache local.
+
+**Related/Dependents:** `pr_lib.cache.GetResourceState`
+
+**Directory:** `bridge/cache/player_client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, estado local do jogador
+
+---
+
+### Métodos da instância de estado local
+
+### Function: **`player:get(field)`**
+
+**Detail:** Retorna campo do provider de inventário ou do cache local, conforme o campo solicitado.
+
+**Related/Dependents:** `pr_lib.player.new`
+
+**Directory:** `bridge/cache/player_client.lua`
+
+**Context:** Client — objeto retornado por pr_lib.player.new()
+
+**Tags:** 1.4.2, métodos da instância de estado local
+
+---
+
+### Function: **`player:set(field, value)`**
+
+**Detail:** Delega campos de inventário a ox_inventory:SetPlayerState e demais campos ao cache local. Provider parado retorna false.
+
+**Related/Dependents:** `pr_lib.player.new`
+
+**Directory:** `bridge/cache/player_client.lua`
+
+**Context:** Client — objeto retornado por pr_lib.player.new()
+
+**Tags:** 1.4.2, métodos da instância de estado local
+
+---
+
+### Function: **`player:setr(field, value)`**
+
+**Detail:** Alias de set na facade: não garante replicação pela rede.
+
+**Related/Dependents:** `player:set`
+
+**Directory:** `bridge/cache/player_client.lua`
+
+**Context:** Client — objeto retornado por pr_lib.player.new()
+
+**Tags:** 1.4.2, métodos da instância de estado local
+
+---
+
+### Framework: identidade, catálogo e sessão
+
+### Function: **`pr_lib.framework.GetVehiclesByHash(model?)`**
+
+**Detail:** Retorna definição por hash/nome de modelo ou catálogo completo quando sem argumento. QBX consulta o catálogo autoritativo qbx_core; QB usa Shared.Vehicles; outros adapters têm fallback vazio.
+
+**Related/Dependents:** `pr_lib.framework.GetVehicleData`
+
+**Directory:** `bridge/framework_normalizer.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, framework: identidade, catálogo e sessão
+
+---
+
+### Function: **`pr_lib.framework.GetVehicleData(model)`**
+
+**Detail:** Aceita string ou number e consulta GetVehiclesByHash; argumentos de outro tipo retornam nil.
+
+**Related/Dependents:** `pr_lib.framework.GetVehiclesByHash`
+
+**Directory:** `bridge/framework_normalizer.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, framework: identidade, catálogo e sessão
+
+---
+
+### Framework: persistência e perfil do telefone
+
+### Function: **`pr_lib.framework.SetVehiclePersistence(vehicle, enabled)`**
+
+**Detail:** Valida entidade; em QBX delega a EnablePersistence/DisablePersistence. Outros frameworks usam SetEntityOrphanMode. O fallback não grava o veículo em banco.
+
+**Related/Dependents:** `pr_lib.framework.GetVehicleData`
+
+**Directory:** `bridge/framework_normalizer.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, framework: persistência e perfil do telefone
+
+---
+
+### Function: **`pr_lib.framework.GetPhoneProfile(source)`**
+
+**Detail:** Retorna { source, identifier, phoneNumber?, firstname, lastname } ou nil sem jogador/identificador. Normaliza charinfo, phone_number, phonenumber e metadata, com fallback de nome; telefone ausente não invalida o perfil.
+
+**Related/Dependents:** `pr_lib.phone.GetActiveContext`
+
+**Directory:** `bridge/framework_normalizer.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, framework: persistência e perfil do telefone
+
+---
+
+### Framework QBX: jogador offline
+
+### Function: **`pr_lib.framework.GetOfflinePlayer(identifier)`**
+
+**Detail:** Consulta jogador offline através de qbx_core:GetOfflinePlayer(identifier), sem fingir que ele está conectado.
+
+**Related/Dependents:** `pr_lib.framework.GetPlayerFromIdentifier`
+
+**Directory:** `bridge/frameworks/qbx/server.lua`
+
+**Context:** Server — QBX
+
+**Tags:** 1.4.2, framework qbx: jogador offline
+
+---
+
+### Framework QBX: prontidão do mundo
+
+### Function: **`pr_lib.framework.IsSessionReady()`**
+
+**Detail:** Consulta qbx_core:IsPlayerLoaded(). IsPlayerLoaded mantém o contrato de personagem autenticado; IsSessionReady distingue a sessão pronta no mundo.
+
+**Related/Dependents:** `pr_lib.framework.IsPlayerLoaded`
+
+**Directory:** `bridge/frameworks/qbx/client.lua`
+
+**Context:** Client — QBX
+
+**Tags:** 1.4.2, framework qbx: prontidão do mundo
+
+---
+
+### Telefone ativo: Forge NPWD
+
+Estas três funções estão no adapter default, não em todos os adapters de telefone. Não presumir que APIs antigas como SendSOSMessage ou HasEmailAccount ganharam implementação no default.
+
+### Function: **`pr_lib.phone.GetActiveContext(source)`**
+
+**Detail:** Obtém getActivePhoneContext do forge-npwd para source válido. Retorna tabela ou nil quando indisponível; não consulta aparelho aleatório pelo dono do personagem.
+
+**Related/Dependents:** `pr_lib.framework.GetPhoneProfile`
+
+**Directory:** `bridge/phones/default/server.lua`
+
+**Context:** Server — adapter default / Forge NPWD iniciado
+
+**Tags:** 1.4.2, telefone ativo: forge npwd
+
+---
+
+### Function: **`pr_lib.phone.GetActiveOwnerIdentifier(source)`**
+
+**Detail:** Retorna ownerIdentifier do aparelho atualmente ativo ou nil.
+
+**Related/Dependents:** `pr_lib.phone.GetActiveContext`
+
+**Directory:** `bridge/phones/default/server.lua`
+
+**Context:** Server — adapter default / Forge NPWD iniciado
+
+**Tags:** 1.4.2, telefone ativo: forge npwd
+
+---
+
+### Function: **`pr_lib.phone.GetActiveDeviceId(source)`**
+
+**Detail:** Retorna deviceId do aparelho atualmente ativo ou nil.
+
+**Related/Dependents:** `pr_lib.phone.GetActiveContext`
+
+**Directory:** `bridge/phones/default/server.lua`
+
+**Context:** Server — adapter default / Forge NPWD iniciado
+
+**Tags:** 1.4.2, telefone ativo: forge npwd
+
+---
+
+### Garagens de propriedades: cliente
+
+### Function: **`pr_lib.garage.getProvider()`**
+
+**Detail:** Seleciona provider iniciado entre forge-garage, jg-advancedgarages, qbx_garages e qb-garages; respeita pr_bridge:garage ou auto. Retorna nome ou nil.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, garagens de propriedades: cliente
+
+---
+
+### Function: **`pr_lib.garage.createPropertyGarage(options, done)`**
+
+**Detail:** Inicia edição e entrega um draft via done. Forge Garage usa callback/evento com conclusão única; demais providers usam options.placeCoords. Retorna se o fluxo foi iniciado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, garagens de propriedades: cliente
+
+---
+
+### Function: **`pr_lib.garage.commitPropertyGarageDraft(options)`**
+
+**Detail:** Valida o draft; Forge Garage delega ao provider, demais montam dados normalizados para o consumidor. Não constitui persistência automática em todos os providers.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, garagens de propriedades: cliente
+
+---
+
+### Function: **`pr_lib.garage.registerProperty(options)`**
+
+**Detail:** Registra target/zona da propriedade conforme provider. Forge Garage já administra suas zonas; QBX usa options.registerServer; retorna handle quando aplicável.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, garagens de propriedades: cliente
+
+---
+
+### Function: **`pr_lib.garage.unregisterProperty(handle)`**
+
+**Detail:** Remove target/zona e integração qb-garages associados ao handle criado pelo consumidor.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, garagens de propriedades: cliente
+
+---
+
+### Garagens de propriedades: servidor
+
+### Function: **`pr_lib.garage.getProvider()`**
+
+**Detail:** Seleciona o mesmo conjunto de providers do cliente, respeitando pr_bridge:garage; retorna nome ou nil.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, garagens de propriedades: servidor
+
+---
+
+### Function: **`pr_lib.garage.registerProperty(options)`**
+
+**Detail:** Registra via qbx_garages:RegisterGarage somente quando esse provider está selecionado e há coordenadas válidas; retorna boolean.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, garagens de propriedades: servidor
+
+---
+
+### Function: **`pr_lib.garage.validateLink(propertyId, data)`**
+
+**Detail:** Valida provider e vínculo. Forge Garage confere propertyGarage.id; demais verificam coordenadas/heading finitos e limitados. Não concede acesso por conta própria.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/garages/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, garagens de propriedades: servidor
+
+---
+
+### Target nativo: pickups
+
+Também expostas na compatibilidade ox. Não são APIs garantidas nos targets externos QB/core_focus. Objetos simples devem continuar usando addLocalEntity/addModel.
+
+### Function: **`pr_lib.target.addGlobalPickup(options)`**
+
+**Detail:** Registra opções para pickups descobertos, respeitando condições, distância e visibilidade. Alias AddGlobalPickup.
+
+**Related/Dependents:** `pr_lib.target.removeGlobalPickup`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Function: **`pr_lib.target.removeGlobalPickup(names)`**
+
+**Detail:** Remove opções globais de pickup pelos nomes, dentro do registro do consumidor. Alias RemoveGlobalPickup.
+
+**Related/Dependents:** `pr_lib.target.addGlobalPickup`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Function: **`pr_lib.target.addPickupType(pickupTypes, options)`**
+
+**Detail:** Registra opções por tipo/hash de pickup, não apenas pelo modelo do prop. Alias AddPickupType.
+
+**Related/Dependents:** `pr_lib.target.removePickupType`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Function: **`pr_lib.target.removePickupType(pickupTypes, names)`**
+
+**Detail:** Remove opções por tipo de pickup e nome. Alias RemovePickupType.
+
+**Related/Dependents:** `pr_lib.target.addPickupType`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Function: **`pr_lib.target.addPickup(pickups, options)`**
+
+**Detail:** Registra pickups específicos; aceita handles/descrições reconhecidos pelo adapter, com controle de propriedade do registro. Alias AddPickup.
+
+**Related/Dependents:** `pr_lib.target.removePickup`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Function: **`pr_lib.target.removePickup(pickups, names)`**
+
+**Detail:** Remove opções e libera rastreamento quando não há mais opções desse registro. Alias RemovePickup.
+
+**Related/Dependents:** `pr_lib.target.addPickup`
+
+**Directory:** `bridge/targets/native/client.lua`
+
+**Context:** Client — target native
+
+**Tags:** 1.4.2, target nativo: pickups
+
+---
+
+### Posicionador: NPC animado
+
+placePed/startEntityPlacement também aceitam options.animations, animationIndex e showPlacementGuides. SHIFT+scroll ajusta velocidade da câmera sem alterar raio, rotação ou altura da geometria.
+
+### Function: **`pr_lib.devtools.placeAnimatedPed(modelName, maxSlots, animations, cb, options?)`**
+
+**Detail:** Posiciona NPC com cenário ou animação selecionável; retorna pontos com x/y/z/heading e animation/animationLabel. Usa referência da superfície, calibra origem e preserva pose. Guias visuais ficam desligadas por padrão. Alias PlaceAnimatedPed.
+
+**Related/Dependents:** `pr_lib.devtools.placePed, pr_lib.devtools.startEntityPlacement`
+
+**Directory:** `bridge/fivem/devtools/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, posicionador: npc animado
+
+---
+
+### Clima Renewed: consultas no cliente
+
+### Function: **`pr_lib.weather.GetSnapshot()`**
+
+**Detail:** Consulta GetSnapshot do provider; retorna sucesso da chamada e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/client.lua`
+
+**Context:** Client — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: consultas no cliente
+
+---
+
+### Function: **`pr_lib.weather.GetCurrentRegion()`**
+
+**Detail:** Consulta região atual do player no provider; retorna sucesso e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/client.lua`
+
+**Context:** Client — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: consultas no cliente
+
+---
+
+### Function: **`pr_lib.weather.GetRegionFromCoords(coords)`**
+
+**Detail:** Consulta a região de coordenadas específicas; retorna sucesso e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/client.lua`
+
+**Context:** Client — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: consultas no cliente
+
+---
+
+### Function: **`pr_lib.weather.GetRegionalWeather()`**
+
+**Detail:** Consulta clima da região atual pelo export GetCurrentRegionWeather; retorna sucesso e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/client.lua`
+
+**Context:** Client — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: consultas no cliente
+
+---
+
+### Function: **`pr_lib.weather.OnChange(fn)`**
+
+**Detail:** Registra handler em pr_bridge:weather:changed e retorna handle; encerrar com RemoveEventHandler(handle). Não faz snapshot inicial.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/client.lua`
+
+**Context:** Client — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: consultas no cliente
+
+---
+
+### Clima Renewed: administração no servidor
+
+Os aliases camelCase do servidor continuam disponíveis. Estas APIs dependem do provider selecionado; não aplicam permissões administrativas automaticamente ao consumidor.
+
+### Function: **`pr_lib.weather.IsStarted()`**
+
+**Detail:** Retorna se Renewed-Weathersync está iniciado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.GetWeatherList()`**
+
+**Detail:** Retorna sucesso e lista normalizada de eventos/climas.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.GetWeeklyForecast()`**
+
+**Detail:** Retorna sucesso e previsão semanal; normaliza retorno não-tabela para tabela vazia.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.GetRegionalWeather(regionId)`**
+
+**Detail:** Consulta clima da região indicada; retorna sucesso e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.GetState()`**
+
+**Detail:** Retorna sucesso e weatherList/currentWeather/currentTime/timeScale/freezeTime/blackOut/splitRegions/regions a partir da lista e do snapshot, sem ler diretamente GlobalState.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.SetWeatherType(index, weatherType, match?)`**
+
+**Detail:** Altera evento por índice ou correspondência; cria evento quando necessário. Retorna sucesso/resultado ou false/motivo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.SetEventTime(index, duration, match?)`**
+
+**Detail:** Normaliza duração entre 1 e 1440, resolve índice/correspondência e tenta alterar ou recriar evento.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.AddWeatherEvent(weatherType, duration, index?)`**
+
+**Detail:** Cria evento com duração normalizada; retorna sucesso/resultado ou false/motivo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.RemoveWeatherEvent(index, match?)`**
+
+**Detail:** Resolve evento e remove; quando não encontrado retorna true, "already_removed".
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.SetTime(hour, minute)`**
+
+**Detail:** Normaliza hora 0–23 e minuto 0–59 e delega ao provider.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.SetTimeScale(scale)`**
+
+**Detail:** Normaliza escala entre 2000 e 60000 e delega ao provider.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.SetFreezeTime(enabled)`**
+
+**Detail:** Normaliza boolean, altera provider e confirma freezeTime pelo snapshot.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.GetSnapshot()`**
+
+**Detail:** Consulta snapshot autoritativo do provider; retorna sucesso e resultado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Function: **`pr_lib.weather.OnChange(fn)`**
+
+**Detail:** Registra handler local em pr_bridge:weather:changed e retorna handle de evento.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/weather/renewed/server.lua`
+
+**Context:** Server — Renewed-Weathersync
+
+**Tags:** 1.4.2, clima renewed: administração no servidor
+
+---
+
+### Portas: módulo opt-in no cliente
+
+### Function: **`doorlock.snapshot()`**
+
+**Detail:** Consulta ox_doorlock:getDoors via callback com timeout de 15000ms.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, portas: módulo opt-in no cliente
+
+---
+
+### Function: **`doorlock.ensureRegistration(ids)`**
+
+**Detail:** Agenda registro de portas tradicionais no DoorSystem; aguarda física e preserva mudanças de estado recebidas durante a consulta. Portas slide/rotate ficam com o provider.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, portas: módulo opt-in no cliente
+
+---
+
+### Portas: módulo opt-in no servidor
+
+### Function: **`doorlock.getByName(name)`**
+
+**Detail:** Consulta getDoorFromName do ox_doorlock; retorna resultado ou nil/motivo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, portas: módulo opt-in no servidor
+
+---
+
+### Function: **`doorlock.catalog()`**
+
+**Detail:** Consulta getAllDoors do ox_doorlock.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, portas: módulo opt-in no servidor
+
+---
+
+### Function: **`doorlock.ensure(name, definition, group, access?)`**
+
+**Detail:** Reutiliza porta do mesmo grupo ou cria com geometria validada; mantém transformações/tipo já salvos. Detecta provider carregando registro do banco e evita duplicação por nome.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, portas: módulo opt-in no servidor
+
+---
+
+### Function: **`doorlock.setState(name, locked)`**
+
+**Detail:** Altera estado como evento local do servidor e confirma resultado no provider; retorna false/motivo se não aplicado. Não substituir a ACL do consumidor.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/doorlock/server.lua`
+
+**Context:** Server
+
+**Tags:** 1.4.2, portas: módulo opt-in no servidor
+
+---
+
+### Emotes: módulo opt-in
+
+### Function: **`emotes.play(command)`**
+
+**Detail:** Executa comando de emote no scully_emotemenu quando iniciado; retorna boolean.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/emotes/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, emotes: módulo opt-in
+
+---
+
+### Function: **`emotes.beginSession(models)`**
+
+**Detail:** Registra ped, modelos permitidos e objetos já existentes antes da animação, para limpeza delimitada.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/emotes/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, emotes: módulo opt-in
+
+---
+
+### Function: **`emotes.finishSession(session)`**
+
+**Detail:** Finaliza uma vez. Se session.emoteStarted, cancela o emote; remove somente objetos novos dos modelos da sessão que ainda estão anexados ao ped. Não apaga objetos arbitrários do mundo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/emotes/client.lua`
+
+**Context:** Client
+
+**Tags:** 1.4.2, emotes: módulo opt-in
+
+---
+
+### Prisão: módulo opt-in
+
+### Function: **`prison.isAvailable()`**
+
+**Detail:** Retorna se xt-prison está iniciado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/prison/server.lua`
+
+**Context:** Server — xt-prison
+
+**Tags:** 1.4.2, prisão: módulo opt-in
+
+---
+
+### Function: **`prison.getStatus(src)`**
+
+**Detail:** Delega a GetPrisonStatus; retorna resultado/motivo ou nil, "prison_unavailable".
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/prison/server.lua`
+
+**Context:** Server — xt-prison
+
+**Tags:** 1.4.2, prisão: módulo opt-in
+
+---
+
+### Function: **`prison.jail(src, sentence)`**
+
+**Detail:** Delega a JailPlayer; validação de autorização/sentença continua no consumidor e provider.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/prison/server.lua`
+
+**Context:** Server — xt-prison
+
+**Tags:** 1.4.2, prisão: módulo opt-in
+
+---
+
+### Function: **`prison.release(src)`**
+
+**Detail:** Delega a ReleasePlayer, propagando resultado/motivo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/prison/server.lua`
+
+**Context:** Server — xt-prison
+
+**Tags:** 1.4.2, prisão: módulo opt-in
+
+---
+
+### Compatibilidade policial: compartilhado
+
+Carregar @pr_bridge/bridge/compat/police.lua depois do init no consumidor. Esta facade conserva convenções do MDT/QBX; rotinas offline e catálogo de empregos usam qbx_core e não são universais.
+
+### Function: **`pr_lib.police.getVehicleDefinition(model)`**
+
+**Detail:** Aceita nome/hash/tabela com modelo e consulta catálogo QBX/QB; retorna definição ou nil.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.registerCallback(name, handler)`**
+
+**Detail:** Delega o registro a pr_lib.callback.register.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.callback(name, ...)`**
+
+**Detail:** Consulta pr_lib.callback.await com timeout fixo de 10000ms.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getIdentifier(source?)`**
+
+**Detail:** Retorna citizenid do PlayerData; source é usado somente no servidor.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getPlayerName(source?)`**
+
+**Detail:** Monta nome completo a partir de charinfo. Alias getName.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJob(source?)`**
+
+**Detail:** Retorna tabela job ou tabela vazia.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobName(source?)`**
+
+**Detail:** Retorna job.name.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobType(source?)`**
+
+**Detail:** Retorna job.type.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobDuty(source?)`**
+
+**Detail:** Retorna se job.onduty é true.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobData(source?, key?)`**
+
+**Detail:** Servidor: source/key; cliente: key. Sem key retorna job inteiro; caso contrário retorna seu campo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.isBoss(source?)`**
+
+**Detail:** Retorna se job.isboss é true.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobGradeName(source?)`**
+
+**Detail:** Retorna nome do grau, inclusive tabela job.grade; fallback de catálogo no servidor.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.getJobGradePay(source?)`**
+
+**Detail:** Retorna job.payment ou 0.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.debug(...)`**
+
+**Detail:** Log com tag do recurso; só escreve quando Config.Debug está habilitado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.info(...)`**
+
+**Detail:** Log informativo com tag do recurso.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.warn(...)`**
+
+**Detail:** Log de aviso com tag do recurso.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Function: **`pr_lib.police.error(...)`**
+
+**Detail:** Log de erro com tag do recurso; não lança exceção.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client / Server — incluir módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: compartilhado
+
+---
+
+### Compatibilidade policial: servidor
+
+### Function: **`pr_lib.police.getPlayer(source)`**
+
+**Detail:** Aceita objeto de player ou source e consulta framework.GetPlayer.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getPlayerByIdentifier(identifier)`**
+
+**Detail:** Procura jogador por identificador; fallback offline usa qbx_core.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getPlayerData(source)`**
+
+**Detail:** Retorna PlayerData do objeto/source/identificador ou tabela vazia.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getAllPlayers()`**
+
+**Detail:** Retorna lista de sources numéricos conectados.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getPlayerNameByIdentifier(identifier)`**
+
+**Detail:** Retorna nome completo do jogador online/offline encontrado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getMetadata(source, key)`**
+
+**Detail:** Retorna campo de PlayerData.metadata.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getCharInfo(source, key)`**
+
+**Detail:** Retorna campo de PlayerData.charinfo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.addMoney(source, account, amount, reason?)`**
+
+**Detail:** Delega a framework.addPlayerMoney; conta padrão cash.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.removeMoney(source, account, amount, reason?)`**
+
+**Detail:** Delega a framework.removePlayerMoney; conta padrão cash.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getSharedJob(name)`**
+
+**Detail:** Consulta catálogo de empregos pelo export qbx_core:GetJobs.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getSharedJobData(name, key)`**
+
+**Detail:** Retorna campo do emprego compartilhado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getSharedJobGrade(name, grade)`**
+
+**Detail:** Retorna grau com chave numérica ou string no catálogo QBX.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getSharedJobGradeData(name, grade, key)`**
+
+**Detail:** Retorna campo do grau compartilhado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getJobCount(name)`**
+
+**Detail:** Conta jogadores em serviço com job.name correspondente.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.getJobTypeCount(name)`**
+
+**Detail:** Conta jogadores em serviço com job.type correspondente.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Function: **`pr_lib.police.notify(source, message, kind?, duration?)`**
+
+**Detail:** Envia evento de notificação do consumidor para o cliente indicado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Server — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: servidor
+
+---
+
+### Compatibilidade policial: cliente
+
+getPlayer() retorna o ped local, getPlayerData() retorna os dados locais, getMetadata(key) e getCharInfo(key) não recebem source. notify(message, kind, duration) mostra a notificação pelo bridge.
+
+### Function: **`pr_lib.police.getPlayer()`**
+
+**Detail:** Retorna PlayerPedId, não o objeto PlayerData do servidor.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.getPlayerData()`**
+
+**Detail:** Retorna dados do personagem local através de framework.GetPlayerData, ou tabela vazia.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.getMetadata(key)`**
+
+**Detail:** Retorna campo de PlayerData.metadata do personagem local.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.getCharInfo(key)`**
+
+**Detail:** Retorna campo de PlayerData.charinfo do personagem local.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.notify(message, kind?, duration?)`**
+
+**Detail:** Exibe notificação via menus.notify ou pr_lib.Notify, normalizando info para inform.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.isDead()`**
+
+**Detail:** Considera isdead/inlaststand e natives de morte/saúde do ped.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.addKeybind(key, command, description)`**
+
+**Detail:** Registra mapeamento de teclado para comando.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.requestModel(model)`**
+
+**Detail:** Solicita modelo por pr_lib.requestModel protegido e retorna se carregou.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Function: **`pr_lib.police.requestAnim(dict)`**
+
+**Detail:** Solicita dicionário por pr_lib.requestAnimDict e retorna se carregou.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `bridge/compat/police.lua`
+
+**Context:** Client — módulo opt-in
+
+**Tags:** 1.4.2, compatibilidade policial: cliente
+
+---
+
+### Progressão: utilitário compartilhado opt-in
+
+Incluir @pr_bridge/shared/progression.lua nos scripts compartilhados. Define a global PRProgression, não pr_lib.progression; não registra rede, não grava banco e não substitui autorização do servidor.
+
+### Function: **`PRProgression.number(value)`**
+
+**Detail:** Converte número finito; NaN e infinitos retornam nil.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.round(value)`**
+
+**Detail:** Arredonda número em quatro casas decimais.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.copy(value)`**
+
+**Detail:** Copia profundamente tabelas.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.session(values, token, now)`**
+
+**Detail:** Cria ledger do servidor com cópia de valores, token único, budgets, ack e revisão inicial.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.change(session, name, delta, maximum)`**
+
+**Detail:** Aplica alteração limitada, marca dirty/revisão e retorna delta realmente aplicado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.packet(session)`**
+
+**Detail:** Cria snapshot { token, revision, values, ack } com cópias defensivas.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.accept(session, packet, resolve, now)`**
+
+**Detail:** Valida lote inteiro antes de alterar: sessão, contadores, regras, direção e orçamento. Contadores cumulativos tornam retries idempotentes; retorna sucesso e alterações ou false/motivo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.client()`**
+
+**Detail:** Cria ledger do cliente com valores, counters, ack e revisão -1.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.receive(client, packet, maximum)`**
+
+**Detail:** Recebe snapshot, rejeita revisão antiga e reaplica alterações locais ainda não reconhecidas. maximum(name) informa o limite de cada atributo.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.clientChange(client, name, delta, maximum)`**
+
+**Detail:** Aplica previsão local com limite e soma counters cumulativos; sem token retorna false, "not_loaded".
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Function: **`PRProgression.snapshot(client)`**
+
+**Detail:** Retorna { token, counters } ou nil quando não há sessão carregada.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `shared/progression.lua`
+
+**Context:** Shared — funções puras
+
+**Tags:** 1.4.2, progressão: utilitário compartilhado opt-in
+
+---
+
+### Entradas públicas antes ausentes do índice
+
+Estas entradas corrigem lacunas da documentação; não devem ser anunciadas automaticamente como funções novas desde 1.3.0.
+
+### Function: **`pr_lib.addExports(name, callback?)`**
+
+**Detail:** Registra export no recurso consumidor; aceita mapa nome→função, nome/função, função/nome, função inferível ou nome global. Retorna true ou false/motivo. Aliases addExport/AddExport/AddExports.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Function: **`pr_lib.getLocales(invokingResource?)`**
+
+**Detail:** Retorna getAll() da instância locale do consumidor ou do recurso explicitado.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Function: **`pr_lib.logger(source, event, message, tag?)`**
+
+**Detail:** Imprime log com nome do recurso, evento e tag opcional; source é parâmetro de compatibilidade e não altera o texto.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Function: **`pr_lib.waitFor(callback, message?, timeout?)`**
+
+**Detail:** Consulta callback até resultado não-nil; timeout padrão 1000ms. No timeout lança message se fornecido, ou retorna false.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Function: **`pr_lib.setInterval(callback, interval?, ...)`**
+
+**Detail:** Cria intervalo local e retorna id; se callback for id numérico, altera atraso do intervalo existente. Pausa entre execuções e encerra no recurso.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Function: **`pr_lib.clearInterval(id)`**
+
+**Detail:** Marca intervalo conhecido como inativo; id inválido/desconhecido lança erro.
+
+**Related/Dependents:** `pr_lib.loadModule`
+
+**Directory:** `init.lua`
+
+**Context:** Client / Server
+
+**Tags:** 1.4.2, entradas públicas antes ausentes do índice
+
+---
+
+### Locale: snapshot das traduções
+
+### Function: **`lang:getAll()`**
+
+**Detail:** Retorna tabela das frases da instância locale; permite encaminhar as traduções para a NUI do consumidor.
+
+**Related/Dependents:** `pr_lib.getLocales`
+
+**Directory:** `bridge/locale.lua`
+
+**Context:** Client / Server — instância retornada por pr_lib.locale()
+
+**Tags:** 1.4.2, locale: snapshot das traduções
+
+---
+
+## Complemento: NUI do consumidor e ACE (2026-10-06)
 
 Estas cinco entradas são adições à auditoria histórica de setembro; `fivem.nui` e `nui` apontam para o mesmo módulo.
 
@@ -62,7 +2190,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 | Registro, remoção e restart | Implementado nos módulos críticos | target/interact, cleanup ox e matriz de callbacks |
 | Matriz de callbacks | Implementado + homologado | `pr_scriptTest/client_callback_matrix.lua`, `server_callback_matrix.lua` |
 
-## Índice por módulo
+## Índice da auditoria histórica por módulo
 
 | Módulo | Entradas |
 |---|---:|
@@ -139,7 +2267,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.deleteJson(path)`**
 
-**Detail:** Remove fisicamente o arquivo JSON correspondente ao caminho especificado.
+**Detail:** Grava o conteúdo JSON null no caminho resolvido; não remove fisicamente o arquivo. Retorna true e detalhes para retorno nativo true/1, ou false e motivo de falha.
 
 **Related/Dependents:** `pr_lib.checkDependency`, `pr_lib.jsonExists`, `pr_lib.load`, `pr_lib.loadFile`, `pr_lib.loadJson`, `pr_lib.loadModule`
 
@@ -223,7 +2351,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.mergeJson(path, changes, options)`**
 
-**Detail:** Mescla recursivamente dados novos de uma tabela (changes) em um arquivo JSON existente no disco, preservando as chaves anteriores.
+**Detail:** Alias de updateJson: tabela changes substitui chaves do primeiro nível; função pode alterar ou substituir o valor antes de salvar. Não executa merge recursivo automático.
 
 **Related/Dependents:** `pr_lib.checkDependency`, `pr_lib.deleteJson`, `pr_lib.jsonExists`, `pr_lib.load`, `pr_lib.loadFile`, `pr_lib.loadJson`
 
@@ -251,7 +2379,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.saveJson(path, value, options)`**
 
-**Detail:** Serializa uma tabela Lua (value) em formato JSON identado e legível, gravando-a no caminho (path).
+**Detail:** Serializa value com json.encode e grava no recurso/caminho resolvido. Retorna true e detalhes somente para retorno nativo true/1; falhas retornam false e motivo. Não garante indentação nem backup; no servidor, use saveJsonRecovery para proteção adicional.
 
 **Related/Dependents:** `pr_lib.checkDependency`, `pr_lib.deleteJson`, `pr_lib.jsonExists`, `pr_lib.load`, `pr_lib.loadFile`, `pr_lib.loadJson`
 
@@ -265,7 +2393,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.updateJson(path, changes, options)`**
 
-**Detail:** Mescla recursivamente dados novos de uma tabela (changes) em um arquivo JSON existente no disco, preservando as chaves anteriores.
+**Detail:** Carrega o JSON existente e aplica changes: tabela substitui somente chaves do primeiro nível; função pode alterar o valor ou retornar um substituto. Salva via saveJson e retorna sucesso, valor atualizado e detalhes. Não faz merge recursivo automático.
 
 **Related/Dependents:** `pr_lib.checkDependency`, `pr_lib.deleteJson`, `pr_lib.jsonExists`, `pr_lib.load`, `pr_lib.loadFile`, `pr_lib.loadJson`
 
@@ -293,7 +2421,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.writeJson(path, value, options)`**
 
-**Detail:** Serializa uma tabela Lua (value) em formato JSON identado e legível, gravando-a no caminho (path).
+**Detail:** Alias de saveJson, com os mesmos retornos de sucesso/falha. Serializa com json.encode; não garante indentação, backup ou gravação atômica.
 
 **Related/Dependents:** `pr_lib.checkDependency`, `pr_lib.deleteJson`, `pr_lib.jsonExists`, `pr_lib.load`, `pr_lib.loadFile`, `pr_lib.loadJson`
 
@@ -5049,9 +7177,9 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ---
 
-### Function: **`pr_lib.target.GetTargetOptions(...)`**
+### Function: **`pr_lib.target.GetTargetOptions(entity, entityType, model, pickup?, pickupType?)`**
 
-**Detail:** retorna as coleções aplicáveis ao alvo.
+**Detail:** Alias da consulta de coleções aplicáveis ao alvo; no target nativo também recebe pickup e pickupType para incluir registros globais, por tipo e por pickup específico.
 
 **Related/Dependents:** `pr_lib.target.AddGlobalOption`, `pr_lib.target.getTargetOptions`, `pr_lib.target.isActive`, `pr_lib.target.IsActive`, `pr_lib.target.RemoveGlobalOption`, `pr_lib.target.zoneExists`
 
@@ -5063,9 +7191,9 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ---
 
-### Function: **`pr_lib.target.getTargetOptions(entity, entityType, model)`**
+### Function: **`pr_lib.target.getTargetOptions(entity, entityType, model, pickup?, pickupType?)`**
 
-**Detail:** retorna as coleções aplicáveis ao alvo.
+**Detail:** Consulta as coleções aplicáveis ao alvo. No target nativo, pickup e pickupType permitem incluir os registros de pickups; adapters externos podem manter somente entity/entityType/model. A filtragem de visibilidade ocorre no runtime, não nesta consulta.
 
 **Related/Dependents:** `pr_lib.target.AddGlobalOption`, `pr_lib.target.GetTargetOptions`, `pr_lib.target.isActive`, `pr_lib.target.IsActive`, `pr_lib.target.RemoveGlobalOption`, `pr_lib.target.zoneExists`
 
@@ -12927,7 +15055,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.devtools.placePed(modelName, maxSlots, cb, options)`**
 
-**Detail:** Inicia modos de colocação específicos para objetos, peds e veículos.
+**Detail:** Inicia posicionamento de NPC e devolve ponto/lista com x/y/z/heading. As coordenadas usam referência de superfície; não subtraia altura arbitrária do ped ao interpretar o retorno. options.animations, animationIndex e showPlacementGuides permitem preview animado e controle das guias; placeAnimatedPed oferece atalho dedicado.
 
 **Related/Dependents:** `pr_lib.devtools.createPlacement`, `pr_lib.devtools.createPolyzone`, `pr_lib.devtools.createSphereZone`, `pr_lib.devtools.drawModelBoxAtCoords`, `pr_lib.devtools.DrawModelBoxAtCoords`, `pr_lib.devtools.drawPedBox`
 
@@ -12955,7 +15083,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.devtools.startEntityPlacement(placementType, modelName, maxSlots, cb, options)`**
 
-**Detail:** Inicializa o modo de posicionamento visual tridimensional de objetos, peds ou veículos na tela do jogador. Permite rotacionar e movimentar o objeto usando o teclado ou gizmos de translação tridimensionais, acionando o callback cb ao confirmar.
+**Detail:** Inicia editor de posicionamento para objeto, ped ou veículo. Permite câmera, rotação, ajuste de altura e pontos múltiplos; devolve x/y/z/heading e dados de suporte. Para NPC animado aceita options.animations/animationIndex; showPlacementGuides controla as guias. SHIFT + scroll altera velocidade da câmera sem editar a geometria.
 
 **Related/Dependents:** `pr_lib.devtools.createPlacement`, `pr_lib.devtools.createPolyzone`, `pr_lib.devtools.createSphereZone`, `pr_lib.devtools.drawModelBoxAtCoords`, `pr_lib.devtools.DrawModelBoxAtCoords`, `pr_lib.devtools.drawPedBox`
 
@@ -12969,7 +15097,7 @@ Pesquise pelo caminho completo (`pr_lib...`), nome final, tag ou diretório. Tod
 
 ### Function: **`pr_lib.devtools.StartEntityPlacement(placementType, modelName, maxSlots, cb, options)`**
 
-**Detail:** Inicializa o modo de posicionamento visual tridimensional de objetos, peds ou veículos na tela do jogador. Permite rotacionar e movimentar o objeto usando o teclado ou gizmos de translação tridimensionais, acionando o callback cb ao confirmar.
+**Detail:** Alias de startEntityPlacement, com o mesmo contrato de retorno x/y/z/heading, suporte, animação opcional e controle de guias.
 
 **Related/Dependents:** `pr_lib.devtools.createPlacement`, `pr_lib.devtools.createPolyzone`, `pr_lib.devtools.createSphereZone`, `pr_lib.devtools.drawModelBoxAtCoords`, `pr_lib.devtools.DrawModelBoxAtCoords`, `pr_lib.devtools.drawPedBox`
 
