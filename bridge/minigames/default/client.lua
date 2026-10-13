@@ -111,6 +111,8 @@ function minigame.CancelSkillCheck()
     return true
 end
 
+function minigame.SkillCheckActive() return activeCheck ~= nil end
+
 function minigame.Start(config, mode)
     config = type(config) == "table" and config or {}
     local difficulties = config.difficulties or config.difficulty
@@ -129,5 +131,6 @@ end
 
 minigame.skillCheck = minigame.SkillCheck
 minigame.cancelSkillCheck = minigame.CancelSkillCheck
+minigame.skillCheckActive = minigame.SkillCheckActive
 
 return minigame

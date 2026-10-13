@@ -51,6 +51,15 @@ function vehicleProperties.setNetId(netId, props, target, options)
     return true
 end
 
+---Queue properties for the entity's streamed owner, including ownerless entities.
+---The application engine remains vehicleProperties.set on the client.
+function vehicleProperties.queue(vehicle, props, stateKey)
+    if type(vehicle) ~= 'number' or not DoesEntityExist(vehicle) or type(props) ~= 'table' then return false end
+    stateKey = stateKey or vehicleProperties.stateBagName
+    Entity(vehicle).state:set(stateKey, props, true)
+    return true
+end
+
 function vehicleProperties.set(vehicle, props, options)
     local net = getNet()
     local entity, netId

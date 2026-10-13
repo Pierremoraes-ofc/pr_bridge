@@ -30,8 +30,8 @@ end
 ---@param minimumVersion string Versão mínima necessária (ex: '1.0.0')
 ---@param printMessage boolean Se deve exibir mensagem de erro no console
 ---@return boolean, string?
-function github.checkDependency(resource, minimumVersion, printMessage)
-    local currentVersion = GetResourceMetadata(resource, 'version', 0)
+function github.checkDependency(resource, minimumVersion, printMessage, versionOverride)
+    local currentVersion = versionOverride or GetResourceMetadata(resource, 'version', 0)
     currentVersion = currentVersion and currentVersion:match('%d+%.%d+%.%d+') or 'unknown'
 
     if currentVersion ~= minimumVersion then

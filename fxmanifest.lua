@@ -8,6 +8,10 @@ fx_version("cerulean")
 game("gta5")
 lua54("yes")
 
+-- Replacement identities; legacy export discovery is registered separately.
+provide("ox_lib")
+provide("ox_target")
+
 use_experimental_fxv2_oal("yes")
 
 shared_scripts({
@@ -25,6 +29,7 @@ server_scripts({
 	"bridge/notifications/bubble_server.lua",
 	"bridge/targets/native/runtime_server.lua",
 	"interface/server/config.lua",
+	"bridge/compat/ox_host.lua",
 })
 
 client_scripts({
@@ -34,6 +39,7 @@ client_scripts({
 	"bridge/interact/runtime_client.lua",
 	"bridge/notifications/bubble_client.lua",
 	"interface/client/host.lua",
+	"bridge/compat/ox_host.lua",
 })
 
 ui_page("interface/loader/index.html")
@@ -45,6 +51,9 @@ files({
 	"bridge/doorlock/server.lua",
 	"shared/progression.lua",
 	"init.lua",
+	"imports/**/*.lua",
+	"imports/**/**/*.lua",
+	"bridge/compat/ox_locales/*.json",
 	"bridge/**/*.lua",
 	"bridge/**/**/*.lua",
 	--"bridge/**/*.json",

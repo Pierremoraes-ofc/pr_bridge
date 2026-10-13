@@ -1,17 +1,38 @@
 local api = PRCore.load("bridge.interact.api")
 local records = api._records()
+local perspective = PRCore.load("bridge.interact.perspective")()
 
 local nearby = {}
 local selected = 1
 local activeKey
+local activeOptions
+local nearbyRevision = -1
 local lastVisible = false
+local lastPayload
 local interactKeybind
 local interactKeyLabel = "E"
 local scanInterval = math.max(100, GetConvarInt("pr_bridge:interact:scanInterval", 250))
 local renderInterval = math.max(0, GetConvarInt("pr_bridge:interact:renderInterval", 16))
 
 local function message(action, data)
+    if action == "interact:clear" then lastPayload = nil end
     SendNUIMessage({ action = action, data = data })
+end
+
+-- Keep rendering moving anchors at the configured cadence, but do not ask CEF
+-- to re-render the same screen position/selection while the camera is still.
+local function samePresentation(a, b)
+    if not a or a.key ~= b.key or math.abs(a.tiltY - b.tiltY) > 0.01 or #a.entries ~= #b.entries then return false end
+    for i = 1, #a.entries do
+        local old, new = a.entries[i], b.entries[i]
+        if old.id ~= new.id or old.active ~= new.active or old.selected ~= new.selected
+            or math.abs(old.x - new.x) > 0.0001 or math.abs(old.y - new.y) > 0.0001
+            or #old.options ~= #new.options then return false end
+        for j = 1, #old.options do
+            if old.options[j].label ~= new.options[j].label or old.options[j].icon ~= new.options[j].icon then return false end
+        end
+    end
+    return true
 end
 
 local function groupGrade(entry)
@@ -68,16 +89,16 @@ local function entityFor(record)
     return record.entity or 0
 end
 
-local function interactionCoords(record, entity)
+local function interactionCoords(record, entity, effectiveOffset)
     if record.kind == "coords" then return record.coords end
     if not entity or entity == 0 or not DoesEntityExist(entity) then return nil end
     if record.bone then
         local bone = GetEntityBoneIndexByName(entity, record.bone)
         if bone == -1 then return nil end
         local coords = GetEntityBonePosition_2(entity, bone)
-        return coords + (record.offset or vector3(0.0, 0.0, 0.0))
+        return coords + (effectiveOffset or record.offset)
     end
-    local offset = record.offset or vector3(0.0, 0.0, 0.0)
+    local offset = effectiveOffset or record.offset
     return GetOffsetFromEntityInWorldCoords(entity, offset.x, offset.y, offset.z)
 end
 
@@ -123,6 +144,11 @@ local function addCandidate(output, record, entity, playerCoords, config)
     if not visibleThroughWalls(record, coords, entity, config) then return end
     local options = allowedOptions(record, entity, coords)
     if #options == 0 then return end
+    local uiOptions = {}
+    for i = 1, #options do
+        local source = options[i].source
+        uiOptions[i] = { label = source.label or source.name or "Interagir", icon = type(source.icon) == "string" and source.icon or nil }
+    end
     output[#output + 1] = {
         key = ("%s:%s"):format(tostring(record.id), tostring(entity or 0)),
         record = record,
@@ -130,7 +156,21 @@ local function addCandidate(output, record, entity, playerCoords, config)
         coords = coords,
         distance = distance,
         options = options,
+        uiOptions = uiOptions,
+        -- Model registrations temporarily substitute their per-model offset in
+        -- the scan; retain it for subsequent live transform updates.
+        offset = record.offset,
     }
+end
+
+local function refreshTransforms()
+    if #nearby == 0 then return end
+    local playerCoords = GetEntityCoords(PlayerPedId())
+    for i = 1, #nearby do
+        local candidate = nearby[i]
+        candidate.coords = interactionCoords(candidate.record, candidate.entity, candidate.offset)
+        candidate.distance = candidate.coords and #(playerCoords - candidate.coords) or math.huge
+    end
 end
 
 local function containsHash(list, hash)
@@ -139,12 +179,28 @@ local function containsHash(list, hash)
 end
 
 local function refreshNearby()
+    local revision = api._revision()
     if interactKeybind then interactKeyLabel = interactKeybind.currentKey or interactKeyLabel end
-    if isDisabled() then nearby = {} return end
+    if isDisabled() then nearby, nearbyRevision = {}, revision; return end
     local playerCoords = GetEntityCoords(PlayerPedId())
     local config = Bridge.settings.get("interface", {}).interact or {}
     local output = {}
     local modelRecords, globalVehicles, globalPlayers = {}, {}, {}
+
+    -- Temporary item menus take precedence without globally disabling Interact.
+    for _, record in pairs(records) do
+        if record.exclusive then addCandidate(output, record, entityFor(record), playerCoords, config) end
+    end
+    for i = #output, 1, -1 do
+        if output[i].distance > output[i].record.interactDst then table.remove(output, i) end
+    end
+    if #output > 0 then
+        table.sort(output, function(a, b) return a.distance < b.distance end)
+        -- LOS/canInteract may yield while another thread adds/removes a menu.
+        if revision ~= api._revision() then return end
+        nearby, nearbyRevision = { output[1] }, revision
+        return
+    end
 
     for _, record in pairs(records) do
         if record.kind == "model" then modelRecords[#modelRecords + 1] = record
@@ -194,7 +250,8 @@ local function refreshNearby()
     end
 
     table.sort(output, function(a, b) return a.distance < b.distance end)
-    nearby = output
+    if revision ~= api._revision() then return end
+    nearby, nearbyRevision = output, revision
 end
 
 local function cameraEntity()
@@ -202,17 +259,39 @@ local function cameraEntity()
     return hit and entity or 0
 end
 
+local function wheelPressed(control)
+    -- Some consumers suppress the game's weapon wheel without taking NUI focus.
+    return IsControlJustPressed(0, control) or IsDisabledControlJustPressed(0, control)
+end
+
 local function activeCandidate()
-    local aimed = cameraEntity()
-    local closest
+    if nearbyRevision ~= api._revision() then refreshNearby() end
+    if nearbyRevision ~= api._revision() then return end
+    local closest, eligible = nil, 0
     for i = 1, #nearby do
         local candidate = nearby[i]
         if candidate.distance <= candidate.record.interactDst then
-            if candidate.entity == 0 or candidate.entity == aimed then return candidate end
-            closest = closest or candidate
+            if candidate.record.exclusive then return candidate end
+            eligible = eligible + 1
+            if not closest or candidate.distance < closest.distance then closest = candidate end
         end
     end
+    -- A ray cannot change the result when only one point is eligible. In
+    -- particular a menu attached to our own ped needs no camera hit at all.
+    if eligible <= 1 then return closest end
+    local aimed = cameraEntity()
+    for i = 1, #nearby do
+        local candidate = nearby[i]
+        if candidate.distance <= candidate.record.interactDst and (candidate.entity == 0 or candidate.entity == aimed) then return candidate end
+    end
     return closest
+end
+
+local function syncSelection(candidate)
+    local key = candidate and candidate.key
+    local options = candidate and candidate.record.options
+    if key ~= activeKey or options ~= activeOptions then selected = 1 end
+    activeKey, activeOptions = key, options
 end
 
 local function dispatch(candidate, option)
@@ -241,7 +320,9 @@ interactKeybind = Bridge.addKeybind({
     defaultKey = GetConvar("pr_bridge:interact:defaultKey", "E"),
     onPressed = function()
         if isDisabled() then return end
+        refreshTransforms()
         local candidate = activeCandidate()
+        syncSelection(candidate)
         if candidate then dispatch(candidate, candidate.options[selected] or candidate.options[1]) end
     end,
 })
@@ -253,55 +334,101 @@ CreateThread(function()
 end)
 
 CreateThread(function()
+    local active, activeNearby
+    local nextActiveAt, nextMessageAt, lastTickAt = 0, 0, 0
     while true do
+        if nearbyRevision ~= api._revision() then
+            refreshNearby()
+            nextActiveAt, nextMessageAt = 0, 0
+        end
         if isDisabled() or #nearby == 0 then
+            active, activeNearby, nextActiveAt, nextMessageAt = nil, nil, 0, 0
+            perspective.reset()
             if lastVisible then message("interact:clear"); lastVisible = false end
             Wait(200)
         else
-            local active = activeCandidate()
-            if active and active.key ~= activeKey then selected, activeKey = 1, active.key end
-            if not active then activeKey, selected = nil, 1 end
+            local now = GetGameTimer()
+            if now < lastTickAt then nextActiveAt, nextMessageAt = 0, 0 end
+            lastTickAt = now
+            -- Scans replace candidate tables. Rebind by stable key without another camera raycast.
+            if activeNearby ~= nearby and active then
+                local previousKey = active.key
+                active = nil
+                for i = 1, #nearby do
+                    if nearby[i].key == previousKey then active = nearby[i]; break end
+                end
+            end
+            activeNearby = nearby
+            -- Read transient wheel pulses every frame, but keep raycasts on the existing cadence.
+            if now >= nextActiveAt then
+                refreshTransforms()
+                active = activeCandidate()
+                nextActiveAt = now + renderInterval
+            end
+            syncSelection(active)
 
-            if active and #active.options > 1 then
-                if IsControlJustPressed(0, 172) or IsControlJustPressed(0, 15) then
+            local hasChoices = active and #active.options > 1
+            local selectionChanged = false
+            if hasChoices then
+                -- OR aliases so a single wheel pulse cannot move two rows.
+                if IsControlJustPressed(0, 172) or wheelPressed(241) or wheelPressed(15) then
                     selected = selected > 1 and selected - 1 or #active.options
-                elseif IsControlJustPressed(0, 173) or IsControlJustPressed(0, 14) then
+                    selectionChanged = true
+                elseif IsControlJustPressed(0, 173) or wheelPressed(242) or wheelPressed(14) then
                     selected = selected < #active.options and selected + 1 or 1
+                    selectionChanged = true
                 end
             end
 
-            local showUi = ((Bridge.settings.get("interface", {}).interact or {}).showUI ~= false)
+            local config = Bridge.settings.get("interface", {}).interact or {}
+            local showUi = config.showUI ~= false
             if showUi then
-                local entries = {}
-                for i = 1, #nearby do
-                    local candidate = nearby[i]
-                    local visible, x, y = false, 0.0, 0.0
-                    if not candidate.record.hide then
-                        visible, x, y = GetScreenCoordFromWorldCoord(candidate.coords.x, candidate.coords.y, candidate.coords.z)
-                    end
-                    if visible then
-                        local item = { id = candidate.key, x = x, y = y, active = active == candidate, options = {}, selected = selected }
-                        if item.active then
-                            for optionIndex = 1, #candidate.options do
-                                item.options[#item.options + 1] = { label = candidate.options[optionIndex].source.label or candidate.options[optionIndex].source.name or "Interagir" }
-                            end
+                if now >= nextMessageAt or selectionChanged then
+                    local entries = {}
+                    for i = 1, #nearby do
+                        local candidate = nearby[i]
+                        local visible, x, y = false, 0.0, 0.0
+                        if candidate.coords and candidate.distance <= candidate.record.distance and not candidate.record.hide then
+                            visible, x, y = GetScreenCoordFromWorldCoord(candidate.coords.x, candidate.coords.y, candidate.coords.z)
                         end
-                        entries[#entries + 1] = item
+                        if visible then
+                            local item = { id = candidate.key, x = x, y = y, active = active == candidate, options = {}, selected = selected }
+                            if item.active then item.options = candidate.uiOptions end
+                            entries[#entries + 1] = item
+                        end
                     end
+                    local tiltY = 0
+                    if config.perspectiveEnabled == true and #entries > 0 then
+                        local rotation = GetFinalRenderedCamRot(2)
+                        tiltY = perspective.update(config, rotation and rotation.z, now)
+                    else
+                        perspective.reset()
+                    end
+                    local payload = { entries = entries, key = interactKeyLabel, tiltY = tiltY }
+                    if not samePresentation(lastPayload, payload) then
+                        message("interact:set", payload)
+                        lastPayload = payload
+                    end
+                    lastVisible = true
+                    nextMessageAt = now + renderInterval
                 end
-                message("interact:set", { entries = entries, key = interactKeyLabel })
-                lastVisible = true
-                Wait(renderInterval)
+                Wait(hasChoices and 0 or renderInterval)
             else
+                nextMessageAt = 0
+                perspective.reset()
                 if lastVisible then message("interact:clear"); lastVisible = false end
-                Wait(50)
+                Wait(hasChoices and 0 or 50)
             end
         end
     end
 end)
 
 AddEventHandler("pr_bridge:interact:stateChanged", function(state)
-    if state then nearby = {}; message("interact:clear"); lastVisible = false end
+    if state then nearby = {}; perspective.reset(); message("interact:clear"); lastVisible = false end
+end)
+
+AddEventHandler("pr_bridge:ui:ready", function()
+    lastPayload = nil
 end)
 
 AddEventHandler("onResourceStop", function(resource)

@@ -383,32 +383,35 @@ function vehicleProperties.set(vehicle, props, fixVehicle)
     return not NetworkGetEntityIsNetworked(vehicle) or NetworkGetEntityOwner(vehicle) == PlayerId()
 end
 
-RegisterNetEvent(vehicleProperties.eventName, function(netId, props, fixVehicle)
-    local net = getNet()
-    local vehicle = net and net.getVehicle and net.getVehicle(netId, 1000)
+if GetCurrentResourceName() == 'pr_bridge' then
+    RegisterNetEvent(vehicleProperties.eventName, function(netId, props, fixVehicle)
+        local net = getNet()
+        local vehicle = net and net.getVehicle and net.getVehicle(netId, 1000)
+        if vehicle and vehicle > 0 then vehicleProperties.set(vehicle, props, fixVehicle == true) end
+    end)
+end
 
-    if vehicle and vehicle > 0 then
-        vehicleProperties.set(vehicle, props, fixVehicle == true)
-    end
-end)
-
-if Config and Config.Fivem and Config.Fivem.VehiclePropertiesStateBag then
-    AddStateBagChangeHandler(vehicleProperties.stateBagName, "", function(bagName, _, value)
-        local props, fixVehicle = unpackStateBagValue(value)
-        if not props then return end
-
-        while NetworkIsInTutorialSession() do Wait(0) end
-
-        local entity = waitForStateBagEntity(bagName, 10000)
-        if entity <= 0 then return end
-
-        vehicleProperties.set(entity, props, fixVehicle)
-        Wait(200)
-
+---Apply a queued state value when this client owns the streamed entity.
+function vehicleProperties.applyQueue(bagName, key, value, clear, apply)
+    local props, fixVehicle = unpackStateBagValue(value)
+    if not props then return false end
+    while NetworkIsInTutorialSession() do Wait(0) end
+    local entity = waitForStateBagEntity(bagName, 10000)
+    if entity <= 0 then return false end
+    for _ = 1, 10 do
         if NetworkGetEntityOwner(entity) == PlayerId() then
-            vehicleProperties.set(entity, props, fixVehicle)
-            Entity(entity).state:set(vehicleProperties.stateBagName, nil, true)
+            (apply or vehicleProperties.set)(entity, props, fixVehicle)
+            if clear then clear(entity, key)
+            else Entity(entity).state:set(key, nil, true) end
         end
+        Wait(400)
+        if not Entity(entity).state[key] then return true end
+    end
+    return false
+end
+if GetCurrentResourceName() == 'pr_bridge' then
+    AddStateBagChangeHandler(vehicleProperties.stateBagName, '', function(bag, key, value)
+        vehicleProperties.applyQueue(bag, key, value)
     end)
 end
 

@@ -6,10 +6,12 @@ end
 
 local resourceName = GetCurrentResourceName()
 local bridgeResource = "pr_bridge"
+local legacyOxImport = debug.getinfo(1, "S").source:find("@ox_lib/init.lua", 1, true) ~= nil
 
 if resourceName == bridgeResource then return end
 
 if pr_lib and pr_lib.name == bridgeResource then
+    if legacyOxImport or pr_lib.legacyOxBootstrap then return end
     error(("Cannot load pr_bridge more than once.\n\tRemove duplicate entries from '@%s/fxmanifest.lua'"):format(resourceName), 2)
 end
 
@@ -29,10 +31,16 @@ if not PRCore then
     fn()
 end
 
+if legacyOxImport then
+    if lib and lib.bridge == bridgeResource and lib.runtimeInstalled then return end
+    return PRCore.load("@pr_bridge/bridge/compat/ox_bootstrap", _ENV)(_ENV, resourceName)
+end
+
 local public = {
     name = bridgeResource,
     resource = resourceName,
     context = PRCore.context,
+    legacyOxBootstrap = legacyOxImport,
 }
 
 pr_lib = public
@@ -161,21 +169,7 @@ function public.logger(source, event, message, tag)
     print(("^3[pr_bridge][%s][%s]%s^0 %s"):format(resourceName, tostring(event or "log"), scope, tostring(message or "")))
 end
 
-function public.waitFor(callback, message, timeout)
-    assert(type(callback) == "function", "waitFor callback must be a function")
-    timeout = tonumber(timeout) or 1000
-    local started = GetGameTimer()
-
-    while true do
-        local result = callback()
-        if result ~= nil then return result end
-        if GetGameTimer() - started >= timeout then
-            if message then error(message, 2) end
-            return false
-        end
-        Wait(0)
-    end
-end
+public.waitFor = PRCore.load('@pr_bridge/bridge/utils/waitFor', env)
 
 local intervals = {}
 local nextIntervalId = 0
@@ -328,7 +322,7 @@ local function getBridgePath(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("@pr_bridge/bridge/frameworks/%s/%s"):format(info.folder, PRCore.context)
                     end
@@ -343,7 +337,7 @@ local function getBridgePath(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("@pr_bridge/bridge/%s/%s/%s"):format(bridgeType, info.folder, PRCore.context)
                     end
@@ -358,7 +352,7 @@ local function getBridgePath(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("@pr_bridge/bridge/%s/%s/%s"):format(bridgeType, info.folder, PRCore.context)
                     end
@@ -375,7 +369,7 @@ local function getBridgePath(bridgeType)
 
     for i = 1, #bridge do
         local info = bridge[i]
-        if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
             setActiveBridge(bridgeType, info.folder)
             return ("@pr_bridge/bridge/%s/%s/%s"):format(bridgeType, info.folder, PRCore.context)
         end
@@ -411,6 +405,7 @@ if PRCore.context == "client" then
     end
     public.skillCheck = skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck
     public.cancelSkillCheck = skillCheckAdapter.CancelSkillCheck or skillCheckAdapter.cancelSkillCheck
+    public.skillCheckActive = skillCheckAdapter.SkillCheckActive or skillCheckAdapter.skillCheckActive
 else
     public.minigame = {}
 end
@@ -549,20 +544,7 @@ if PRCore.context == "client" then
         end
     end
 
-    local disabledControls = {}
-    local disableControls = {}
-    function disableControls:Add(controls)
-        for i = 1, #(controls or {}) do disabledControls[controls[i]] = true end
-    end
-    function disableControls:Remove(controls)
-        for i = 1, #(controls or {}) do disabledControls[controls[i]] = nil end
-    end
-    setmetatable(disableControls, {
-        __call = function()
-            for control in pairs(disabledControls) do DisableControlAction(0, control, true) end
-        end,
-    })
-    public.disableControls = disableControls
+    public.disableControls = PRCore.load("@pr_bridge/bridge/fivem/controls/client", env)(false)
 end
 public.ui = public.fivem.ui
 public.nui = public.fivem.nui
@@ -904,173 +886,8 @@ if PRCore.context == "client" then
 end
 
 if PRCore.context == "client" then
-    local activePoints = {}
-    public.points = {}
-
-    function public.points.new(data, distance, extraData)
-        local point
-        if extraData ~= nil then
-            point = extraData
-            point.coords = data
-            point.distance = distance
-        else
-            point = data or {}
-        end
-        point.distance = tonumber(point.distance) or 1.0
-        point.currentDistance = math.huge
-        point.inside = false
-        function point:remove()
-            self.removed = true
-            if self.inside and self.onExit then self:onExit() end
-            self.inside = false
-        end
-        activePoints[#activePoints + 1] = point
-        return point
-    end
-
-    function public.points.getAllPoints()
-        local points = {}
-        for i = 1, #activePoints do
-            if not activePoints[i].removed then points[#points + 1] = activePoints[i] end
-        end
-        return points
-    end
-
-    function public.points.getClosestPoint(filter)
-        local closest
-        for i = 1, #activePoints do
-            local point = activePoints[i]
-            if not point.removed and point.currentDistance < math.huge and (not filter or filter(point)) then
-                if not closest or point.currentDistance < closest.currentDistance then
-                    closest = point
-                end
-            end
-        end
-        return closest
-    end
-    public.zones = {}
-    function public.zones.sphere(data)
-        data = data or {}
-        data.distance = tonumber(data.radius or data.distance) or 1.0
-        return public.points.new(data)
-    end
-
-    local function polygonContains(points, x, y)
-        local inside = false
-        local previous = #points
-
-        for current = 1, #points do
-            local a = points[current]
-            local b = points[previous]
-            local crosses = (a.y > y) ~= (b.y > y)
-
-            if crosses then
-                local edgeX = ((b.x - a.x) * (y - a.y) / (b.y - a.y)) + a.x
-                if x < edgeX then inside = not inside end
-            end
-
-            previous = current
-        end
-
-        return inside
-    end
-
-    function public.zones.poly(data)
-        data = data or {}
-        local points = data.points or {}
-        local thickness = tonumber(data.thickness) or 4.0
-        local explicitMinZ = tonumber(data.minZ)
-        local explicitMaxZ = tonumber(data.maxZ)
-        local minZ, maxZ = math.huge, -math.huge
-        local centerX, centerY, centerZ = 0.0, 0.0, 0.0
-
-        for i = 1, #points do
-            local point = points[i]
-            local z = tonumber(point.z) or 0.0
-            minZ = math.min(minZ, z)
-            maxZ = math.max(maxZ, z)
-            centerX = centerX + point.x
-            centerY = centerY + point.y
-            centerZ = centerZ + z
-        end
-
-        if #points == 0 then
-            minZ, maxZ = 0.0, 0.0
-        else
-            centerX = centerX / #points
-            centerY = centerY / #points
-            centerZ = centerZ / #points
-        end
-
-        local lowerZ = explicitMinZ or (minZ - thickness * 0.5)
-        local upperZ = explicitMaxZ or (maxZ + thickness * 0.5)
-        if lowerZ > upperZ then lowerZ, upperZ = upperZ, lowerZ end
-
-        data.minZ = lowerZ
-        data.maxZ = upperZ
-        data.coords = data.coords or vector3(centerX, centerY, (lowerZ + upperZ) * 0.5)
-        data.contains = function(_, coords)
-            local insideZ = coords.z >= lowerZ and coords.z <= upperZ
-            return insideZ and #points >= 3 and polygonContains(points, coords.x, coords.y)
-        end
-
-        return public.points.new(data)
-    end
-
-    function public.zones.box(data)
-        data = data or {}
-        local size = data.size or vector3(1.0, 1.0, 1.0)
-        local rotation = math.rad(tonumber(data.rotation) or 0.0)
-        local cosine, sine = math.cos(rotation), math.sin(rotation)
-
-        data.contains = function(self, coords)
-            local center = self.coords
-            local dx, dy, dz = coords.x - center.x, coords.y - center.y, coords.z - center.z
-            local localX = dx * cosine + dy * sine
-            local localY = -dx * sine + dy * cosine
-
-            return math.abs(localX) <= size.x * 0.5
-                and math.abs(localY) <= size.y * 0.5
-                and math.abs(dz) <= size.z * 0.5
-        end
-
-        return public.points.new(data)
-    end
-
-    CreateThread(function()
-        while true do
-            local sleep = 250
-            local coords = GetEntityCoords(PlayerPedId())
-            local closestPoint = public.points.getClosestPoint()
-            for i = #activePoints, 1, -1 do
-                local point = activePoints[i]
-                point.isClosest = point == closestPoint
-                if point.removed then
-                    table.remove(activePoints, i)
-                elseif point.coords then
-                    point.currentDistance = #(coords - vector3(point.coords.x, point.coords.y, point.coords.z))
-                    local inside
-                    if point.contains then
-                        inside = point:contains(coords)
-                    else
-                        inside = point.currentDistance <= point.distance
-                    end
-                    if inside then
-                        sleep = 0
-                        if not point.inside then
-                            point.inside = true
-                            if point.onEnter then point:onEnter() end
-                        end
-                        if point.nearby then point:nearby() end
-                    elseif point.inside then
-                        point.inside = false
-                        if point.onExit then point:onExit() end
-                    end
-                end
-            end
-            Wait(sleep)
-        end
-    end)
+    local spatial = PRCore.load("@pr_bridge/bridge/fivem/spatial/client", env)
+    public.points, public.zones = spatial.points, spatial.zones
 end
 
 if PRCore.context == "client" then
@@ -1168,6 +985,9 @@ if type(public.notify) == "table" then
 end
 
 local installOxCompatibility = PRCore.load("@pr_bridge/bridge/compat/ox_phase1", env, true)
+PRCore.load('@pr_bridge/bridge/library/init', env)(public, _ENV)
 if type(installOxCompatibility) == "function" then
     installOxCompatibility(public, { existing = rawget(_ENV, "lib") })
+    local installOxRuntime = PRCore.load("@pr_bridge/bridge/compat/ox_runtime", env, true)
+    if type(installOxRuntime) == "function" then installOxRuntime(public, _ENV) end
 end

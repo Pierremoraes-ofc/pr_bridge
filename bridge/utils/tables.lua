@@ -1,12 +1,12 @@
 local tables = {}
 
-function tables.contains(source, value)
+function tables.contains(source, value, valuesOnly)
     if type(source) ~= "table" then return false end
     if type(value) == "table" then
-        for _, expected in pairs(value) do if not tables.contains(source, expected) then return false end end
+        for _, expected in pairs(value) do if not tables.contains(source, expected, valuesOnly) then return false end end
         return true
     end
-    if source[value] ~= nil then return source[value] ~= false end
+    if not valuesOnly and source[value] ~= nil then return source[value] ~= false end
     for _, item in pairs(source) do if item == value then return true end end
     return false
 end
@@ -33,12 +33,15 @@ end
 
 function tables.merge(target, source, override)
     if type(target) ~= "table" or type(source) ~= "table" then error("merge expects tables", 2) end
+    local options = type(override)=='table' and override or nil
     if override == nil then override = true end
     for key, value in pairs(source) do
         if type(target[key]) == "table" and type(value) == "table" then
             tables.merge(target[key], value, override)
+        elseif options and options.addNumbers and type(target[key])=='number' and type(value)=='number' then
+            target[key] = target[key] + value
         elseif override or target[key] == nil then
-            target[key] = type(value) == "table" and tables.clone(value) or value
+            target[key] = type(value) == "table" and not (options and options.clone==false) and tables.clone(value) or value
         end
     end
     return target
@@ -59,7 +62,12 @@ function tables.shuffle(source, copy, random)
     return result
 end
 
-function tables.map(source, callback)
+function tables.map(source, callback, options)
+    if options and options.array then
+        local result={}
+        for index=1,#source do result[index]=callback(source[index],index,source) end
+        return result
+    end
     local result = {}; for key, value in pairs(source) do result[key] = callback(value, key) end; return result
 end
 
@@ -71,11 +79,12 @@ function tables.isfrozen(source)
     return type(source) == "table" and getmetatable(source) == readonly
 end
 
-function tables.freeze(source)
+function tables.freeze(source, shallow)
     assert(type(source) == "table", "freeze expects a table")
     if tables.isfrozen(source) then return source end
 
-    local values = tables.clone(source)
+    local values = shallow and {} or tables.clone(source)
+    if shallow then for key, value in pairs(source) do values[key] = value end end
     local originalMeta = getmetatable(source)
     for key in pairs(source) do source[key] = nil end
 

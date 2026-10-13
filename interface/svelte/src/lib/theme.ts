@@ -32,6 +32,14 @@ const defaults: VisualConfig = {
     pinOpacity: 1, keyOpacity: 1, selectedOpacity: 1, unselectedOpacity: 1, textOpacity: 1, secondaryOpacity: 1,
     secondaryColor: '#00ffff', style: 'obtaizen_ui', scale: 1, pinSize: 32, keySize: 38, bulletSize: 17,
     optionWidth: 180, optionHeight: 30, optionGap: 3, fontSize: 14,
+    fontFamily: 'inter', fontBold: false, keyBold: true, iconBold: false,
+    textOutline: false, textOutlineColor: '#000000', textOutlineWidth: 1,
+    iconOutline: false, iconOutlineColor: '#000000', iconOutlineWidth: 1,
+    perspectiveEnabled: false, perspectiveMaxAngle: 25, perspectiveSensitivity: 1,
+    perspectiveDistance: 600, perspectiveSmoothing: 120,
+    cleanKeySize: 18, cleanTextColor: '#ffffff', cleanHighlightColor: '#ffb347',
+    cleanIconColor: '#ffb347', cleanKeyColor: '#f4f6f8', cleanKeyTextColor: '#161616',
+    cleanBackgroundColor: '#10141b', cleanBackgroundOpacity: 0,
     pinColor: '#7656ff', keyColor: '#7656ff', selectedColor: '#7656ff',
     unselectedColor: '#777777', textColor: '#ffffff', backgroundOpacity: 0.92,
     wallDetection: true, wallRayFlags: 277,
@@ -48,7 +56,7 @@ export function applyVisualConfig(input?: VisualConfig) {
   const palette = { ...defaults.palette, ...(input?.palette || {}) } as Record<string, string | number>
   const layout = { ...defaults.layout, ...(input?.layout || {}) } as Record<string, string>
   const target = { ...defaults.target, ...(input?.target || {}) } as Record<string, string | number>
-  const interact = { ...defaults.interact, ...(input?.interact || {}) } as Record<string, string | number>
+  const interact = { ...defaults.interact, ...(input?.interact || {}) } as Record<string, string | number | boolean>
   const bubble = { ...defaults.bubble, ...(input?.bubble || {}) } as Record<string, string | number>
   const root = document.documentElement
   const primary = String(palette.primary)
@@ -111,6 +119,21 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--pr-interact-option-height', String(Number(interact.optionHeight)) + 'px')
   root.style.setProperty('--pr-interact-option-gap', String(Number(interact.optionGap)) + 'px')
   root.style.setProperty('--pr-interact-font-size', String(Number(interact.fontSize)) + 'px')
+  const interactFonts: Record<string, string> = {
+    inter: 'Inter, Nunito, sans-serif', nunito: 'Nunito, Inter, sans-serif',
+    'space-grotesk': '"Space Grotesk", Inter, sans-serif',
+    'jetbrains-mono': '"JetBrains Mono", monospace', arial: 'Arial, sans-serif',
+    system: 'system-ui, sans-serif',
+  }
+  root.style.setProperty('--pr-interact-font-family', interactFonts[String(interact.fontFamily)] || interactFonts.inter)
+  root.style.setProperty('--pr-interact-font-weight', interact.fontBold === true ? '700' : '400')
+  root.style.setProperty('--pr-interact-key-weight', interact.keyBold !== false ? '800' : '400')
+  root.style.setProperty('--pr-interact-icon-stroke', interact.iconBold === true ? '.35px' : '0px')
+  root.style.setProperty('--pr-interact-clean-key-size', `${Number(interact.cleanKeySize)}px`)
+  root.style.setProperty('--pr-interact-text-outline-color', String(interact.textOutlineColor))
+  root.style.setProperty('--pr-interact-text-outline-width', `${interact.textOutline === true ? Math.max(0, Math.min(3, Number(interact.textOutlineWidth))) : 0}px`)
+  root.style.setProperty('--pr-interact-icon-filter', interact.iconOutline === true ? 'url(#pr-interact-icon-outline)' : 'none')
+  root.style.setProperty('--pr-interact-perspective-distance', `${Math.max(250, Math.min(2000, Number(interact.perspectiveDistance)))}px`)
   const interactColor = (color: unknown, opacity: unknown) => {
     const hex = String(color).replace('#', '')
     const alpha = Math.max(0, Math.min(1, Number(opacity ?? 1)))
@@ -128,6 +151,12 @@ export function applyVisualConfig(input?: VisualConfig) {
   root.style.setProperty('--pr-interact-unselected-color', interactColor(interact.unselectedColor, interact.unselectedOpacity))
   root.style.setProperty('--pr-interact-text-color', interactColor(interact.textColor, interact.textOpacity))
   root.style.setProperty('--pr-interact-background-opacity', String(Number(interact.backgroundOpacity)))
+  root.style.setProperty('--pr-interact-clean-text', interactColor(interact.cleanTextColor, interact.textOpacity))
+  root.style.setProperty('--pr-interact-clean-highlight', interactColor(interact.cleanHighlightColor, Number(interact.textOpacity) * Number(interact.selectedOpacity)))
+  root.style.setProperty('--pr-interact-clean-icon', interactColor(interact.cleanIconColor, interact.unselectedOpacity))
+  root.style.setProperty('--pr-interact-clean-key', interactColor(interact.cleanKeyColor, interact.keyOpacity))
+  root.style.setProperty('--pr-interact-clean-key-text', interactColor(interact.cleanKeyTextColor, interact.textOpacity))
+  root.style.setProperty('--pr-interact-clean-background', interactColor(interact.cleanBackgroundColor, interact.cleanBackgroundOpacity))
   root.style.setProperty('--pr-bubble-background-color', alphaColor(String(bubble.background), Number(bubble.backgroundOpacity)))
   root.style.setProperty('--pr-bubble-border-color', alphaColor(String(bubble.border), Number(bubble.borderOpacity)))
   root.style.setProperty('--pr-bubble-text', String(bubble.text))

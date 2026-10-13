@@ -53,16 +53,20 @@ end
 
 function numbers.toScalars(value, minimum, maximum, shouldRound)
     local result = {}
-    for part in tostring(value):gmatch("[^,%s]+") do result[#result + 1] = numbers.parse(part, minimum, maximum, shouldRound) end
+    for part in tostring(value):gsub('[%w_]+%s*%(', ''):gmatch('[^,%s%)]+') do
+        local rounded = shouldRound == true or (type(shouldRound) == 'number' and #result < shouldRound)
+        result[#result + 1] = numbers.parse(part, minimum, maximum, rounded)
+    end
     return table.unpack(result)
 end
 
 function numbers.toVector(value, minimum, maximum, shouldRound)
     local values = {}
     if type(value) == "string" then
-        for part in value:gmatch("[^,%s]+") do values[#values + 1] = numbers.parse(part, minimum, maximum, shouldRound) end
+        values = { numbers.toScalars(value, minimum, maximum, shouldRound) }
     elseif type(value) == "table" then
         values = { value.x or value[1], value.y or value[2], value.z or value[3], value.w or value[4] }
+        for _, component in ipairs(values) do numbers.parse(component, minimum, maximum) end
     else
         error(("cannot convert %s to vector"):format(type(value)), 2)
     end
@@ -70,6 +74,13 @@ function numbers.toVector(value, minimum, maximum, shouldRound)
     if values[3] ~= nil then return vector3(values[1], values[2], values[3]) end
     if values[2] ~= nil then return vector2(values[1], values[2]) end
     return number(values[1] or 0)
+end
+
+function numbers.toRGBA(value)
+    local rgba = numbers.toVector(value, 0, 255, 3)
+    assert(type(rgba) == 'vector4', 'cannot convert input to rgba')
+    numbers.parse(rgba.w, 0, 1)
+    return rgba
 end
 
 function numbers.normalToRotation(input)
@@ -125,6 +136,7 @@ function numbers.distance3D(x1,y1,z1,x2,y2,z2) return numbers.length3(number(x2)
 
 numbers.Round=numbers.round; numbers.Clamp=numbers.clamp; numbers.ToHex=numbers.toHex; numbers.HexToRGB=numbers.hexToRGB; numbers.HexToRGBA=numbers.hexToRGBA
 numbers.ParseNumber=numbers.parse; numbers.ToScalars=numbers.toScalars; numbers.ToVector=numbers.toVector; numbers.NormalToRotation=numbers.normalToRotation
+numbers.ToRGBA=numbers.toRGBA
 numbers.InverseLerp=numbers.inverseLerp; numbers.Map=numbers.map; numbers.Deg2Rad=numbers.degToRad; numbers.Rad2Deg=numbers.radToDeg
 numbers.Sign=numbers.sign; numbers.AlmostEqual=numbers.almostEqual; numbers.Length2=numbers.length2; numbers.Length3=numbers.length3; numbers.Distance2D=numbers.distance2D; numbers.Distance3D=numbers.distance3D
 return numbers

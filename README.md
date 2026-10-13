@@ -1,6 +1,10 @@
 # pr_bridge
 ---
 
+### Compatibilidade ox_lib / ox_target
+
+A camada integrada de compatibilidade, a ordem de inicialização e os limites de homologação estão em [docs/OX_COMPATIBILITY.md](docs/OX_COMPATIBILITY.md). Não há recurso adicional de compatibilidade. Builds e testes offline aprovados; validação dentro do FiveM ainda pendente.
+
 ### Usage as a library
 
 `pr_bridge` core is standalone. It does not require `ox_lib`, `qb-core`, `qbx_core`, or any other resource to load. Those resources are only used by optional adapters when they are running.

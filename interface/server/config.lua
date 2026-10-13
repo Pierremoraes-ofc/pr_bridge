@@ -65,6 +65,14 @@ local defaults = {
         style = "obtaizen_ui",
         scale = 1.0, pinSize = 32.0, keySize = 38.0, bulletSize = 17.0,
         optionWidth = 180.0, optionHeight = 30.0, optionGap = 3.0, fontSize = 14.0,
+        fontFamily = "inter", fontBold = false, keyBold = true, iconBold = false,
+        textOutline = false, textOutlineColor = "#000000", textOutlineWidth = 1.0,
+        iconOutline = false, iconOutlineColor = "#000000", iconOutlineWidth = 1.0,
+        perspectiveEnabled = false, perspectiveMaxAngle = 25.0, perspectiveSensitivity = 1.0,
+        perspectiveDistance = 600.0, perspectiveSmoothing = 120.0,
+        cleanKeySize = 18.0, cleanTextColor = "#ffffff", cleanHighlightColor = "#ffb347",
+        cleanIconColor = "#ffb347", cleanKeyColor = "#f4f6f8", cleanKeyTextColor = "#161616",
+        cleanBackgroundColor = "#10141b", cleanBackgroundOpacity = 0,
         pinOpacity = 1, keyOpacity = 1, selectedOpacity = 1, unselectedOpacity = 1, textOpacity = 1, secondaryOpacity = 1,
         secondaryColor = "#00ffff", pinColor = "#7656ff", keyColor = "#7656ff", selectedColor = "#7656ff",
         unselectedColor = "#777777", textColor = "#ffffff", backgroundOpacity = 0.92,
@@ -81,8 +89,14 @@ local defaults = {
 }
 
 local allowedInteractStyles = {
+    clean = true,
     blue_circle = true, circle=true, ["record-circle"]=true, crosshair=true, bullseye=true, ["geo-alt-fill"]=true, ["cursor-fill"]=true, diamond=true, green_square = true, glitch = true,
     obtaizen_ui = true,
+}
+
+local allowedInteractFonts = {
+    inter = true, nunito = true, ["space-grotesk"] = true,
+    ["jetbrains-mono"] = true, arial = true, system = true,
 }
 
 
@@ -212,6 +226,10 @@ local function sanitize(input)
         scale = { 0.25, 3 }, pinSize = { 10, 120 }, keySize = { 10, 120 }, bulletSize = { 8, 60 },
         optionWidth = { 80, 600 }, optionHeight = { 18, 80 }, optionGap = { 0, 30 }, fontSize = { 8, 36 },
         backgroundOpacity = { 0, 1 }, wallRayFlags = { 1, 511 },
+        cleanKeySize = { 10, 48 }, cleanBackgroundOpacity = { 0, 1 },
+        textOutlineWidth = { 0, 3 }, iconOutlineWidth = { 0, 3 },
+        perspectiveMaxAngle = { 0, 35 }, perspectiveSensitivity = { 0.1, 3 },
+        perspectiveDistance = { 250, 2000 }, perspectiveSmoothing = { 0, 400 },
     }
     for key, range in pairs(interactRanges) do
         local value = tonumber(interact[key]) or defaults.interact[key]
@@ -221,12 +239,23 @@ local function sanitize(input)
     if style == "gold_circle" then style = "blue_circle" end
     if style == "green_obtaizen" then style = "obtaizen_ui" end
     output.interact.style = allowedInteractStyles[style] and style or defaults.interact.style
+    local fontFamily = tostring(interact.fontFamily or defaults.interact.fontFamily)
+    output.interact.fontFamily = allowedInteractFonts[fontFamily] and fontFamily or defaults.interact.fontFamily
+    output.interact.fontBold = interact.fontBold == true
+    output.interact.keyBold = interact.keyBold ~= false
+    output.interact.iconBold = interact.iconBold == true
+    output.interact.textOutline = interact.textOutline == true
+    output.interact.iconOutline = interact.iconOutline == true
+    output.interact.perspectiveEnabled = interact.perspectiveEnabled == true
     for _, key in ipairs({ "secondaryColor", "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor" }) do
         output.interact[key] = normalizeColor(interact[key]) or defaults.interact[key]
     end
     for _, part in ipairs({"key","selected","unselected"}) do
         output.interact[part.."SecondaryColor"] = normalizeColor(interact[part.."SecondaryColor"]) or output.interact.secondaryColor
         output.interact[part.."SecondaryOpacity"] = math.max(0,math.min(1,tonumber(interact[part.."SecondaryOpacity"]) or output.interact.secondaryOpacity))
+    end
+    for _, key in ipairs({ "cleanTextColor", "cleanHighlightColor", "cleanIconColor", "cleanKeyColor", "cleanKeyTextColor", "cleanBackgroundColor", "textOutlineColor", "iconOutlineColor" }) do
+        output.interact[key] = normalizeColor(interact[key]) or defaults.interact[key]
     end
     for _, key in ipairs({ "wallDetection", "showUI", "disableOnDeath", "disableOnNuiFocus", "disableInVehicle", "disableWhenCuffed" }) do
         output.interact[key] = interact[key] ~= false
@@ -289,7 +318,8 @@ Bridge.callback.register("pr_bridge:ui:saveConfig", function(source, input)
         or normalizeLogoUrl(input.branding.logoUrl) == nil) then return false, "invalid_logo_url" end
 
     if type(input) == "table" and type(input.interact) == "table" then
-        for _, key in ipairs({"secondaryColor", "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor"}) do
+        for _, key in ipairs({"secondaryColor", "pinColor", "keyColor", "selectedColor", "unselectedColor", "textColor",
+            "cleanTextColor", "cleanHighlightColor", "cleanIconColor", "cleanKeyColor", "cleanKeyTextColor", "cleanBackgroundColor", "textOutlineColor", "iconOutlineColor"}) do
             if input.interact[key] ~= nil and not normalizeColor(input.interact[key]) then
                 return false, "Cor invalida: use um codigo como #ff7a1a."
             end

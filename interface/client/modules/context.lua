@@ -36,6 +36,15 @@ return function(Renderer)
     local stack = {}
     local openId = nil
 
+    -- Cross-resource exports/events transport callbacks as FiveM funcref
+    -- tables with __call. They must behave like consumer-local Lua functions.
+    local function isCallable(callback)
+        if type(callback) == "function" then return true end
+        if type(callback) ~= "table" then return false end
+        local mt = getmetatable(callback)
+        return type(mt) == "table" and type(rawget(mt, "__call")) == "function"
+    end
+
     local SERIALIZE_KEYS = {
         "title",
         "description",
@@ -294,7 +303,7 @@ return function(Renderer)
         Renderer.send("context:close")
         Renderer.resetFocus()
 
-        if shouldRunExit and current and type(current.onExit) == "function" then
+        if shouldRunExit and current and isCallable(current.onExit) then
             current.onExit()
         end
 
@@ -324,7 +333,7 @@ return function(Renderer)
         end
 
         if type(cb.menu) == "string" then
-            if type(cb.onSelect) == "function" then
+            if isCallable(cb.onSelect) then
                 cb.onSelect(cb.args)
             end
             openContext(cb.menu, true)
@@ -337,9 +346,11 @@ return function(Renderer)
         local command = cb.command
         local args = cb.args
 
-        Context.HideContext(true)
+        -- Selecting an action is not a user cancellation. Do not fire onExit
+        -- before its callback opens the next context (ox_lib's contract).
+        Context.HideContext(false)
 
-        if type(onSelect) == "function" then
+        if isCallable(onSelect) then
             onSelect(args)
         elseif eventName then
             TriggerEvent(eventName, args)
@@ -364,7 +375,7 @@ return function(Renderer)
             return
         end
 
-        if type(current.onBack) == "function" then
+        if isCallable(current.onBack) then
             current.onBack()
         end
 

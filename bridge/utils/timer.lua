@@ -20,6 +20,13 @@ function Timer:getTimeLeft(format)
 end
 
 function Timer:isPaused() return self.paused end
+function Timer:isClass(class) return getmetatable(self) == class end
+function Timer:instanceOf(class)
+    local mt=getmetatable(self)
+    while mt do if mt==class then return true end; mt=getmetatable(mt) end
+    return false
+end
+function Timer:run() return self:_run(self.generation) end
 
 function Timer:_run(generation)
     while generation == self.generation and (self.paused or self:getTimeLeft("ms") > 0) do Wait(0) end

@@ -2,8 +2,6 @@
 
 local BRIDGE = "pr_bridge"
 local resourceName = GetCurrentResourceName()
-local MenuAdapter = Bridge.menus
-
 local Renderer = PRCore.load("@pr_bridge/interface/client/renderer", _ENV)
 local Context = PRCore.load("@pr_bridge/interface/client/modules/context", _ENV)(Renderer)
 local Alert = PRCore.load("@pr_bridge/interface/client/modules/alert", _ENV)(Renderer)
@@ -12,6 +10,7 @@ local Notify = PRCore.load("@pr_bridge/interface/client/modules/notify", _ENV)(R
 local Bubble = PRCore.load("@pr_bridge/interface/client/modules/bubble", _ENV)()
 local TextUI = PRCore.load("@pr_bridge/interface/client/modules/textui", _ENV)(Renderer)
 local Radial = PRCore.load("@pr_bridge/interface/client/modules/radial", _ENV)(Renderer)
+local Menu = PRCore.load("@pr_bridge/interface/client/modules/menu", _ENV)(Renderer)
 
 local UI = {
     renderer = Renderer,
@@ -23,6 +22,7 @@ local UI = {
         bubble = Bubble,
         textui = TextUI,
         radial = Radial,
+        menu = Menu,
     },
 
     RegisterContext = Context.RegisterContext,
@@ -38,8 +38,14 @@ local UI = {
     alertDialog = Alert.AlertDialog,
     InputDialog = Input.InputDialog,
     inputDialog = Input.InputDialog,
+    closeInputDialog = Input.CloseInputDialog,
+    closeAlertDialog = Alert.CloseAlertDialog,
     Notify = Notify.Notify,
     notify = Notify.Notify,
+    defaultNotify = function(data)
+        data.type = data.status == "inform" and "info" or data.status
+        return Notify.Notify(data)
+    end,
     NotifyBubble = Bubble.NotifyBubble,
     notifyBubble = Bubble.NotifyBubble,
     HideNotifyBubble = Bubble.HideNotifyBubble,
@@ -95,114 +101,25 @@ end
 
 UI.getVisualConfig = UI.GetVisualConfig
 
-local openMenuId
-
-local function menuPosition()
-    local layout = getGlobalConfig().layout or {}
-    return layout.registerMenu == "left" and "top-left" or "top-right"
+-- The native list renderer preserves the full list-menu contract.
+UI.RegisterMenu = Menu.registerMenu
+UI.registerMenu = Menu.registerMenu
+UI.ShowMenu = function(...)
+    if Context.GetOpenContextMenu() then Context.HideContext(false) end
+    return Menu.showMenu(...)
 end
-
-function UI.RegisterMenu(data, callback)
-    if MenuAdapter and type(MenuAdapter.RegisterMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
-        local payload = clone(data or {})
-        payload.position = payload.position or menuPosition()
-        return MenuAdapter.RegisterMenu(payload, callback)
-    end
-
-    if type(data) ~= "table" or not data.id then return false end
-
-    local contextOptions = {}
-    local menuOpts = data.options or {}
-
-    for i = 1, #menuOpts do
-        local opt = menuOpts[i]
-        if type(opt) == "table" then
-            if type(opt.values) == "table" and #opt.values > 0 then
-                local subId = data.id .. "_sub_" .. i
-                local subOptions = {}
-                for vIdx = 1, #opt.values do
-                    local val = opt.values[vIdx]
-                    local valTitle = type(val) == "table" and (val.label or val.title) or tostring(val)
-                    local valDesc = type(val) == "table" and val.description or nil
-                    subOptions[#subOptions + 1] = {
-                        title = valTitle,
-                        description = valDesc,
-                        icon = opt.icon,
-                        onSelect = function()
-                            if callback then callback(i, vIdx, opt.args) end
-                        end
-                    }
-                end
-                Context.RegisterContext({
-                    id = subId,
-                    title = opt.label or data.title,
-                    menu = data.id,
-                    options = subOptions
-                })
-                contextOptions[#contextOptions + 1] = {
-                    title = opt.label or opt.title or "",
-                    description = opt.description,
-                    icon = opt.icon,
-                    menu = subId,
-                    arrow = true
-                }
-            else
-                contextOptions[#contextOptions + 1] = {
-                    title = opt.label or opt.title or "",
-                    description = opt.description,
-                    icon = opt.icon,
-                    onSelect = function()
-                        if callback then callback(i, 1, opt.args) end
-                    end
-                }
-            end
-        end
-    end
-
-    return Context.RegisterContext({
-        id = data.id,
-        title = data.title or "",
-        position = data.position or menuPosition(),
-        onExit = data.onClose,
-        options = contextOptions
-    })
-end
-
-UI.registerMenu = UI.RegisterMenu
-
-function UI.ShowMenu(id, startIndex)
-    if MenuAdapter and type(MenuAdapter.ShowMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
-        local result = MenuAdapter.ShowMenu(id, startIndex)
-        if result ~= false then openMenuId = id end
-        return result
-    end
-
-    openMenuId = id
-    return Context.ShowContext(id)
-end
-
 UI.showMenu = UI.ShowMenu
-
-function UI.HideMenu(onExit)
-    if MenuAdapter and type(MenuAdapter.HideMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
-        local result = MenuAdapter.HideMenu(onExit)
-        openMenuId = nil
-        return result
-    end
-
-    openMenuId = nil
-    return Context.HideContext(onExit)
+UI.ShowContext = function(...)
+    Menu.hideMenu(false)
+    return Context.ShowContext(...)
 end
-
-function UI.GetOpenMenu()
-    if MenuAdapter and type(MenuAdapter.GetOpenContextMenu) == "function" and ActiveBridges and ActiveBridges["menus"] ~= "default" and Config.ui_interface ~= "svelte" then
-        return MenuAdapter.GetOpenContextMenu() or openMenuId
-    end
-    return Context.GetOpenContextMenu() or openMenuId
-end
-
-UI.getOpenMenu = UI.GetOpenMenu
-UI.hideMenu = UI.HideMenu
+UI.showContext = UI.ShowContext
+UI.HideMenu = Menu.hideMenu
+UI.hideMenu = Menu.hideMenu
+UI.GetOpenMenu = Menu.getOpenMenu
+UI.getOpenMenu = Menu.getOpenMenu
+UI.SetMenuOptions = Menu.setMenuOptions
+UI.setMenuOptions = Menu.setMenuOptions
 
 local function openPaletteEditor()
     local config = getGlobalConfig()
@@ -343,6 +260,7 @@ local function openInteractEditor()
     local interact = config.interact or {}
     local rows = {
         { type = "select", label = "Modelo visual", default = interact.style or "obtaizen_ui", options = {
+            { value = "clean", label = "Clean (texto e icones)" },
             { value = "blue_circle", label = "Pino" },
             { value = "green_square", label = "Quadrado" },
             { value = "glitch", label = "Glitch" },
@@ -390,14 +308,44 @@ local function openInteractEditor()
     rows[#rows+1]={type="slider",label="Opacidade secundaria (%)",default=math.floor((interact.selectedSecondaryOpacity or interact.secondaryOpacity or 1)*100+0.5),min=0,max=100,step=1,required=true}
     rows[#rows+1]={type="color",label="Cor secundaria",default=interact.unselectedSecondaryColor or interact.secondaryColor or "#00ffff",required=true}
     rows[#rows+1]={type="slider",label="Opacidade secundaria (%)",default=math.floor((interact.unselectedSecondaryOpacity or interact.secondaryOpacity or 1)*100+0.5),min=0,max=100,step=1,required=true}
+    rows[#rows+1]={type="select",label="Fonte dos textos e da tecla",default=interact.fontFamily or "inter",options={
+        {value="inter",label="Inter"}, {value="nunito",label="Nunito"},
+        {value="space-grotesk",label="Space Grotesk"}, {value="jetbrains-mono",label="JetBrains Mono"},
+        {value="arial",label="Arial"}, {value="system",label="Sistema"},
+    },required=true}
+    rows[#rows+1]={type="checkbox",label="Textos em negrito",checked=interact.fontBold == true}
+    rows[#rows+1]={type="checkbox",label="Tecla em negrito",checked=interact.keyBold ~= false}
+    rows[#rows+1]={type="checkbox",label="Icones Clean em negrito",checked=interact.iconBold == true}
+    rows[#rows+1]={type="number",label="Clean: tamanho da tecla (px)",default=interact.cleanKeySize or 18,min=10,max=48,step=1,precision=0,required=true}
+    rows[#rows+1]={type="color",label="Clean: cor dos textos",default=interact.cleanTextColor or "#ffffff",required=true}
+    rows[#rows+1]={type="color",label="Clean: texto selecionado",default=interact.cleanHighlightColor or "#ffb347",required=true}
+    rows[#rows+1]={type="color",label="Clean: cor dos icones",default=interact.cleanIconColor or "#ffb347",required=true}
+    rows[#rows+1]={type="color",label="Clean: preenchimento da tecla",default=interact.cleanKeyColor or "#f4f6f8",required=true}
+    rows[#rows+1]={type="color",label="Clean: cor da letra da tecla",default=interact.cleanKeyTextColor or "#161616",required=true}
+    rows[#rows+1]={type="color",label="Clean: cor do fundo",default=interact.cleanBackgroundColor or "#10141b",required=true}
+    rows[#rows+1]={type="slider",label="Clean: opacidade do fundo (%)",default=math.floor((interact.cleanBackgroundOpacity or 0)*100+0.5),min=0,max=100,step=1,required=true}
+    rows[#rows+1]={type="checkbox",label="Ativar contorno dos textos e da letra da tecla",checked=interact.textOutline == true}
+    rows[#rows+1]={type="color",label="Cor do contorno dos textos",default=interact.textOutlineColor or "#000000",required=true}
+    rows[#rows+1]={type="number",label="Espessura do contorno dos textos (px, max. 3)",default=interact.textOutlineWidth or 1,min=0,max=3,step=0.25,precision=2,required=true}
+    rows[#rows+1]={type="checkbox",label="Ativar contorno da tecla, icones e ponto",checked=interact.iconOutline == true}
+    rows[#rows+1]={type="color",label="Cor do contorno dos icones",default=interact.iconOutlineColor or "#000000",required=true}
+    rows[#rows+1]={type="number",label="Espessura do contorno dos icones (px, max. 3)",default=interact.iconOutlineWidth or 1,min=0,max=3,step=0.25,precision=2,required=true}
+    rows[#rows+1]={type="checkbox",label="Ativar perspectiva pela camera",checked=interact.perspectiveEnabled == true}
+    rows[#rows+1]={type="number",label="Perspectiva: inclinacao maxima (graus)",default=interact.perspectiveMaxAngle or 25,min=0,max=35,step=1,precision=0,required=true}
+    rows[#rows+1]={type="number",label="Perspectiva: sensibilidade",default=interact.perspectiveSensitivity or 1,min=0.1,max=3,step=0.1,precision=1,required=true}
+    rows[#rows+1]={type="number",label="Perspectiva: profundidade (px)",default=interact.perspectiveDistance or 600,min=250,max=2000,step=50,precision=0,required=true}
+    rows[#rows+1]={type="number",label="Perspectiva: suavizacao (ms)",default=interact.perspectiveSmoothing or 120,min=0,max=400,step=10,precision=0,required=true}
     local groups = {
         {title="Modelo e escala", ids={1,2}},
         {title="Ponto de interesse - cor primaria", ids={3,10,24,23,29}},
         {title="Botao de interacao - cor primaria", ids={4,11,25,30,31}},
         {title="Opcao selecionada", ids={12,26,32,33}},
         {title="Opcoes nao selecionadas", ids={13,27,34,35}},
-        {title="Texto", ids={14,28,9}},
+        {title="Texto e tipografia", ids={14,28,9,36,37,38,39}},
         {title="Tamanho e fundo das opcoes", ids={5,6,7,8,15}},
+        {title="Layout Clean (cores independentes)", ids={40,41,42,43,44,45,46,47}},
+        {title="Contornos e legibilidade", ids={48,49,50,51,52,53}},
+        {title="Perspectiva 3D (somente visual)", ids={54,55,56,57,58}},
         {title="Visibilidade e comportamento", ids={22,16,17,18,19,20,21}},
     }
     local ordered, indices = {}, {}
@@ -431,6 +379,15 @@ local function openInteractEditor()
         unselectedOpacity = (tonumber(values[27]) or 100) / 100,
         textOpacity = (tonumber(values[28]) or 100) / 100,
         secondaryOpacity = (tonumber(values[29]) or 100) / 100,
+        fontFamily = values[36], fontBold = values[37] == true,
+        keyBold = values[38] == true, iconBold = values[39] == true,
+        cleanKeySize = values[40], cleanTextColor = values[41], cleanHighlightColor = values[42],
+        cleanIconColor = values[43], cleanKeyColor = values[44], cleanKeyTextColor = values[45],
+        cleanBackgroundColor = values[46], cleanBackgroundOpacity = (tonumber(values[47]) or 0) / 100,
+        textOutline = values[48] == true, textOutlineColor = values[49], textOutlineWidth = values[50],
+        iconOutline = values[51] == true, iconOutlineColor = values[52], iconOutlineWidth = values[53],
+        perspectiveEnabled = values[54] == true, perspectiveMaxAngle = values[55],
+        perspectiveSensitivity = values[56], perspectiveDistance = values[57], perspectiveSmoothing = values[58],
     }
     saveGlobalConfig(config)
 end
@@ -500,7 +457,7 @@ function UI.OpenVisualAdminMenu(parentMenu)
                 { title = "Paleta de cores", description = "Cores e opacidade usadas por todos os componentes.", icon = "palette-fill", onSelect = openPaletteEditor },
                 { title = "Posicoes", description = "Lado dos menus, metadata, notificacoes e indicadores.", icon = "layout-sidebar-inset", onSelect = openLayoutEditor },
                 { title = "Target", description = "Posicao, escala, cores, opacidade e marcadores do sistema de interacao.", icon = "crosshair", onSelect = openTargetEditor },
-                { title = "Interact", description = "Modelo visual, cores, tamanhos, bloqueios e deteccao de paredes.", icon = "cursor", onSelect = openInteractEditor },
+                { title = "Interact", description = "Modelos visuais, layout Clean, tipografia, cores, tamanhos e visibilidade.", icon = "cursor", onSelect = openInteractEditor },
                 { title = "Notify em balao", description = "Fundo, borda, opacidade, largura, ponta e tipografia do balao.", icon = "chat-square-text", onSelect = openBubbleEditor },
                 {
                     title = "Restaurar padrao",
@@ -566,6 +523,10 @@ end)
 AddEventHandler("pr_bridge:ui:input:close", function(owner)
     if owner ~= resourceName then return end
     Input.HandleClose()
+end)
+
+AddEventHandler("pr_bridge:ui:menu:event", function(owner, action, data)
+    if owner == resourceName then Menu.Handle(action, data) end
 end)
 
 if resourceName == BRIDGE then

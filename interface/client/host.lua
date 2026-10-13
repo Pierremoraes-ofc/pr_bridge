@@ -79,6 +79,11 @@ AddEventHandler("pr_bridge:ui:ensureFocus", function(keepInput)
     ensureFocus(keepInput == true)
 end)
 
+AddEventHandler("pr_bridge:ui:menuFocus", function(keepInput, replace)
+    if replace then ensureFocus(keepInput) else setFocus(keepInput) end
+    SetNuiFocus(true, false)
+end)
+
 AddEventHandler("pr_bridge:ui:setKeyboardFocus", function()
     focusCount = focusCount + 1
     SetNuiFocus(true, false)
@@ -120,6 +125,14 @@ RegisterNUICallback("context:select", function(data, cb)
         TriggerEvent("pr_bridge:ui:context:select", resource, data.id, tonumber(data.index))
     end
 end)
+
+for _, action in ipairs({ "selected", "side", "check", "confirm", "close" }) do
+    RegisterNUICallback("menu:" .. action, function(data, cb)
+        cb(1)
+        local resource = payloadOwner(data)
+        if resource then TriggerEvent("pr_bridge:ui:menu:event", resource, action, data) end
+    end)
+end
 RegisterNUICallback("context:close", function(data, cb)
     cb(1)
     local resource = payloadOwner(data)
@@ -158,11 +171,12 @@ RegisterNUICallback("skillcheck:result", function(data, cb)
     end
 end)
 
-local radial = { items = {}, menus = {}, current = nil, history = {}, disabled = false, open = false }
+local radial = { items = {}, menus = {}, menuOwners = {}, current = nil, history = {}, disabled = false, open = false }
 
 local function radialItems(resource, menuId)
     if menuId then
-        local menu = radial.menus[resource .. ":" .. menuId]
+        local owner = radial.menus[resource .. ":" .. menuId] and resource or radial.menuOwners[menuId]
+        local menu = owner and radial.menus[owner .. ":" .. menuId]
         return menu and menu.items or {}
     end
     return radial.items
@@ -170,6 +184,7 @@ end
 
 local function showRadial(resource, menuId)
     if radial.disabled then return end
+    if menuId and not radial.menus[resource .. ":" .. menuId] then resource = radial.menuOwners[menuId] or resource end
     local items = radialItems(resource, menuId)
     if #items == 0 then return end
     radial.current = { resource = resource, menuId = menuId, items = items }
@@ -190,22 +205,40 @@ local function hideRadial()
     SendNUIMessage({ action = "radial:close" })
 end
 
+local function refreshRadial()
+    if not radial.open or not radial.current then return end
+    local current = radial.current
+    if #radialItems(current.resource, current.menuId) == 0 then hideRadial()
+    else showRadial(current.resource, current.menuId) end
+end
+
 AddEventHandler("pr_bridge:radial:add", function(resource, items, parentMenuId)
+    if parentMenuId then assert(radial.menus[resource .. ":" .. parentMenuId] or radial.menuOwners[parentMenuId], "No radial submenu with such parent id found") end
     local target = radialItems(resource, parentMenuId)
     for i = 1, #(items or {}) do
         items[i].resource = resource
-        target[#target + 1] = items[i]
+        local found
+        for index, previous in ipairs(target) do
+            if previous.id == items[i].id then target[index] = items[i]; found = true; break end
+        end
+        if not found then target[#target + 1] = items[i] end
     end
+    refreshRadial()
 end)
 AddEventHandler("pr_bridge:radial:register", function(resource, menu)
+    for _, item in ipairs(menu.items) do item.resource = resource end
     radial.menus[resource .. ":" .. menu.id] = menu
+    radial.menuOwners[menu.id] = resource
+    refreshRadial()
 end)
 AddEventHandler("pr_bridge:radial:remove", function(resource, id, parentMenuId)
     local target = radialItems(resource, parentMenuId)
     for i = #target, 1, -1 do if target[i].id == id then table.remove(target, i) end end
+    refreshRadial()
 end)
 AddEventHandler("pr_bridge:radial:clear", function()
-    radial.items = {}; radial.menus = {}; hideRadial()
+    radial.items = {}
+    refreshRadial()
 end)
 AddEventHandler("pr_bridge:radial:hide", hideRadial)
 AddEventHandler("pr_bridge:radial:disable", function(state)
@@ -218,6 +251,18 @@ local function toggleRadial()
 end
 
 RegisterCommand("prradial", toggleRadial, false)
+AddEventHandler("pr_bridge:radial:toggle", toggleRadial)
+
+AddEventHandler("onClientResourceStop", function(resource)
+    for index = #radial.items, 1, -1 do
+        if radial.items[index].resource == resource then table.remove(radial.items, index) end
+    end
+    for key in pairs(radial.menus) do
+        if key:sub(1, #resource + 1) == resource .. ":" then radial.menus[key] = nil end
+    end
+    for id, owner in pairs(radial.menuOwners) do if owner == resource then radial.menuOwners[id] = nil end end
+    if radial.current and radial.current.resource == resource then hideRadial() else refreshRadial() end
+end)
 
 local radialKeybind, radialKeybindError = Bridge.addKeybind({
     name = "pr_bridge_radial",
@@ -248,6 +293,7 @@ RegisterNUICallback("radial:select", function(data, cb)
     if item.menu then
         radial.history[#radial.history + 1] = { resource = current.resource, menuId = current.menuId }
         showRadial(itemResource, item.menu)
+        TriggerEvent("pr_bridge:radial:select", itemResource, current.menuId, item.id, tonumber(data.index))
         return
     end
 
@@ -280,6 +326,9 @@ RegisterNUICallback("ui:ready", function(_, cb)
     cb(1)
     applyUiInterface()
     applyGlobalConfig(Bridge.settings.get("interface"))
+    -- World overlays suppress duplicate packets. Rehydrate them when the NUI
+    -- mounts again instead of depending on constant per-frame resends.
+    TriggerEvent("pr_bridge:ui:ready")
     if NativeUI and NativeUI.modules and NativeUI.modules.textui then
         NativeUI.modules.textui.Refresh()
     end

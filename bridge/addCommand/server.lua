@@ -76,6 +76,11 @@ end
 
 local function canRunCommand(source, commandName, properties)
     if source == 0 then return true end
+    -- Some public command contracts require exact command ACEs, without the
+    -- native admin/whitelist bypass. Keep this policy explicit and opt-in.
+    if properties.strictAce then
+        return not properties.restricted or isAceAllowed(source, ('command.%s'):format(commandName))
+    end
 
     local aceApi = PRAce or Bridge and Bridge.ace or PRCore.load("@pr_bridge/bridge/ace/server", _ENV)
     if aceApi and aceApi.isAdminWhitelisted(source) then return true end
@@ -105,6 +110,7 @@ local function convertValue(source, rawValue, param, index, paramsCount, raw)
     if rawValue == nil or rawValue == "" then
         return nil
     end
+    if param.selfId and rawValue == 'me' then rawValue = source end
 
     if valueType == "number" then
         return tonumber(rawValue)
@@ -129,6 +135,7 @@ local function convertValue(source, rawValue, param, index, paramsCount, raw)
     end
 
     if valueType == "string" then
+        if param.allowNumericString == false and tonumber(rawValue) then return nil end
         return tostring(rawValue)
     end
 
@@ -386,7 +393,7 @@ local function createCommand(commandName, properties, cb)
             return
         end
 
-        local ok, result = pcall(cb, source, params, raw, params.values)
+        local ok, result = pcall(cb, source, params, raw, params.values, args)
         if not ok then
             local message = ("Comando '%s' falhou: %s"):format(getCommandName(raw), tostring(result))
             debug("warn", ("[pr_bridge] %s"):format(message))

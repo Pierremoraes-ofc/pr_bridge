@@ -20,6 +20,9 @@ local markerZones = {}
 local sessionGeneration = 0
 local lastMarkerCount, lastMarkerAt = 0, 0
 local visibility = {}
+local nextVisibilityAt = 0
+local lastVisibilityAt
+local lastMarkers
 local function entityTypeOf(entity)
     if type(entity) ~= "number" or entity <= 0 or not DoesEntityExist(entity) then return 0 end
     local ok, entityType = pcall(GetEntityType, entity)
@@ -56,6 +59,9 @@ local debugEnabled = GetConvarInt("pr_bridge:target:debug", GetConvarInt("ox_tar
 local defaultDistance = tonumber(GetConvar("pr_bridge:target:distance", "7")) or 7.0
 local drawSpriteLimit = math.max(0, GetConvarInt("pr_bridge:target:drawSprite", GetConvarInt("ox_target:drawSprite", 24)))
 local markerUpdateInterval = math.max(0, GetConvarInt("pr_bridge:target:markerInterval", 16))
+-- LOS is not a screen animation. Bound background synchronous work separately
+-- from marker rendering; a user click still performs a fresh check immediately.
+local visibilityInterval = math.max(16, GetConvarInt("pr_bridge:target:visibilityInterval", 50))
 local markerModelOffsets = {}
 
 local function targetMessage(action, data)
@@ -76,6 +82,7 @@ local function setActive(value)
     value = value == true and not state.disabled
     if state.active == value then return end
     sessionGeneration = sessionGeneration + 1
+    nextVisibilityAt, lastVisibilityAt, lastMarkers = 0, nil, nil
     state.active = value
     targetMessage("target:visible", { state = value })
     if not value then
@@ -251,8 +258,8 @@ end
 
 -- This check must finish in the same tick. The client capture showed only
 -- invalid asynchronous handles (no clear/blocked results), suppressing all UI.
--- Keep synchronous probes bounded: two background checks per update, plus the
--- explicit user click. Do not relax collision flags on a failed native result.
+-- Keep synchronous probes bounded on a separate cadence, plus the explicit
+-- user click. Do not relax collision flags on a failed native result.
 local function probeVisibility(entity, zone, flags)
     if not zone and (not entity or entity == 0 or not DoesEntityExist(entity)) then return 'blocked' end
     local point = zone and zone.coords or markerWorldPoint(entity)
@@ -269,10 +276,16 @@ end
 local function updateVisibility()
     local enabled, flags = visibilitySettings()
     local now, waiting = GetGameTimer(), {}
+    if now < nextVisibilityAt then return end
+    local elapsed = lastVisibilityAt and math.max(visibilityInterval, now-lastVisibilityAt) or visibilityInterval
+    lastVisibilityAt = now
+    nextVisibilityAt = now + visibilityInterval
+    local count = 0
     for key, entry in pairs(visibility) do
-        if now - entry.requested > 1000 then
+        if now - entry.requested > 1000 or (not enabled and not entry.forced) then
             visibility[key] = nil
         else
+            count = count + 1
             if entry.flags ~= flags then
                 entry.allowed, entry.confirmed, entry.nextProbe = false, nil, 0
                 entry.flags = flags
@@ -280,8 +293,15 @@ local function updateVisibility()
             if now >= (entry.nextProbe or 0) then waiting[#waiting + 1] = entry end
         end
     end
-    table.sort(waiting, function(a, b) return (a.nextProbe or 0) < (b.nextProbe or 0) end)
-    for i = 1, math.min(2, #waiting) do
+    table.sort(waiting, function(a, b)
+        local activeA, activeB = a.entity == current.entity, b.entity == current.entity
+        if activeA ~= activeB then return activeA end
+        return (a.nextProbe or 0) < (b.nextProbe or 0)
+    end)
+    -- Two checks suffice for sparse scenes. Scale with the live cache only
+    -- when needed to renew a dense scene before its 1-second validity expires.
+    local budget = math.max(2, math.ceil(count * elapsed / 750))
+    for i = 1, math.min(budget, #waiting) do
         local entry = waiting[i]
         local result, status = probeVisibility(entry.entity, entry.zone, flags)
         entry.result, entry.nativeStatus, entry.nextProbe = result, status, now + 100
@@ -312,8 +332,8 @@ end
 targetVisible=function(entity, zone, fresh, option)
     local enabled, flags = visibilitySettings()
     if ignoresWalls(option) or (zone and (zone.ignoreLos==true or zone.wallDetection==false) and not (option and option.wallDetection==true)) then return true end
-    if not option and hasWallException(entity,zone)then return true end
     if not enabled and not (option and option.wallDetection==true) then return true end
+    if not option and hasWallException(entity,zone)then return true end
     if not zone and (not entity or entity == 0 or not DoesEntityExist(entity)) then return false end
     if fresh then return probeVisibility(entity, zone, flags) == 'clear' end
     local key, now = zone or entity, GetGameTimer()
@@ -323,6 +343,7 @@ targetVisible=function(entity, zone, fresh, option)
         visibility[key] = entry
     end
     entry.requested = now
+    if option and option.wallDetection == true then entry.forced = true end
     return entry.flags == flags and entry.allowed == true and entry.confirmed ~= nil
         and now - entry.confirmed <= 1000
 end
@@ -358,9 +379,10 @@ local function collectZones(endCoords, distance, entity, markerCoords)
     activeZones = {}
     local output = {}
     local nearby = Zones.getNearby(endCoords)
+    local playerNearby = Zones.getNearby(markerCoords or endCoords)
     local seen = {}
     for _,zone in ipairs(nearby) do seen[zone.id]=true end
-    for _,zone in ipairs(Zones.getNearby(markerCoords or endCoords)) do
+    for _,zone in ipairs(playerNearby) do
         if not seen[zone.id] and hasWallException(nil,zone) then
             nearby[#nearby+1]=zone
             seen[zone.id]=true
@@ -368,11 +390,15 @@ local function collectZones(endCoords, distance, entity, markerCoords)
     end
     for i = 1, #nearby do
         local zone = nearby[i]
-        local pointVisible,x,y=GetScreenCoordFromWorldCoord(zone.coords.x,zone.coords.y,zone.coords.z)
-        local throughWall=hasWallException(nil,zone) and pointVisible and math.abs(x-0.5)<0.035 and math.abs(y-0.5)<0.035
-        if (zone:contains(endCoords) or throughWall) and targetVisible(nil, zone) then
-            local optionCoords = zone:contains(endCoords) and endCoords or zone.coords
-            local optionDistance = zone:contains(endCoords) and distance or #(GetEntityCoords(PlayerPedId())-zone.coords)
+        local contained = zone:contains(endCoords)
+        local throughWall = false
+        if not contained and hasWallException(nil,zone) then
+            local pointVisible,x,y=GetScreenCoordFromWorldCoord(zone.coords.x,zone.coords.y,zone.coords.z)
+            throughWall=pointVisible and math.abs(x-0.5)<0.035 and math.abs(y-0.5)<0.035
+        end
+        if (contained or throughWall) and targetVisible(nil, zone) then
+            local optionCoords = contained and endCoords or zone.coords
+            local optionDistance = contained and distance or #(GetEntityCoords(PlayerPedId())-zone.coords)
             local zoneIndex = #activeZones + 1
             activeZones[zoneIndex] = zone
             local visible = { id = zone.id, options = {} }
@@ -388,7 +414,7 @@ local function collectZones(endCoords, distance, entity, markerCoords)
     -- Interaction follows the camera ray, but nearby markers must follow the
     -- player. Using the ray endpoint for both made zone targets disappear
     -- until the crosshair was already inside the zone.
-    return output, Zones.getNearby(markerCoords or endCoords)
+    return output, playerNearby
 end
 
 local function signature(groups, zones)
@@ -470,8 +496,21 @@ local function refreshMarkerEntities(playerCoords, markerDistance, targetConfig)
             end
         end
     end
-    for _, pool in ipairs({ 'CObject', 'CPed', 'CVehicle' }) do
-        for _, entity in ipairs(GetGamePool(pool)) do consider(entity) end
+    -- Direct registrations already identify the entity. Scanning the whole
+    -- world for them costs more as the city streams more unrelated objects.
+    for entity, options in pairs(collections.localEntities) do
+        if #options > 0 then consider(entity) end
+    end
+    for netId, options in pairs(collections.entities) do
+        if #options > 0 and NetworkDoesNetworkIdExist(netId) then consider(NetworkGetEntityFromNetworkId(netId)) end
+    end
+    local models = hasKeyedOptions(collections.models)
+    local pools = {}
+    if models or #collections.objects > 0 then pools[#pools + 1] = 'CObject' end
+    if models or #collections.peds > 0 or #collections.players > 0 then pools[#pools + 1] = 'CPed' end
+    if models or #collections.vehicles > 0 then pools[#pools + 1] = 'CVehicle' end
+    for i = 1, #pools do
+        for _, entity in ipairs(GetGamePool(pools[i])) do consider(entity) end
     end
     for entity in pairs(pickupEntities) do consider(entity) end
     table.sort(candidates, function(a, b)
@@ -521,13 +560,14 @@ local function sendScreenMarkers(playerCoords, markerDistance)
     end
 
     for i = 1, #markerEntities do
+        if #markers >= drawSpriteLimit then break end
         local entity = markerEntities[i]
-        if DoesEntityExist(entity) and targetVisible(entity) then
+        if DoesEntityExist(entity) then
             local coords = GetEntityCoords(entity)
             if #(playerCoords - coords) <= markerDistance then
                 local point = markerWorldPoint(entity)
                 local visible, screenX, screenY = GetScreenCoordFromWorldCoord(point.x, point.y, point.z)
-                if visible and #markers < drawSpriteLimit then
+                if visible and targetVisible(entity) then
                     markers[#markers + 1] = {
                         id = ("entity:%s"):format(entity), x = screenX, y = screenY,
                         targeted = entity == current.entity and renderHasOptions,
@@ -538,11 +578,12 @@ local function sendScreenMarkers(playerCoords, markerDistance)
     end
 
     for i = 1, #markerZones do
+        if #markers >= drawSpriteLimit then break end
         local zone = markerZones[i]
         local coords = zone.coords
-        if (#(playerCoords - coords) <= markerDistance or zone:contains(playerCoords)) and targetVisible(nil, zone) then
+        if #(playerCoords - coords) <= markerDistance or zone:contains(playerCoords) then
             local visible, screenX, screenY = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
-            if visible and #markers < drawSpriteLimit then
+            if visible and targetVisible(nil, zone) then
                 markers[#markers + 1] = {
                     id = ("zone:%s"):format(zone.id), x = screenX, y = screenY,
                     targeted = targetedZones[zone.id] == true,
@@ -551,7 +592,18 @@ local function sendScreenMarkers(playerCoords, markerDistance)
         end
     end
     lastMarkerCount, lastMarkerAt = #markers, GetGameTimer()
-    targetMessage("target:markers", { markers = markers })
+    local changed = not lastMarkers or #lastMarkers ~= #markers
+    if not changed then
+        for i = 1, #markers do
+            local old, new = lastMarkers[i], markers[i]
+            if old.id ~= new.id or old.targeted ~= new.targeted
+                or math.abs(old.x-new.x) > 0.0001 or math.abs(old.y-new.y) > 0.0001 then changed = true; break end
+        end
+    end
+    if changed then
+        targetMessage("target:markers", { markers = markers })
+        lastMarkers = markers
+    end
 end
 local function response(option, server, zone)
     local output = {}
@@ -825,6 +877,10 @@ end)
 
 AddEventHandler("pr_bridge:target:stateChanged", function()
     if state.disabled then stopTargeting() end
+end)
+
+AddEventHandler("pr_bridge:ui:ready", function()
+    lastMarkers, lastSignature = nil, nil
 end)
 
 -- Opt-in capture for client-native failures that cannot be reproduced outside

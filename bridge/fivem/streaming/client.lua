@@ -33,7 +33,7 @@ local modelDimensionsCache = {}
 
 function streaming.requestModel(model, timeout)
     local modelHash = hash(model)
-    if not modelHash or not IsModelInCdimage(modelHash) then
+    if not modelHash or (not IsModelInCdimage(modelHash) and not (IsModelValid and IsModelValid(modelHash))) then
         debug("warn", ("[pr_bridge] Model invalido: %s"):format(tostring(model)))
         return false, modelHash
     end
@@ -99,6 +99,7 @@ end
 function streaming.requestAnimDict(animDict, timeout)
     if type(animDict) ~= "string" or animDict == "" then return false end
     if HasAnimDictLoaded(animDict) then return true end
+    if DoesAnimDictExist and not DoesAnimDictExist(animDict) then return false end
 
     RequestAnimDict(animDict)
 
@@ -119,12 +120,12 @@ function streaming.releaseAnimDict(animDict)
     end
 end
 
-function streaming.requestWeaponAsset(model, timeout)
+function streaming.requestWeaponAsset(model, timeout, resourceFlags, componentFlags)
     local weaponHash = hash(model)
     if not weaponHash then return false, nil end
     if HasWeaponAssetLoaded(weaponHash) then return true, weaponHash end
 
-    RequestWeaponAsset(weaponHash, 31, 0)
+    RequestWeaponAsset(weaponHash, resourceFlags or 31, componentFlags or 0)
 
     local loaded = waitUntil(function()
         return HasWeaponAssetLoaded(weaponHash)
@@ -140,6 +141,14 @@ end
 function streaming.releaseWeaponAsset(model)
     local weaponHash = hash(model)
     if weaponHash then RemoveWeaponAsset(weaponHash) end
+end
+
+-- Asset loaders share the same native wait primitive. Return success plus
+-- the asset, matching requestModel/requestWeaponAsset's native convention.
+function streaming.requestAsset(request,loaded,asset,timeout,...)
+    if loaded(asset) then return true,asset end
+    request(asset,...)
+    return waitUntil(function() return loaded(asset) end,timeout or 30000),asset
 end
 
 local function coordsOf(coords)
@@ -786,7 +795,7 @@ function streaming.playAnim(data, clip, duration, options, ...)
         cfg.flags,
         cfg.playbackRate,
         cfg.lockX,
-        cfg.lockY,
+        anim.controlFlags ~= nil and anim.controlFlags or cfg.lockY,
         cfg.lockZ
     )
 

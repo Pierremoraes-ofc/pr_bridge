@@ -68,8 +68,7 @@ return function(Renderer)
     ---@return table|nil
     function Input.InputDialog(heading, rows, options)
         if pending then
-            pending.resolve(nil)
-            pending = nil
+            return nil
         end
 
         local p = promise.new()
@@ -109,6 +108,10 @@ return function(Renderer)
 
     function Input.HandleClose()
         Input.HandleSubmit(nil)
+    end
+
+    function Input.CloseInputDialog()
+        if pending then Input.HandleSubmit(nil) end
     end
 
     return Input

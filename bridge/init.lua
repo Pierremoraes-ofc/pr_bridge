@@ -64,7 +64,7 @@ local function getBridge(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("bridge.frameworks.%s.%s"):format(info.folder, context)
                     end
@@ -79,7 +79,7 @@ local function getBridge(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("bridge.%s.%s.%s"):format(bridgeType, info.folder, context)
                     end
@@ -94,7 +94,7 @@ local function getBridge(bridgeType)
             for i = 1, #bridge do
                 local info = bridge[i]
                 if info.resource == forced or info.folder == forced then
-                    if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
                         setActiveBridge(bridgeType, info.folder)
                         return ("bridge.%s.%s.%s"):format(bridgeType, info.folder, context)
                     end
@@ -111,7 +111,7 @@ local function getBridge(bridgeType)
 
     for i = 1, #bridge do
         local info = bridge[i]
-        if GetResourceState(info.resource):find("start") then
+                    if PRCore.isResourceStarted(info.resource) then
             setActiveBridge(bridgeType, info.folder)
             return ("bridge.%s.%s.%s"):format(bridgeType, info.folder, context)
         end
@@ -165,6 +165,7 @@ Bridge.environment = PRCore.load("bridge.environment")
 PRCore.environment = Bridge.environment
 Bridge.debug = PRDebug
 Bridge.utils = PRCore.load("bridge.utils.shared") or {}
+Bridge.waitFor = PRCore.load('bridge.utils.waitFor')
 Bridge.math = PRCore.load("bridge.utils.numbers") or {}
 Bridge.table = PRCore.load("bridge.utils.tables") or {}
 Bridge.string = PRCore.load("bridge.utils.strings") or {}
@@ -215,6 +216,7 @@ if PRCore.context == "client" and type(skillCheckAdapter.SkillCheck or skillChec
 end
 Bridge.skillCheck = skillCheckAdapter.SkillCheck or skillCheckAdapter.skillCheck
 Bridge.cancelSkillCheck = skillCheckAdapter.CancelSkillCheck or skillCheckAdapter.cancelSkillCheck
+Bridge.skillCheckActive = skillCheckAdapter.SkillCheckActive or skillCheckAdapter.skillCheckActive
 Bridge.textUIAdapter = Bridge.textuiAdapter
 Bridge.textuiBridge = Bridge.textuiAdapter
 Bridge.textUIBridge = Bridge.textuiAdapter
@@ -561,6 +563,7 @@ if createAutomaticCache then
     Bridge.getCacheMetrics = bridgeCache.getMetrics
 end
 Bridge.settings = PRCore.load("bridge.settings")(Bridge)
+if rawget(_ENV, "cache") == nil then cache = bridgeCache end
 if PRCore.context == "server" then
     Bridge.settings.publish("locale", { name = Locale.getConfiguredName() })
 end
@@ -569,6 +572,12 @@ if PRCore.context == "client" then
     if normalizeEntities then normalizeEntities(Bridge) end
 end
 pr_lib = Bridge
+if PRCore.context == 'client' then
+    Bridge.nativeProgress = PRCore.load('bridge.progressbar.native.client')
+    Bridge.progressProps = PRCore.load('bridge.progressbar.native.props_client')
+else
+    Bridge.progressProps = PRCore.load('bridge.progressbar.native.props_server')
+end
 if _G then
     _G.pr_lib = Bridge
 end
@@ -622,4 +631,28 @@ end)
 
 exports("getLib", function()
     return Bridge
+end)
+PRCore.load('@pr_bridge/bridge/library/init')(Bridge, _ENV)
+if PRCore.context=='server' then
+    PRCore.load('bridge.fivem.state.policy')(Bridge)
+else
+    Bridge.stateGroundHandler=PRCore.load('bridge.fivem.state.ground_client')(Bridge,Bridge.library)
+end
+
+PRCore.load("bridge.runtime.backends")(Bridge, ConfigBridge, ActiveBridges, getBridge, function(field)
+    if field == "inventory" and normalizeInventoryBridge then
+        normalizeInventoryBridge(Bridge.inventory, PRCore.context, ActiveBridges.inventories)
+    elseif field == "framework" and normalizeFramework then
+        normalizeFramework(Bridge.framework, PRCore.context, Bridge.inventory, Bridge.banking, Bridge.notify, Bridge.textuiAdapter, ActiveBridges.frameworks)
+    elseif field == "banking" and normalizeApi then
+        normalizeApi.banking(Bridge.banking)
+    elseif field == "database" then
+        if normalizeApi then normalizeApi.database(Bridge.database) end
+        local createBackupApi = PRCore.load("bridge.database.backup.server")
+        if createBackupApi then
+            Bridge.database.backup = createBackupApi(Bridge.database, GetCurrentResourceName())
+            Bridge.database.createBackup = Bridge.database.backup.create
+            Bridge.sqlBackup = Bridge.database.backup
+        end
+    end
 end)

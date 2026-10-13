@@ -4,25 +4,39 @@ local framework = {}
 local qbx_core = exports.qbx_core
 
 QBX = QBX or {}
-QBX.PlayerData = QBX.PlayerData or qbx_core:GetPlayerData() or {}
+QBX.PlayerData = QBX.PlayerData or {}
 
 local cashAmount = QBX.PlayerData and QBX.PlayerData.money and QBX.PlayerData.money.cash or 0
 local bankAmount = QBX.PlayerData and QBX.PlayerData.money and QBX.PlayerData.money.bank or 0
 
-RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
-    QBX.PlayerData = {}
-    cashAmount = 0
-    bankAmount = 0
-end)
-
-RegisterNetEvent('QBCore:Player:SetPlayerData', function(value)
+local function setPlayerData(value)
     QBX.PlayerData = value or {}
+    local money = QBX.PlayerData.money or {}
+    cashAmount = money.cash or 0
+    bankAmount = money.bank or 0
+end
 
-    if QBX.PlayerData.money then
-        cashAmount = QBX.PlayerData.money.cash or 0
-        bankAmount = QBX.PlayerData.money.bank or 0
-    end
+local function syncPlayerData()
+    -- On connection the resource state can already be "started", while the
+    -- QBX client environments/exports have not run. Never abort the PR host
+    -- here: QBX itself needs our ox_lib provider to finish initialising.
+    local ok, value = pcall(function() return qbx_core:GetPlayerData() end)
+    if ok and type(value) == 'table' then setPlayerData(value) end
+end
+
+syncPlayerData()
+AddEventHandler('onClientResourceStart', function(resource)
+    if resource == 'qbx_core' then SetTimeout(0, syncPlayerData) end
 end)
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+    SetTimeout(0, syncPlayerData)
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    setPlayerData({})
+end)
+
+RegisterNetEvent('QBCore:Player:SetPlayerData', setPlayerData)
 
 AddEventHandler('qbx_core:client:statusChanged', function(status)
     if type(status) ~= 'table' then return end
@@ -146,7 +160,8 @@ function framework.IsPlayerLoaded()
 end
 
 function framework.IsSessionReady()
-    return qbx_core:IsPlayerLoaded() == true
+    local ok, loaded = pcall(function() return qbx_core:IsPlayerLoaded() end)
+    return ok and loaded == true
 end
 
 -- Documentation implementation

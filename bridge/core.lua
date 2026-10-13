@@ -10,6 +10,15 @@ PRCore = {
 
 function PRCore.noop() end
 
+-- A provided legacy alias is not an independent backend. Selecting it would
+-- send PR's own adapters back into PR and can create recursive exports.
+function PRCore.isResourceStarted(resource)
+    if (resource == "ox_lib" or resource == "ox_target")
+        and GetResourceMetadata(resource, "name", 0) == "pr_bridge" then return false end
+    local state = GetResourceState(resource)
+    return state == "started" or (resource == "pr_bridge" and state == "starting")
+end
+
 local function normalizePath(path)
     path = path:gsub("%.lua$", "")
 
@@ -218,24 +227,6 @@ end
 PRCore.callback = PRCore.callback or {}
 
 function PRCore.callback.register(name, cb)
-    RegisterNetEvent(name, function(requestId, ...)
-        local src = source
-        local args = table.pack(...)
-        CreateThread(function()
-            local result
-            if PRCore.context == "server" then
-                result = table.pack(cb(src, table.unpack(args, 1, args.n)))
-            else
-                result = table.pack(cb(table.unpack(args, 1, args.n)))
-            end
-
-            if type(requestId) == "string" then
-                if PRCore.context == "server" then
-                    TriggerClientEvent("pr_bridge:callback:response", src, requestId, table.unpack(result, 1, result.n))
-                else
-                    TriggerServerEvent("pr_bridge:callback:response", requestId, table.unpack(result, 1, result.n))
-                end
-            end
-        end)
-    end)
+    local api = PRCore.load('@pr_bridge/bridge/callback/' .. PRCore.context, _ENV)
+    return api.register(name, cb)
 end

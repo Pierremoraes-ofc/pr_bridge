@@ -1,0 +1,14 @@
+.pr-list-menu { position: absolute; z-index: 40; top: 6vh; left: 3vw; width: min(360px, 90vw); color: var(--fb-text, white); background: var(--fb-surface, #161922); border: 1px solid var(--fb-border, #373c48); border-radius: 12px; overflow: hidden; pointer-events: auto; font-family: inherit; }
+.pr-list-menu.top-right { left: auto; right: 3vw; }
+.pr-list-menu.bottom-left { top: auto; bottom: 6vh; }
+.pr-list-menu.bottom-right { top: auto; bottom: 6vh; left: auto; right: 3vw; }
+.pr-list-menu header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--fb-border, #373c48); font-weight: 700; }
+.pr-list-menu section { max-height: 60vh; overflow: auto; padding: 8px; }
+.pr-list-menu button { color: inherit; font: inherit; background: transparent; border: 0; cursor: pointer; }
+.pr-list-menu .list-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 10px; border-radius: 6px; text-align: left; }
+.pr-list-menu .list-option.active { background: var(--fb-orange, #ff7a1a); color: #111; }
+.pr-list-menu .list-option:disabled { opacity: .45; cursor: default; }
+.pr-list-menu .list-label { flex: 1; }
+.pr-list-menu .list-value { margin-left: auto; }
+.pr-list-menu .list-description { padding: 12px 16px; font-size: .85em; border-top: 1px solid var(--fb-border, #373c48); white-space: pre-line; }
+.pr-list-menu progress { width: 100%; height: 4px; accent-color: var(--fb-orange, #ff7a1a); }

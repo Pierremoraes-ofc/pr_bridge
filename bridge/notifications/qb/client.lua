@@ -3,11 +3,12 @@ local notifications = {}
 
 if ActiveBridges["notification"] ~= "qb" then return end
 
-local QBCore = exports["qb-core"]:GetCoreObject()
-
 --- Notification
 ---@param data NotificationData
 function notifications.Notify(data)
+    -- QBX's qb-core alias can be advertised before its client exports exist.
+    -- Resolve the core only for the action, never while the PR host boots.
+    local QBCore = exports["qb-core"]:GetCoreObject()
     if data.type == "inform" then
         data.type = "info"
     end

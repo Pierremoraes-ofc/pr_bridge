@@ -1,0 +1,20 @@
+.pr-root .notify-stack.position-top { right: auto; left: 50%; transform: translateX(-50%); }
+.pr-root .notify-stack.position-top-left { right: auto; left: 16px; }
+.pr-root .notify-stack.position-bottom { top: auto; bottom: 16px; right: auto; left: 50%; transform: translateX(-50%); }
+.pr-root .notify-stack.position-bottom-right { top: auto; bottom: 16px; }
+.pr-root .notify-stack.position-bottom-left { top: auto; bottom: 16px; right: auto; left: 16px; }
+.pr-root .notify-stack.position-center-right { top: 50%; transform: translateY(-50%); }
+.pr-root .notify-stack.position-center-left { top: 50%; right: auto; left: 16px; transform: translateY(-50%); }
+.pr-root .notify__icon.align-top { align-self: flex-start; }
+.notify__icon.animation-spin > *, .notify__icon.animation-spinPulse > * { animation: notify-spin 1s linear infinite; }
+.notify__icon.animation-spinReverse > * { animation: notify-spin 1s linear infinite reverse; }
+.notify__icon.animation-pulse > *, .notify__icon.animation-beat > * { animation: notify-beat 1s ease-in-out infinite; }
+.notify__icon.animation-fade > * { animation: notify-fade 1s ease-in-out infinite; }
+.notify__icon.animation-beatFade > * { animation: notify-beat 1s ease-in-out infinite, notify-fade 1s ease-in-out infinite; }
+.notify__icon.animation-bounce > * { animation: notify-bounce 1s ease-in-out infinite; }
+.notify__icon.animation-shake > * { animation: notify-shake .5s ease-in-out infinite; }
+@keyframes notify-spin { to { transform: rotate(360deg); } }
+@keyframes notify-beat { 50% { transform: scale(1.2); } }
+@keyframes notify-fade { 50% { opacity: .25; } }
+@keyframes notify-bounce { 50% { transform: translateY(-5px); } }
+@keyframes notify-shake { 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }

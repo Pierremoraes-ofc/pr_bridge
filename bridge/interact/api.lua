@@ -6,6 +6,7 @@ local api = {}
 local records = {}
 local nextId = 0
 local disabled = false
+local revision = 0
 
 local function owner()
     return GetInvokingResource() or GetCurrentResourceName()
@@ -50,9 +51,12 @@ local function create(data, kind)
         ignoreLos = data.ignoreLos == true or data.wallDetection == false,
         wallDetection = data.wallDetection,
         hide = data.hide == true or data.hidden == true or data.showUI == false,
+        -- Opt-in temporary menus. Normal world interactions keep their existing behavior.
+        exclusive = data.exclusive == true,
         options = options,
         modelHashes = data.modelHashes,
     }
+    revision = revision + 1
     return id
 end
 
@@ -66,6 +70,7 @@ local function removeMatching(predicate, interactionId)
     for id, record in pairs(records) do
         if record.resource == invoking and predicate(record) and (interactionId == nil or id == interactionId or record.name == interactionId) then
             records[id] = nil
+            revision = revision + 1
         end
     end
     return true
@@ -125,7 +130,7 @@ api.addGlobalPlayerInteraction = api.addGlobalPlayerInteraction
 
 function api.removeInteraction(id)
     local record = records[id]
-    if record and record.resource == owner() then records[id] = nil end
+    if record and record.resource == owner() then records[id] = nil; revision = revision + 1 end
     return true
 end
 
@@ -136,11 +141,12 @@ end
 function api.removeInteractionOption(id, name)
     local record = records[id]
     if not record or record.resource ~= owner() then return false end
-    if name == nil then records[id] = nil return true end
+    if name == nil then records[id] = nil; revision = revision + 1; return true end
     for index = #record.options, 1, -1 do
         if record.options[index].name == name then table.remove(record.options, index) end
     end
     if #record.options == 0 then records[id] = nil end
+    revision = revision + 1
     return true
 end
 
@@ -148,6 +154,7 @@ function api.updateInteraction(id, options)
     local record = records[id]
     if not record or record.resource ~= owner() then return false end
     record.options = optionList(options)
+    revision = revision + 1
     return true
 end
 
@@ -186,6 +193,7 @@ end
 
 function api._records() return records end
 function api._disabled() return disabled end
+function api._revision() return revision end
 
 local exported = {
     AddInteraction = "addInteraction",
@@ -212,7 +220,7 @@ for exportName, method in pairs(exported) do exports(exportName, api[method]) en
 
 AddEventHandler("onClientResourceStop", function(resource)
     for id, record in pairs(records) do
-        if record.resource == resource then records[id] = nil end
+        if record.resource == resource then records[id] = nil; revision = revision + 1 end
     end
 end)
 

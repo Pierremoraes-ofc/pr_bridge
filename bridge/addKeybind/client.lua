@@ -308,6 +308,7 @@ local function createKeybind(data)
 
     local primaryCombo = data.keys or data.combo or collectInlineCombo(data, data.defaultKey or data.key)
     local keys = normalizeCombo(primaryCombo)
+    if #keys == 0 and data.allowUnbound then keys = {''} end
     if #keys == 0 then return false, "missing_key" end
 
     local bind = setmetatable(data, keybind_mt)

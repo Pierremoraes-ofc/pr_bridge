@@ -1,0 +1,1666 @@
+{
+  "baseline": "ox_lib 3.38.0 (local distribution)",
+  "bridgeVersion": "1.4.2",
+  "contractVersion": "3.38.0",
+  "reviewedOn": "2026-10-10",
+  "importFiles": 71,
+  "modules": 59,
+  "symbols": 63,
+  "resourceExportCount": 49,
+  "note": "Counts describe files/modules/top-level symbols, not every class method or a percentage of runtime compatibility.",
+  "validation": {
+    "offline": "see OX_COMPATIBILITY.md and tests/ox_compat_test.lua",
+    "FiveM": "pending",
+    "nativeCompiler": "CFX syntax normalized in memory for Lua 5.5; actual CFX Lua 5.4 compilation pending"
+  },
+  "oxTarget": {
+    "baseline": "Overextended public client API (no original local resource found)",
+    "implementation": "internal legacy export discovery + native PR Target",
+    "FiveM": "pending"
+  },
+  "architecture": "native-first; adapters convert signatures, wire names and policies only",
+  "nativeRoutedImports": 71,
+  "entries": [
+    {
+      "file": "imports/__addCommand/server.lua",
+      "sha256": "303694e1b741c0a5945249acb88fd8f1f20816e7a21f429d4c7794cc5c8ba66c",
+      "providerSha256": "438ff48d7563354eacc0b94e0e5ca5b92170f53902664dc4277d16b5d72d4a82",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/addCommand/server",
+        "bridge/compat/ox_command"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/addCommand/server.lua",
+      "sha256": "6e692a56182506a56f46cd443c33715e3f47d30d26fef87c83ba050a923a02cd",
+      "providerSha256": "79edc3de2752c768813b4749cba9053610066e278898dd7b1a22a01277c088af",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/addCommand/server",
+        "bridge/compat/ox_command"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/addKeybind/client.lua",
+      "sha256": "bef6f1d2f0b1a7777a87ca7ffb2b70d5c781f53d315f6bc939d717346aca7fac",
+      "providerSha256": "79854ace32dd529b85b7eeabf3e95604e0b19c289d2ac62932ec4d52449a690f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/addKeybind/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/array/shared.lua",
+      "sha256": "95c0020c7bd11880ef2a91e00a593da3739075ab2caf2e6d74b17a0120477735",
+      "providerSha256": "4fee90345dba1363507585722fcc24c6fab769e36ffdb33921693e24195217c6",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/callback/client.lua",
+      "sha256": "0c419fe3884181b2efbd7636dd53a20048de8917a7eedc15578aeef70a901901",
+      "providerSha256": "771f546121bae49a40a15f4295d574a76dbfe89d6517192dfeeef402ae81f19a",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/callback/transport"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/callback/server.lua",
+      "sha256": "dd33fbdecb1881277b87e6312864bfdefd69d708d481d021c481f96805450aad",
+      "providerSha256": "771f546121bae49a40a15f4295d574a76dbfe89d6517192dfeeef402ae81f19a",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/callback/transport"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/class/shared.lua",
+      "sha256": "1c52cb6a0c3e70f74c7b822aedc62936de988bf07df700aca8d388ee4eafc779",
+      "providerSha256": "b6ee6d5adaa8c7bcb808a169348b0073b64fa17db4939160cedc57d2692adfda",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/cron/server.lua",
+      "sha256": "8e332427a5b5fff918329a3f30b3ccf0f502ad8cc790b7c761140cb8c8d84055",
+      "providerSha256": "f216499614f8df985dad2d8b00700398337a8c43f60b227f915c7f1269662e04",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/disableControls/client.lua",
+      "sha256": "a47ec07dc9c1667f146df9d85f8f7e2ade678c04d5df6aebbc93a95e3dc70e3d",
+      "providerSha256": "8d96ed10389d5418ee9fa85e08f753be2631fa175c6676495f62b963a8aa8565",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/controls/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/dui/client.lua",
+      "sha256": "8463a6cef42bbf5208c8f5acdf0a043146ec0d8a13d2a9e1c4df3213a8a5d16f",
+      "providerSha256": "6ce5b0562083462b883bb256684fa0105de58f7b04441f1317ca70cf61164732",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/gameEntity/shared.lua",
+      "sha256": "321f1c29240568e53d254891dd5fb6ce648946d6ccb31703ef2072681ee6a95d",
+      "providerSha256": "45cf2bd2e00f74cf2de7ad2611fd6be57e4fdfe2111a00755e204c8ac0caed72",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getClosestObject/shared.lua",
+      "sha256": "59f0ea332b4d3db8f55b339360833500f12c8a7a788ae7b652062f6bf004c347",
+      "providerSha256": "9f2c20cf8c7b3e3dd270b3c4fd87b17eefb542579cd026afef8f8fd02b659459",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getClosestPed/shared.lua",
+      "sha256": "112f8d59b8c439ec3c82714ec9c2f10b033cc1432bc3052e7d57646e69213b97",
+      "providerSha256": "439f0e946e55f2a674297ae966ededb18832cacece146e58c33916b7d888749e",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getClosestPlayer/client.lua",
+      "sha256": "a0220e638fcce6dd168c4681bd6b6e5bf8a80b6916c3fe14ec8096fb57b5b317",
+      "providerSha256": "7364f88e5faeb8ad9f53d65aea25b3e14544b18b0bbc3678efe306b77c42df6d",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getClosestPlayer/server.lua",
+      "sha256": "b1e4f61665ae3986131c4958be2fdeb22c00ae42e3ee79dd2a3b20978bb2164e",
+      "providerSha256": "dfea8eaee2e4552b005b6054e2cadb7e87d0fefa3cc30d5742fa666d696bbc5f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getClosestVehicle/shared.lua",
+      "sha256": "9f128d3c79c2cf8a59cd06b295bbb5a40e0e23c81b8801c55fada67b5e74906e",
+      "providerSha256": "b80dc6f7409348d325a6415766e9a5318993f83e7f6159e0045cc6c0812e78a3",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getFilesInDirectory/server.lua",
+      "sha256": "bac020ab7ea98eb354e3a7a994e6be79ab8aab52b5d1daad0f26df476f33af36",
+      "providerSha256": "0fc69968c7d672b799ae8c56021c310350e74d874f19378ae00ff894ebea554f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getNearbyObjects/shared.lua",
+      "sha256": "ecd194ed531d53bd280a6c7d6690a0f245eb7cbb9a13c7621cbfd39cb88b5370",
+      "providerSha256": "655244b44380ba7a6716eac348ec8af2f64d86e3dff28d8e2296a741bd4b3723",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getNearbyPeds/shared.lua",
+      "sha256": "6745617cadbcaf12a4142117771bb92ca9978a47caf1ad4c01c78c2fd842a3b8",
+      "providerSha256": "2f0be3edcd6009b1ec1e7f41d2eaaea13b0797ac56bbe74fa1122e11b1b5c865",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getNearbyPlayers/client.lua",
+      "sha256": "b0d3dabbb72efd6e3cbcaa39aa2aff57fda8577f701842dcb9c8867e0bf6dbef",
+      "providerSha256": "d2dfb8670ce0b0b26b4b66836499a7138157cbe6516ecf764c5c4063ba5e0665",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getNearbyPlayers/server.lua",
+      "sha256": "50029598d81252da0abdd5b841a5c85881b52210b81161ab3912b88d819379b4",
+      "providerSha256": "a043b81c21399bccbcbd66b4aaaa829f1b0fa691a3f1414d799e5a39d3cbe10f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getNearbyVehicles/shared.lua",
+      "sha256": "e1b6d68dd28cea9fcf073b5fd8bcf1e2d79151ed8186278a78e6971b247fb242",
+      "providerSha256": "f1da25ffd982279fd0d93a234f92b7436a49027769aca985dc58bf62b70d4fe1",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/proximity/shared"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/getRelativeCoords/shared.lua",
+      "sha256": "97c3b8a9b61cf1983a70b23d52463d93ac2a8ad30c1cbc0a533f5c60d02cc45c",
+      "providerSha256": "5d4c95cd9d71f637680e80ac4b77b4c23e5b3ee53446d7d4413cd1402475cd1c",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/grid/shared.lua",
+      "sha256": "4c91155f9d7fc90b7e55abf25ed87e5428c9762392ea4a9494947bcd67411da6",
+      "providerSha256": "b380cdf3190549890514b4052ca61c82d7bc64713e862bf9fa2afecbb2f1ec42",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/heap/shared.lua",
+      "sha256": "89f41d37e9e571c41bcef8183dd1e190d1c12ad6f47fd4c085b037363774d90e",
+      "providerSha256": "f6f3881f51b20378ae4ad64a05f35e4cc1ac962ffff4b2908f0ffbf26849f167",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/hook/shared.lua",
+      "sha256": "115f564edc37d15d897be1fac3f13ef09880b975e60584cecaba265a8e3a7055",
+      "providerSha256": "2851a36f9d97e69334cc53620bcb45d77707bed4b7f3a217f718ad620c469e39",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/locale/shared.lua",
+      "sha256": "2571ff862e710c9cab8bc436abc63f3a6fef0db791bcc83bfdf2dc4ea458bc3e",
+      "providerSha256": "77cfe5be0ef33497b92f187685da2bbc0d14852e8a0b8785bebe785992d80139",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/logger/providers/datadog.lua",
+      "sha256": "9478de1d83888dd8966d355a938ab0b1e8069dd8b20fcd75710243bb25fe6230",
+      "providerSha256": "0d9b5cc580ed3a5d564a8a4b480c44cf7d64fb921ac3df3c2eb31136e9be8853",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/logging/providers/datadog"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/logger/providers/fivemanage.lua",
+      "sha256": "0646f0736b7fbcf8aed17cc4b5f40fb9220f3e36552853d215995b6d3018ad45",
+      "providerSha256": "8bb0039f7137a77c5ab66cb6fba222f4c6db24750802a2151e6837b185514ef2",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/logging/providers/fivemanage"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/logger/providers/loki.lua",
+      "sha256": "4b2a86ac1fee4352db3d3dc432c6b89c17d9a1552d5dcbc34b32959f01885b6a",
+      "providerSha256": "59c2d49a382b869628fcbc80905c7fc2be3a65375b0c25357cbc60957131fa9b",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/logging/providers/loki"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/logger/server.lua",
+      "sha256": "324224cf2e3568d53144a36b2afcc6bee07ec8ed09cdcdf9048f01d1f4b4554d",
+      "providerSha256": "81777f43ffabc87dc36d913062d46fc4dc658b19550288c7eb5f0ed890a54df9",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/lru/shared.lua",
+      "sha256": "f680665887fee736f46273ef45f886f98f4076b3c1bf19bd4e2bcd20794ab3f0",
+      "providerSha256": "0b729054bd9d9e625b8f69004498f90ebb96ec58047a3fe914bfc5422de8b080",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/map/shared.lua",
+      "sha256": "ca93151f7cd8214d25406ad08af12e521173d0f03a433584ef855f2f402941f4",
+      "providerSha256": "04487ecaaabd34e1226f8a8cf38b97570fd5fd02ec707ddc60c3cf1adc6e1aa4",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/marker/client.lua",
+      "sha256": "073202f45b4e51bed321462ddf34ac3a6e21af7cccc4af8a70023f9e904b708c",
+      "providerSha256": "6cd6dec86c711fc8feadc4b39475ea52689b9b8854daabbdd3d67ca801b2d14d",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/math/shared.lua",
+      "sha256": "3aaf23df512c51786b0856b3ae0159004e75e687c0e21095e1829e878d0d3d27",
+      "providerSha256": "4895030ea128bc84d8b98db45902e98e863389e80a13b2abb172697f5216d1f9",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/utils/numbers"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/ped/client.lua",
+      "sha256": "3bffeb354ad35d0972f6548faf3681d1d7c7ecfd9ce6740d3472cf4f7c5469e3",
+      "providerSha256": "51f4f689894329446f1fb4d0a693c11cf4a0b422222b72838c76b385dc2638d8",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/ped/server.lua",
+      "sha256": "dec660545d83c7be6a4fed249e3b1b3a2d30c1337cf656e9f685edd14ff9f211",
+      "providerSha256": "51f4f689894329446f1fb4d0a693c11cf4a0b422222b72838c76b385dc2638d8",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/ped/shared.lua",
+      "sha256": "0264a73813a79b71d8a660675110c18257abeb442b05d4efca214ad035cefacc",
+      "providerSha256": "721c34ff409d47ffdd0ea56a563b2b0ab94f8fac4aef65f875c6dabcf6bc5cfe",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/playAnim/client.lua",
+      "sha256": "31df74a5709f3e861c59ff6f17c676c952affce1d44e0c8cfc51584bf40ecaf8",
+      "providerSha256": "b0000a5e4e6631ec8fb452c4a0d10239c1fa96c3aff48925c3b4bb511795c91f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/player/shared.lua",
+      "sha256": "8073bfdbc876742bca4e3241e02654b3f427c7c762487efb3150defb6eb1fcda",
+      "providerSha256": "633e0d2bfe9ed450c95e6b7c34ff8212ca20e7b7e2332356d0dc3ae101205aa9",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/points/client.lua",
+      "sha256": "ed87c195fb8b11185c342ad7426550d2788391058a1b2504b2079c2357ea9d85",
+      "providerSha256": "372f4ad0202d6ca1017208c6a2d108ca24c2603c2f4b876adfbf658ddb1d9784",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/spatial/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/print/shared.lua",
+      "sha256": "f0e0f42c60bd61a56ee0d96e37485affeaf6bccb4c2731dc5f10b5a263cd4be4",
+      "providerSha256": "05882d034a07b1d7f1623e9583a8962879347713d0828e7fcf4125bd54e68901",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/prop/client.lua",
+      "sha256": "9a70e612aab707af8373181cfc73e5b3594f9fa605342f871da6447406e6b98d",
+      "providerSha256": "a41a521adb0c9d6fd5bcfc688ef048e0834999b72afac3180da6c9c0b63af82f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/prop/server.lua",
+      "sha256": "b9f1b992bf3d41f05ad5173a3bded733886c6aacd0e774a8d693d1ad76569e8d",
+      "providerSha256": "a41a521adb0c9d6fd5bcfc688ef048e0834999b72afac3180da6c9c0b63af82f",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/prop/shared.lua",
+      "sha256": "187b8afca0a54d0485899f0d7f1b316e21bd43f48572af325c60bd869e1b84a3",
+      "providerSha256": "3463fd945d393a7383f395086c9f381305ce8e26d2b0707e0477760b84dfef31",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/raycast/client.lua",
+      "sha256": "46fc97527e60dfcecdb1f4f403a87d6e64ef6b459e4ff83e304412bcc61517fc",
+      "providerSha256": "73d0c798d0f216989fde7b42299dbb818874bc21439a633a48e24ad0876a3b86",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/raycast/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/registerHook/shared.lua",
+      "sha256": "e96b070d15ae9f6fec1c546265e3c6b3e794d5c9644b34d421645d78dc8be9a0",
+      "providerSha256": "b9e1351e4ee2229c577a3ac464cf9a3d5376f28b7f329c9a16abe2b736903a9c",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestAnimDict/client.lua",
+      "sha256": "5ac1e8d9a0f47bbdabf7cbabe24efb4ade0e705070ed4a144e85eff2a0d9c286",
+      "providerSha256": "e4ea091d2f551878a15503bd3b1676786239ead053dd1977e892797f2eee6cb2",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestAnimSet/client.lua",
+      "sha256": "27971efb4a4b26be6397c3119f20ff43117e418fc70d373f440b7d0b8dd98ddb",
+      "providerSha256": "005642c2738379d2f26a6b415bc50d07747e49ee43be6bba6458db7d7ba319a8",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestAudioBank/client.lua",
+      "sha256": "5391b8f165e180099a04a4ecd2bfef53382af7d0f41e2a24632d88377958eef1",
+      "providerSha256": "8bc0fe2595fac7e251438bb61ce9808cdbba9f636525b5b9483bcb26e17b519e",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestModel/client.lua",
+      "sha256": "0dc9a048c4fc6611a0ba2c29d1f46bb4324fbece74c291ee997dbe4e7352c6b3",
+      "providerSha256": "086ca804657af530badac9b39280fbab3b4646c578358de65683afb7a034d3ee",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestNamedPtfxAsset/client.lua",
+      "sha256": "673905f987061bddaccde7758ea3e1df034cf781ebc72eebcbbe11ad36c2bf44",
+      "providerSha256": "58fc6eeb4b57f74c91ac69dfe79fbb2b7cdc80476f499946b6040d44f8d975fb",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestScaleformMovie/client.lua",
+      "sha256": "233de2bcc464ab56103a4c81ea3b87734e8e81558b08aa34e7c9b3db5609b5f5",
+      "providerSha256": "3c1b2136fc31dec9b54b56a3cc372ca88077f56caeff3d5cb37f3236a220441b",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestStreamedTextureDict/client.lua",
+      "sha256": "c3674026172c605d1dbc86868505324b5685357864f6475fe655b694ca65af21",
+      "providerSha256": "ba8e11becffe18dfdc829595993eb8e244a3de53a35d82f8f01d0ed893e34c26",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/requestWeaponAsset/client.lua",
+      "sha256": "d491da2156f543bc4dc3330d4cf7f1c0bd9e2c98f518a9dfb735f5f40317e09e",
+      "providerSha256": "28f5eb8407dfef8e63f722383789da4e79370702a4dfdc9a4954af7c6e4265bc",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/require/shared.lua",
+      "sha256": "e78c1afa344b7132b71c48565305a74cb041b0bd0d95212813ad75adc0278385",
+      "providerSha256": "8581f63ea5dc3bcf9ad9a453e7abd98a69107aac8fef08e024d181824a015af5",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/ringbuffer/shared.lua",
+      "sha256": "bece0a95d8cc2ca88dd2e8eb34345e7b64e8c7cf347325cb82994992f7ef2eba",
+      "providerSha256": "a40830ff18fb206f611df800bf8ebe43468e0e043cf09fb4dc08a82b334a50a2",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/scaleform/client.lua",
+      "sha256": "4c57eadf97a8acc5f2d031cf21ef3b2f2c6c9674e850b54e61adeafcb73c606a",
+      "providerSha256": "e017f014267cb2119104e1c52022b7a94e36387c06cf9863538d889100d36594",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/selector/shared.lua",
+      "sha256": "1d760c2b740166595df2dab0a2fb6aa07e86a1c8292090014ad35beea05557c6",
+      "providerSha256": "398970f122eea2ff74511f4b5d8ab47156bf75f98e3d71926350101239f1b8d0",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/set/shared.lua",
+      "sha256": "57d00058aceaf57bde7d22ac8cf3f564ed0df6cca08af05b32b4ef5532418f11",
+      "providerSha256": "7c1a996feaf9e27899c13afef5891e36b0d01a1c7cae2961b6f10b8144b3b0e7",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/streamingRequest/client.lua",
+      "sha256": "7aa8abdf2e45b7931871fb5b2773fe29a5499f7b7c6f561c96efd86566f1d2e2",
+      "providerSha256": "1ca02fb2d4e6a57ded7652cdb7860286e3a1e46f3a37ac49487804210c3d6d58",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/fivem/streaming/client"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/string/shared.lua",
+      "sha256": "745bede71f89b09b6c6d2799e251d48e72a2d0a7cc98bac785571e976ac0fab9",
+      "providerSha256": "ede695e314467e2550f16368cc0e45071d606819849d0e7fea114edf9eff3cd7",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/utils/strings"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/table/shared.lua",
+      "sha256": "975a961eca830ac8092c4aeab1d9a39a26177117e65ed536f6c788a7029e7070",
+      "providerSha256": "366dde18a0b394837d1607ea32e3449bfdd981e42ebe106778d69d8da47e0c20",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/utils/tables"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/timer/shared.lua",
+      "sha256": "6a4961b71e552b1a87da317c9ae35cb46c4c9c06e431a422cb01f57dae22d324",
+      "providerSha256": "94f710b574025bec5439dcd7200623a768406757ad5f26cd32a7661733ee2021",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/utils/timer"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/triggerClientEvent/server.lua",
+      "sha256": "4a42edafd6843f548ef5fcc6c0ea43d1d2e2ae457396530aab5662da7dad9f15",
+      "providerSha256": "dafd270048dac68ac821cc0ab1da2151c33afce5e373c3fed8dead10ffb775e3",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/triggerClientEvent/server"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/uuid/shared.lua",
+      "sha256": "e2090057039d5ee95eca0c61fda569bb86e927027aebc2b4175c3f35991266a8",
+      "providerSha256": "f6cafbda7077ad538b90583b3cccd76c9e3299496f576ceaeb2c31fd2765c793",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/vehicle/client.lua",
+      "sha256": "5c233bd5ee2124b0c377878e1ee631252bffeb5175fe71592b7cbf0d4a909c93",
+      "providerSha256": "06a0fc04c1a890b08b84c70ac460afa6a7b1201fb22dc3c3b03d3a85c8e3cb95",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/vehicle/server.lua",
+      "sha256": "ad8b6ed6aa3e55f471e37dd530bd0374dac13fd6ef0caad9811525a65fe24170",
+      "providerSha256": "06a0fc04c1a890b08b84c70ac460afa6a7b1201fb22dc3c3b03d3a85c8e3cb95",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/vehicle/shared.lua",
+      "sha256": "e34537a1f6af628061fef1c71639ed4bf3a635486d2f83710013e492b8aa361e",
+      "providerSha256": "5feb1b8467fb90e27ee5ff177360d1efbb7585a355dd9260cc018820ea3c74de",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/waitFor/shared.lua",
+      "sha256": "df5a1e9ca37009676e841320522d494f97f45e2c8f0803a1c7b10991e41725c3",
+      "providerSha256": "cd14d3ca234725818f83c34bef1bcc8046dba1db634b146fb7aa4eabc327c36e",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/utils/waitFor"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    },
+    {
+      "file": "imports/zones/shared.lua",
+      "sha256": "2a3b426512c4593d1f2b2534b10852e443acc6b7a2941f5bee7fb76a939d07e7",
+      "providerSha256": "d79199e8fffc9adf081710f55b6f1d05760da2cb415195dd0a62c1e016b84033",
+      "modified": true,
+      "adapted": true,
+      "nativeModules": [
+        "bridge/library/init"
+      ],
+      "status": "native PR routing adapter; offline contracts checked; FiveM pending"
+    }
+  ],
+  "resourceExports": {
+    "addAce": {
+      "server": {
+        "parameters": "principal, ace, allow",
+        "source": "resource/acl/server.lua"
+      }
+    },
+    "removeAce": {
+      "server": {
+        "parameters": "principal, ace, allow",
+        "source": "resource/acl/server.lua"
+      }
+    },
+    "addPrincipal": {
+      "server": {
+        "parameters": "child, parent",
+        "source": "resource/acl/server.lua"
+      }
+    },
+    "removePrincipal": {
+      "server": {
+        "parameters": "child, parent",
+        "source": "resource/acl/server.lua"
+      }
+    },
+    "cache": {
+      "client": {
+        "parameters": "key",
+        "source": "resource/cache/client.lua"
+      }
+    },
+    "setValidCallback": {
+      "shared": {
+        "parameters": "callbackName, isValid",
+        "source": "resource/callbacks/shared.lua"
+      }
+    },
+    "isCallbackValid": {
+      "shared": {
+        "parameters": "callbackName",
+        "source": "resource/callbacks/shared.lua"
+      }
+    },
+    "hasLoaded": {
+      "shared": {
+        "parameters": "",
+        "source": "resource/init.lua"
+      }
+    },
+    "alertDialog": {
+      "client": {
+        "parameters": "data, timeout",
+        "source": "resource/interface/client/alert.lua"
+      }
+    },
+    "closeAlertDialog": {
+      "client": {
+        "parameters": "reason",
+        "source": "resource/interface/client/alert.lua"
+      }
+    },
+    "setClipboard": {
+      "client": {
+        "parameters": "value",
+        "source": "resource/interface/client/clipboard.lua"
+      }
+    },
+    "showContext": {
+      "client": {
+        "parameters": "id",
+        "source": "resource/interface/client/context.lua"
+      }
+    },
+    "registerContext": {
+      "client": {
+        "parameters": "context",
+        "source": "resource/interface/client/context.lua"
+      }
+    },
+    "getOpenContextMenu": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/context.lua"
+      }
+    },
+    "hideContext": {
+      "client": {
+        "parameters": "onExit",
+        "source": "resource/interface/client/context.lua"
+      }
+    },
+    "inputDialog": {
+      "client": {
+        "parameters": "heading, rows, options",
+        "source": "resource/interface/client/input.lua"
+      }
+    },
+    "closeInputDialog": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/input.lua"
+      }
+    },
+    "setNuiFocus": {
+      "client": {
+        "parameters": "allowInput, disableCursor",
+        "source": "resource/interface/client/main.lua"
+      }
+    },
+    "resetNuiFocus": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/main.lua"
+      }
+    },
+    "registerMenu": {
+      "client": {
+        "parameters": "data, cb",
+        "source": "resource/interface/client/menu.lua"
+      }
+    },
+    "showMenu": {
+      "client": {
+        "parameters": "id, startIndex",
+        "source": "resource/interface/client/menu.lua"
+      }
+    },
+    "hideMenu": {
+      "client": {
+        "parameters": "onExit",
+        "source": "resource/interface/client/menu.lua"
+      }
+    },
+    "setMenuOptions": {
+      "client": {
+        "parameters": "id, options, index",
+        "source": "resource/interface/client/menu.lua"
+      }
+    },
+    "getOpenMenu": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/menu.lua"
+      }
+    },
+    "notify": {
+      "client": {
+        "parameters": "data",
+        "source": "resource/interface/client/notify.lua"
+      }
+    },
+    "defaultNotify": {
+      "client": {
+        "parameters": "data",
+        "source": "resource/interface/client/notify.lua"
+      }
+    },
+    "progressBar": {
+      "client": {
+        "parameters": "data",
+        "source": "resource/interface/client/progress.lua"
+      }
+    },
+    "progressCircle": {
+      "client": {
+        "parameters": "data",
+        "source": "resource/interface/client/progress.lua"
+      }
+    },
+    "cancelProgress": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/progress.lua"
+      }
+    },
+    "progressActive": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/progress.lua"
+      }
+    },
+    "registerRadial": {
+      "client": {
+        "parameters": "radial",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "getCurrentRadialId": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "hideRadial": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "addRadialItem": {
+      "client": {
+        "parameters": "items, parentMenuId",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "removeRadialItem": {
+      "client": {
+        "parameters": "id, parentMenuId",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "clearRadialItems": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "disableRadial": {
+      "client": {
+        "parameters": "state",
+        "source": "resource/interface/client/radial.lua"
+      }
+    },
+    "skillCheck": {
+      "client": {
+        "parameters": "difficulty, inputs",
+        "source": "resource/interface/client/skillcheck.lua"
+      }
+    },
+    "cancelSkillCheck": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/skillcheck.lua"
+      }
+    },
+    "skillCheckActive": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/skillcheck.lua"
+      }
+    },
+    "showTextUI": {
+      "client": {
+        "parameters": "text, options",
+        "source": "resource/interface/client/textui.lua"
+      }
+    },
+    "hideTextUI": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/textui.lua"
+      }
+    },
+    "isTextUIOpen": {
+      "client": {
+        "parameters": "",
+        "source": "resource/interface/client/textui.lua"
+      }
+    },
+    "getLocaleKey": {
+      "client": {
+        "parameters": "",
+        "source": "resource/locale/client.lua"
+      },
+      "server": {
+        "parameters": "",
+        "source": "resource/locale/server.lua"
+      }
+    },
+    "setLocale": {
+      "client": {
+        "parameters": "key",
+        "source": "resource/locale/client.lua"
+      }
+    },
+    "getVehicleProperties": {
+      "client": {
+        "parameters": "vehicle",
+        "source": "resource/vehicleProperties/client.lua"
+      }
+    },
+    "setVehicleProperties": {
+      "client": {
+        "parameters": "vehicle, props, fixVehicle",
+        "source": "resource/vehicleProperties/client.lua"
+      },
+      "server": {
+        "parameters": "vehicle, props",
+        "source": "resource/vehicleProperties/server.lua"
+      }
+    },
+    "versionCheck": {
+      "server": {
+        "parameters": "repository",
+        "source": "resource/version/server.lua"
+      }
+    },
+    "checkDependency": {
+      "shared": {
+        "parameters": "resource, minimumVersion, printMessage",
+        "source": "resource/version/shared.lua"
+      }
+    }
+  },
+  "routes": [
+    {
+      "legacy": "getVehicleProperties/setVehicleProperties",
+      "adapter": "bridge/compat/ox_native.lua",
+      "native": "fivem.vehicleProperties.get/set/queue/applyQueue"
+    },
+    {
+      "legacy": "checkDependency/versionCheck",
+      "adapter": "bridge/compat/ox_native.lua",
+      "native": "github.checkDependency/versionCheck"
+    },
+    {
+      "legacy": "addAce/removeAce/addPrincipal/removePrincipal",
+      "adapter": "bridge/compat/ox_native.lua",
+      "native": "fivem.ace"
+    },
+    {
+      "legacy": "progressBar/progressCircle/progressActive/cancelProgress",
+      "adapter": "bridge/compat/ox_host.lua",
+      "native": "nativeProgress + progressProps"
+    },
+    {
+      "legacy": "ox_lib:requestSetStateBag",
+      "adapter": "bridge/compat/ox_protocol.lua",
+      "native": "fivem.state.requestSet (legacy authorization policy)"
+    },
+    {
+      "legacy": "ox_entity_setonground",
+      "adapter": "bridge/compat/ox_protocol.lua",
+      "native": "fivem.streaming.placeEntityProperly"
+    }
+  ],
+  "nativeFiles": [
+    {
+      "file": "bridge/ace/server.lua",
+      "providerSha256": "7f121e5c43a0639ec5952ab4496d548cb62bad9faa50c5cf3f8cb8b773b77b21"
+    },
+    {
+      "file": "bridge/addCommand/server.lua",
+      "providerSha256": "0574696e6fedc4b82c2a80a112a5c8974d4b1702789d4a4202ed8c5e542da23e"
+    },
+    {
+      "file": "bridge/addKeybind/client.lua",
+      "providerSha256": "fde792b40cf4ee6f2d2b7a0f4238bcf138fee56b1bcec81522a673d8848be4ed"
+    },
+    {
+      "file": "bridge/callback/client.lua",
+      "providerSha256": "c672f59a5a542d2c5ae11dd8e100f37f9a42b71d100bc0895aedc3632e27897f"
+    },
+    {
+      "file": "bridge/callback/native.lua",
+      "providerSha256": "58a08c75e0301412c7a727394a215204c42f60ece959d1034906887d45fa7d0b"
+    },
+    {
+      "file": "bridge/callback/registry.lua",
+      "providerSha256": "b6fc6a5c631a104801a4f5f40de69ce119be1fd57f4b57903f096a5ea43db1c8"
+    },
+    {
+      "file": "bridge/callback/secure_client.lua",
+      "providerSha256": "48787a933e9478dff1b10211478c6f586189ea5a2d33445ca43a70c1fff9c8d2"
+    },
+    {
+      "file": "bridge/callback/secure_server.lua",
+      "providerSha256": "d0986a80d7a37a0c000d189413a2834388d114065591cbc968e5b8748a215149"
+    },
+    {
+      "file": "bridge/callback/server.lua",
+      "providerSha256": "ef96b3f2e188d373f97f7a81232904f4fa8c5177b0fcfd0ca1fe09a1946e20fc"
+    },
+    {
+      "file": "bridge/callback/transport.lua",
+      "providerSha256": "fd51769ef64f6e68cd1cdfb255f0ffb11cc4f3a74da07bb83c28c4dc041f889b"
+    },
+    {
+      "file": "bridge/collections/array.lua",
+      "providerSha256": "5381031e1bcd8f7ce34301519e4279c6961a35f1a4a302178e65ea8ee5e14663"
+    },
+    {
+      "file": "bridge/collections/heap.lua",
+      "providerSha256": "148282b27f81fc3f9e81c90d0f1f5d6391500b5d90124cadd745f293377ba480"
+    },
+    {
+      "file": "bridge/collections/lru.lua",
+      "providerSha256": "7660dd96e0c236e71b0dc4972f3dfd337174c46b2bc659ae9e6d938a62f3e218"
+    },
+    {
+      "file": "bridge/collections/map.lua",
+      "providerSha256": "2315cb510ebe9f0d8722ff87603b9197cc0d9ffa02da9aaacd195c4114549987"
+    },
+    {
+      "file": "bridge/collections/ringbuffer.lua",
+      "providerSha256": "9c39774b3f78f90ca4fea6b79c7dda0f4f2ec49858a943f2e1eefbfd76476e74"
+    },
+    {
+      "file": "bridge/collections/selector.lua",
+      "providerSha256": "58ed52032a293f182116fe83f822abb7cf13ccb4cf6d8597cdf0c6e148d18793"
+    },
+    {
+      "file": "bridge/collections/set.lua",
+      "providerSha256": "49a7e1989871cb50d76dd02385f918b5ab2f3eaa40c7c67b301503470c809c29"
+    },
+    {
+      "file": "bridge/compat/entities_client.lua",
+      "providerSha256": "2942043c8af02bc0a5fa82fdd41d80fe54a260247e3d2963b794e45f61ad378a"
+    },
+    {
+      "file": "bridge/compat/ox_callback.lua",
+      "providerSha256": "066d5d40af730917398f426e1317dd54923a7ba2c3ba242c06497f948165869f"
+    },
+    {
+      "file": "bridge/compat/ox_command.lua",
+      "providerSha256": "f512485d466bc78b2805590bf4fbcd4c474893c7503e98f2f3f5769c9c8d2176"
+    },
+    {
+      "file": "bridge/compat/ox_host.lua",
+      "providerSha256": "cc105b782bc3ce0d5eb5eb8c1d2adc67854b0120bc6bc6f8da4b24c6eb6d45dd"
+    },
+    {
+      "file": "bridge/compat/ox_native.lua",
+      "providerSha256": "617719977db355df91409478f9952ffc1af66838297e83c6859d5323174c0b17"
+    },
+    {
+      "file": "bridge/compat/ox_protocol.lua",
+      "providerSha256": "cdb2fc79f19c52fb872d5af8cbff7a01d36468f6dbf71772286ba2401337499a"
+    },
+    {
+      "file": "bridge/compat/ox_runtime.lua",
+      "providerSha256": "85ff34fdf9d019486d24559c0509601cead6651e79448fa2738cef99e1e5b999"
+    },
+    {
+      "file": "bridge/core.lua",
+      "providerSha256": "88e2cf2f20b5bdd0fca078b8e998fb0a0c872a0022a9687d21954ad43109fca2"
+    },
+    {
+      "file": "bridge/entities/dui.lua",
+      "providerSha256": "e423479766ac8750c541db94253151dc462ef1688ae3e8ff359f5cf12b9f8a54"
+    },
+    {
+      "file": "bridge/entities/gameEntity.lua",
+      "providerSha256": "1ca93ef9dd9eba4873be35c5b3640c3a09cb6ea41ba750cd6d6e82ec79fc799d"
+    },
+    {
+      "file": "bridge/entities/ped.lua",
+      "providerSha256": "94f4ec789c514323a4cf08aac8d83569159b0f80b56e4ad24f3232806bf27b00"
+    },
+    {
+      "file": "bridge/entities/player.lua",
+      "providerSha256": "7be52fa448be34bbbed1454501208f4e69f85a2be7b9d3f212f3c609f511ca49"
+    },
+    {
+      "file": "bridge/entities/prop.lua",
+      "providerSha256": "2e5798ab967d764bdb05157122cc77c0c1c81af47bded3ce489b88fc75e1d919"
+    },
+    {
+      "file": "bridge/entities/vehicle.lua",
+      "providerSha256": "854abe205fb907c3c9503bb563f8c8ff802cc43b574352077126867c8a91f45b"
+    },
+    {
+      "file": "bridge/files/directory/server.lua",
+      "providerSha256": "9e95c963c3ad18decc74fcfdd650f8a23a0fcad797d6098fe995063fed8089aa"
+    },
+    {
+      "file": "bridge/files/loader.lua",
+      "providerSha256": "c416f18409bc99ad8c35a3a84d429a2372c3a65050b29193c5b413d092a6bfe6"
+    },
+    {
+      "file": "bridge/fivem/client.lua",
+      "providerSha256": "fcc1a47022b1cc01b5a1aecf52d0fc7deabc87b5cbb8673ffd1cb6bcfaa58881"
+    },
+    {
+      "file": "bridge/fivem/controls/client.lua",
+      "providerSha256": "58432b8a8a60643118f6dec3ba57f185bfda86edbe921ba873df703768f1cef3"
+    },
+    {
+      "file": "bridge/fivem/grid/shared.lua",
+      "providerSha256": "b5d4c32f92848f581d23225f41bde6e204f3aece24184942b88351606fdffc9f"
+    },
+    {
+      "file": "bridge/fivem/marker/client.lua",
+      "providerSha256": "cf1f9add49b8ed8b9a83830b29b3d007174d6ef0397f04eaa453009c783167c4"
+    },
+    {
+      "file": "bridge/fivem/nui/client.lua",
+      "providerSha256": "8d6ac531c2508f7501116a23af9e59df7ace2befe9d61be1ca664310d6f18b40"
+    },
+    {
+      "file": "bridge/fivem/objects/client.lua",
+      "providerSha256": "9b19bede5e77b4aa67b4aaa46acf72ec5d0c4517a18079962e1f694e4e5f1e9a"
+    },
+    {
+      "file": "bridge/fivem/objects/server.lua",
+      "providerSha256": "5272e533b9e8b6d207ff9974083b38b8cb94ee90d78a7cf79468019b9cf5e3ab"
+    },
+    {
+      "file": "bridge/fivem/proximity/shared.lua",
+      "providerSha256": "a08d7e21587f70e6f9117eca8af2d0f916f2289248fc21efb3054724d8f448f3"
+    },
+    {
+      "file": "bridge/fivem/relativeCoords/shared.lua",
+      "providerSha256": "b2219f783fa1c6d31a58ca3594d6ff0d3a5acd0be9cdfacf7ba971a9e32d6a9b"
+    },
+    {
+      "file": "bridge/fivem/scaleform/client.lua",
+      "providerSha256": "205eeb9a6f4354db4da5bfdae2151a382c745686465a45a0fc12ea93297178c9"
+    },
+    {
+      "file": "bridge/fivem/server.lua",
+      "providerSha256": "2dfaf858a0952681335dc203b76fc6d0649954a1d67f8ac0fee659f6481b60a4"
+    },
+    {
+      "file": "bridge/fivem/spatial/client.lua",
+      "providerSha256": "9850edb87dc7c08c4a537cb5aa74f5e09d06d8c2ede2ec1ec2d7d13a91ec3cc1"
+    },
+    {
+      "file": "bridge/fivem/state/ground_client.lua",
+      "providerSha256": "ee5aecf43bc5d094973520e86bf631a6e65ee351f1c0f5b8d58883728305cd6b"
+    },
+    {
+      "file": "bridge/fivem/state/policy.lua",
+      "providerSha256": "4d7878983dc4e1837e748ea7996fb344463fc92c090801113f0fd0a7e975fdcf"
+    },
+    {
+      "file": "bridge/fivem/state/server.lua",
+      "providerSha256": "34f8e52acc39fd6a3194e7145266eadc80a5ca9488272a7cd3e25769894fe3a8"
+    },
+    {
+      "file": "bridge/fivem/state/shared.lua",
+      "providerSha256": "2fa076214ae7ffb87b1a9462d9799239b9e2f62aa67fcc6be843cf211abe4929"
+    },
+    {
+      "file": "bridge/fivem/streaming/client.lua",
+      "providerSha256": "73f3554242a584289651b66a3e28f09b80d3b310983400b4b58b23c8e3dbb5f4"
+    },
+    {
+      "file": "bridge/fivem/vehicleProperties/client.lua",
+      "providerSha256": "50d0aeeecf05d57bddd22a6c5a7550ebb54b8e37a497c6baecfa6ea505b444a5"
+    },
+    {
+      "file": "bridge/fivem/vehicleProperties/server.lua",
+      "providerSha256": "b548ff000883102b0efa4fb6a48c4264314341ae5d99270cbfbf3eb58eb2fac8"
+    },
+    {
+      "file": "bridge/fivem/zones/shared.lua",
+      "providerSha256": "8eb50f3a3660a7d9d07a4137c4c2db5f129fd77ce1abe1cdda612bb52106d1e1"
+    },
+    {
+      "file": "bridge/github/client.lua",
+      "providerSha256": "7925a51f05433b65c7ac0d60887b81e6728c38b220702343cceffaaa6b99121c"
+    },
+    {
+      "file": "bridge/github/server.lua",
+      "providerSha256": "eeef56c7b7632c87c67db97628a8755fae243735da297c03bc17ac92d97b16ce"
+    },
+    {
+      "file": "bridge/hooks/event.lua",
+      "providerSha256": "0ad56049943dc29c7f7e317004a0f460eb23505516870eb12994b89ee8c49bbb"
+    },
+    {
+      "file": "bridge/hooks/pipeline.lua",
+      "providerSha256": "46edba0d84999ed1586e6d87a46331c3898d2cb14b23c4c8b5072395e6af4256"
+    },
+    {
+      "file": "bridge/i18n/consumer.lua",
+      "providerSha256": "33e1448c27fe11672dac1f131c2fc13077d77bc790085e9cc2c140fec43a645f"
+    },
+    {
+      "file": "bridge/i18n/settings.lua",
+      "providerSha256": "47f60d64b884a4bcd923fd2697c420d6ca8e287eccb21025f5a5376f62de8c0f"
+    },
+    {
+      "file": "bridge/init.lua",
+      "providerSha256": "d50d2428629f8c219f03a1273dc4abd86e25a55864ec346765971e7d57ce04c9"
+    },
+    {
+      "file": "bridge/library/init.lua",
+      "providerSha256": "12c0996d28631aaed8c0a2236cba49dab12896bf8ff18e3fe7adfb8c68423b19"
+    },
+    {
+      "file": "bridge/logging/console.lua",
+      "providerSha256": "f6e838bf7f62d35a88d3ad1009e4c14d5bbf696c39520f34b14cd08b730bc612"
+    },
+    {
+      "file": "bridge/logging/providers/datadog.lua",
+      "providerSha256": "9478de1d83888dd8966d355a938ab0b1e8069dd8b20fcd75710243bb25fe6230"
+    },
+    {
+      "file": "bridge/logging/providers/fivemanage.lua",
+      "providerSha256": "0646f0736b7fbcf8aed17cc4b5f40fb9220f3e36552853d215995b6d3018ad45"
+    },
+    {
+      "file": "bridge/logging/providers/loki.lua",
+      "providerSha256": "4b2a86ac1fee4352db3d3dc432c6b89c17d9a1552d5dcbc34b32959f01885b6a"
+    },
+    {
+      "file": "bridge/logging/server.lua",
+      "providerSha256": "eaacb3fa31dfdce285a865273a6931d00ebc7f33f38f5aa6355c1b03bb25519e"
+    },
+    {
+      "file": "bridge/progressbar/native/client.lua",
+      "providerSha256": "664a1275d7ce0e4e0ed1bada44c773449e219c52bed5745d5d2b1ec52f6e1833"
+    },
+    {
+      "file": "bridge/progressbar/native/props_client.lua",
+      "providerSha256": "d452b5bef6f7ad84117495190eeb9571e33866362d2ea2957b7595c0decaac00"
+    },
+    {
+      "file": "bridge/progressbar/native/props_server.lua",
+      "providerSha256": "db8bf1501badf5dc01487d5555f6171f7be9d6871a599b95188174915b0d2481"
+    },
+    {
+      "file": "bridge/tasks/cron.lua",
+      "providerSha256": "63f2af917237e30d0daea5043efdef8cc33e939e46c94f79a7340450673e7ed6"
+    },
+    {
+      "file": "bridge/tasks/interval.lua",
+      "providerSha256": "25bda6665bcf96c784312601a39aad81da6d35859bef333a1e40839427f57696"
+    },
+    {
+      "file": "bridge/triggerClientEvent/server.lua",
+      "providerSha256": "c68a8f73cda60c2077fbe66283ca170389aad2090278daeef6857902940ef1aa"
+    },
+    {
+      "file": "bridge/utils/class.lua",
+      "providerSha256": "062a918745b0887b17a10301acea68c4961c57d03e0b6547da9cf5a468be28b5"
+    },
+    {
+      "file": "bridge/utils/numbers.lua",
+      "providerSha256": "386bcd82674ed0a529846d607a9b449074679c8143de3f3ba80c4a5b42a37a43"
+    },
+    {
+      "file": "bridge/utils/strings.lua",
+      "providerSha256": "da0ce30306e3d5dfe840fb2f508716f330de87b01da969583ded82901959e55c"
+    },
+    {
+      "file": "bridge/utils/tables.lua",
+      "providerSha256": "248a7998af70fdf7373cffa14c3ac7c3a44039a5aebe0bcd48dc554242cd2ffb"
+    },
+    {
+      "file": "bridge/utils/timer.lua",
+      "providerSha256": "e0f339e67b7b617fd5a69979c490953699f01f82c354b3f0ad8a888e1906c69a"
+    },
+    {
+      "file": "bridge/utils/uuid.lua",
+      "providerSha256": "2c3406f7208c64347c87cef23283aba7edf373373cb09033a0ad3460285ac6fa"
+    },
+    {
+      "file": "bridge/utils/waitFor.lua",
+      "providerSha256": "bab9819ecc66ec93246d513f3724674ec9309c86495356f9266f3956606d9a1e"
+    },
+    {
+      "file": "init.lua",
+      "providerSha256": "13ad006a351be2dd78a73b19c720e9e02b3cc1ddf4452c3f255f5af6088820d4"
+    }
+  ],
+  "locales": [
+    {
+      "file": "bridge/compat/ox_locales/al.json",
+      "origin": "locales/al.json",
+      "sha256": "88b6baa16a1e36bda9b8b5cde0db63354b098b2747b48b64762128044e0212de",
+      "providerSha256": "f0052462a69445137a786f20294af93436517b2109d908fbc74bc4389da8e8b9"
+    },
+    {
+      "file": "bridge/compat/ox_locales/ar.json",
+      "origin": "locales/ar.json",
+      "sha256": "682a43e3faf386ed24a66b5e4f7be29c13605757fd182658f42d8ca33d92a164",
+      "providerSha256": "0f896add0c36395e9128f6e769bdd4de8a9fd836248a0be20296d81abc589a73"
+    },
+    {
+      "file": "bridge/compat/ox_locales/cs.json",
+      "origin": "locales/cs.json",
+      "sha256": "7ae2e0266160dd095115f052a9d432725689a70c0ef0e3f4616decccb0ca663c",
+      "providerSha256": "85cc14d43343722368563c8de8e9267c56e63175509e16c1992e95a0d224130a"
+    },
+    {
+      "file": "bridge/compat/ox_locales/da.json",
+      "origin": "locales/da.json",
+      "sha256": "a6ce34f1f7a7b6a7c5ed4e7a991cbbc9229f21ad2e9aebb103dfae8728a630ac",
+      "providerSha256": "7547fe4faf6af4b80c9279a069bdd742e0c1d684e10c0ca4756b3a4cd30c91a5"
+    },
+    {
+      "file": "bridge/compat/ox_locales/de.json",
+      "origin": "locales/de.json",
+      "sha256": "7dd0256d197f16d4e779cbd73985b00b7b97ea92586a44c35100be33f9d60a60",
+      "providerSha256": "bcf787b7c6f8d147de3b9be4663f79b51414d83fb864bfbb959e691e964c203f"
+    },
+    {
+      "file": "bridge/compat/ox_locales/el.json",
+      "origin": "locales/el.json",
+      "sha256": "9ba1bca6c70750915102a1c40a2d711564e259b7216c4419b6e6ea87cfc95e5f",
+      "providerSha256": "d2923314d16e9efe1db268c061969a5363b3825205a3c080243700337496dee2"
+    },
+    {
+      "file": "bridge/compat/ox_locales/en.json",
+      "origin": "locales/en.json",
+      "sha256": "54ee4db2037f7e38ef6f3a3a80fb9b09ae656375459f44f45983aff3df639c83",
+      "providerSha256": "07692513c52ae362c30f8422d0a5636c1b051b2533b7c82dd617517df0a51232"
+    },
+    {
+      "file": "bridge/compat/ox_locales/es.json",
+      "origin": "locales/es.json",
+      "sha256": "71cf3b9341cd0a930103a70d88c748963ed53b48cd39e02f84fd92aa39234a5b",
+      "providerSha256": "9bc66a68b829646a59b4a65d360310b06fc876780f839baee577c2abf0bae4d1"
+    },
+    {
+      "file": "bridge/compat/ox_locales/et.json",
+      "origin": "locales/et.json",
+      "sha256": "1004d83ae179ff37519e7012d5473e053aa2665ff15ede6f68fe6917cdc992fe",
+      "providerSha256": "fac4615f995777c660ab786cfbcf4df93e75141fc64995509b220dfc8cf944c1"
+    },
+    {
+      "file": "bridge/compat/ox_locales/fi.json",
+      "origin": "locales/fi.json",
+      "sha256": "22c338e8ab0bc9808907103c6a2b5fa482aa18a156c9c52e032e5c120da04324",
+      "providerSha256": "7febb3b60c7e9346a6c1527918f4433e3630f7656656e920d6749578b4c3d86f"
+    },
+    {
+      "file": "bridge/compat/ox_locales/fr.json",
+      "origin": "locales/fr.json",
+      "sha256": "74cde0f5b422666f84e8d2a9d6f8f62632f30437b6ad2c457fd1c79e632affa7",
+      "providerSha256": "ea40f92b743de588d30ca648bebd7f69a5e1ae74f11a31ed2b28e00c8f8f03fb"
+    },
+    {
+      "file": "bridge/compat/ox_locales/he.json",
+      "origin": "locales/he.json",
+      "sha256": "9c6057cd3d5e120403e02ae959e3188f4536aeeb615ef1ef9bdf2626a84e3af3",
+      "providerSha256": "26a88e08d8e4a7ace8e6fd7fb433b0565bcc91f5850885501073bc6fcfb10b62"
+    },
+    {
+      "file": "bridge/compat/ox_locales/hr.json",
+      "origin": "locales/hr.json",
+      "sha256": "6eedf2966a3d649f73b4bafb8850adf6b382badeb01578f729e6dce247d92d5d",
+      "providerSha256": "a4dfe61f5136d0ecd6121c047c7da2ee0930848f45cd2ad36ed87ac021ad13d3"
+    },
+    {
+      "file": "bridge/compat/ox_locales/hu.json",
+      "origin": "locales/hu.json",
+      "sha256": "31491b45e3ed12ff6e9507860585396680c6b3dd28df256af136e38b0e7882ae",
+      "providerSha256": "9bc0b2d71c8bcbc2fc717a2e237c23ab21da202ddfb7a81352f985a67d0bfd58"
+    },
+    {
+      "file": "bridge/compat/ox_locales/id.json",
+      "origin": "locales/id.json",
+      "sha256": "ede6f532c14dcba6c0b42f970717b4c6882510fe6cc3f192f00eaec77978d2ee",
+      "providerSha256": "c45b2fc1ad05a4047a706b7e451ac55a47d48ed3a5616ebdbe9dc7f2b6af6e6d"
+    },
+    {
+      "file": "bridge/compat/ox_locales/it.json",
+      "origin": "locales/it.json",
+      "sha256": "52d01192522923753b6186515af3300c8698a36a99fc03ca287291072271c7bc",
+      "providerSha256": "04ff41a04c335944095e5a06699143008c6ba661141f41b366bd85a08049b210"
+    },
+    {
+      "file": "bridge/compat/ox_locales/ja.json",
+      "origin": "locales/ja.json",
+      "sha256": "594007f407b274a8cb77bc9b80d648ed83fed4bebd6dc8e70e386dc3cce83c27",
+      "providerSha256": "1109d9d2b7ee70a30a9a12c14ce2d6d673d428cd7051f8821ab4eb0da1db9d01"
+    },
+    {
+      "file": "bridge/compat/ox_locales/ka.json",
+      "origin": "locales/ka.json",
+      "sha256": "707ceac2e55d9ceba3bdb13f197d0e626e35f6888828ccc2e86a5726b14bab14",
+      "providerSha256": "4f0ad51cff554cd34f9ff74b6528b18ec04a1262f67d347959ae7b771a036ab1"
+    },
+    {
+      "file": "bridge/compat/ox_locales/lt.json",
+      "origin": "locales/lt.json",
+      "sha256": "bcfdd39933976ddec32e68669527a16fd073f808098a8a31b8d00ec09b7bbfb8",
+      "providerSha256": "e0686275323b1b6f0b2cb84654b454b09cd018c740aa7fe3a20ad09a747d4f39"
+    },
+    {
+      "file": "bridge/compat/ox_locales/nl.json",
+      "origin": "locales/nl.json",
+      "sha256": "d8cb70211520f36391d554340848414c78c53f6eff0c4b7d678b7d4e510f910a",
+      "providerSha256": "f3e22a273ee74be90f618a5e4e8cc736f1b5e3bd8d401428db91e65b619e95f3"
+    },
+    {
+      "file": "bridge/compat/ox_locales/no.json",
+      "origin": "locales/no.json",
+      "sha256": "f6e523bb3dceb5bbd12c482b8f430086c45c4ec69a56301e8fb56266bd936805",
+      "providerSha256": "9d6b85cb6046a41166baf8ad2c4de284ee07da824fa275fd8a792bfe2a6450e0"
+    },
+    {
+      "file": "bridge/compat/ox_locales/pl.json",
+      "origin": "locales/pl.json",
+      "sha256": "b81f27be981acad134bd43d3924281c3fef7d5fbc804edfe4fa75dc2523325dd",
+      "providerSha256": "d1f316e613f0bb971cfbfe226e4716bfa1dc3c78e2a5ccb6c02c5f722d2e1a64"
+    },
+    {
+      "file": "bridge/compat/ox_locales/pt-br.json",
+      "origin": "locales/pt-br.json",
+      "sha256": "9c26780ddd7276e6c1b09175240e944d0e9b350ffa19a1dda8852a109778e4a9",
+      "providerSha256": "45c8efaed81660ba9102e92ed050f23c56ae27a872969b1360547d067e95b4b1"
+    },
+    {
+      "file": "bridge/compat/ox_locales/pt.json",
+      "origin": "locales/pt.json",
+      "sha256": "1f2062958e800f852433ab01e2a48378b32abea7740280e418d9d7c7a562d550",
+      "providerSha256": "e4178df54d494169ac685c2be120dee5d8116dc8cde714fd90be4483b9ecbd09"
+    },
+    {
+      "file": "bridge/compat/ox_locales/ro.json",
+      "origin": "locales/ro.json",
+      "sha256": "2573286e21003a29162708ac0f43f19fc184f43b4f5398a2e43dfe4f51ee38a3",
+      "providerSha256": "90b00a13546303de2cabbd11193db6a82f754c9cf66619c56debc94e878a1362"
+    },
+    {
+      "file": "bridge/compat/ox_locales/ru.json",
+      "origin": "locales/ru.json",
+      "sha256": "2bcd82757f8e238974689c5a95a4af7cb0de1cb24840635e8b661b5c9479964a",
+      "providerSha256": "0553586723b891a65ced8e02519ba9e2308d82f9d8114d9c9f2efd34cec95d82"
+    },
+    {
+      "file": "bridge/compat/ox_locales/sk.json",
+      "origin": "locales/sk.json",
+      "sha256": "4c914bc9a8d42f001b6d94c823f67e9921aabba0e4a626e393145681e2d4117c",
+      "providerSha256": "1977fa3fd5b2d0fa5fd47a8c9fc084b0dcb8eeab18f826b95dda682d81b06d56"
+    },
+    {
+      "file": "bridge/compat/ox_locales/sl.json",
+      "origin": "locales/sl.json",
+      "sha256": "ca8fa6e78042700fabd175de5db34ed8a07fe4bd43221ba16edb8120bb22ab9f",
+      "providerSha256": "33545470da07cd337ec5dfe3fba8dcbdec15695c5371f76d7580e40d38e15df9"
+    },
+    {
+      "file": "bridge/compat/ox_locales/sv.json",
+      "origin": "locales/sv.json",
+      "sha256": "eeaf0d509ab2dfa35bb3b7ae469f3bb067ba70c3be90c62107f5d18734446caf",
+      "providerSha256": "13565287429648112caf853d1bc212fb2204168ad115807e6866282dbf31ee1e"
+    },
+    {
+      "file": "bridge/compat/ox_locales/th.json",
+      "origin": "locales/th.json",
+      "sha256": "228108eaacce71cd18bb1af9a2837b32d9fa3b72d7d9e017784e0064a498d9a6",
+      "providerSha256": "70963d5aaf1348756f0948cf0f7b8e38af1e4c4d634bba8c403d1669f9b655a1"
+    },
+    {
+      "file": "bridge/compat/ox_locales/tr.json",
+      "origin": "locales/tr.json",
+      "sha256": "b6054bae4a7674d99bff0a65961b01279d838f23b790a11ab4498d451186c3bd",
+      "providerSha256": "6655bc1e013199332e6faa13bbfa430b020c0087c8ea0de7294308243113ef67"
+    },
+    {
+      "file": "bridge/compat/ox_locales/zh-cn.json",
+      "origin": "locales/zh-cn.json",
+      "sha256": "f5d278891affdd4c04525c01030953f463ac101748a3f8f61ce31fd6f994825c",
+      "providerSha256": "8843be0dc156cb1e2c299a848d701f99d9c9562ed1630f4a7991c25ae100cf6b"
+    },
+    {
+      "file": "bridge/compat/ox_locales/zh-tw.json",
+      "origin": "locales/zh-tw.json",
+      "sha256": "48009e328c9ebed97a54282673437aee9ea6a0955ca216c53ab58c4f3c8cab2c",
+      "providerSha256": "951ec529c9075b17e55edf3116007ab1f04c2551e0df12c0604248525ea57864"
+    }
+  ]
+}

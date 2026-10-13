@@ -46,7 +46,7 @@ return function(Renderer)
 
     ---@return boolean
     function TextUI.IsTextUIOpen()
-        return visible
+        return visible, current and current.text
     end
 
     return TextUI

@@ -3,6 +3,7 @@
   import { onNuiMessage, fetchNui, isEnvBrowser } from './nui/bridge'
   import { applyVisualConfig } from './lib/theme'
   import ContextMenu from './modules/ContextMenu.svelte'
+  import ListMenu from './modules/ListMenu.svelte'
   import AlertDialog from './modules/AlertDialog.svelte'
   import InputDialog from './modules/InputDialog.svelte'
   import NotifyStack from './modules/NotifyStack.svelte'
@@ -16,6 +17,7 @@
   import GizmoHud from './modules/GizmoHud.svelte'
 
   let context: any = null
+  let menu: any = null
   let alert: any = null
   let input: any = null
   let textui: any = null
@@ -69,8 +71,10 @@
 
     const unsubscribers = [
       onNuiMessage('theme:apply', applyTheme),
-      onNuiMessage('context:open', (data) => (context = data)),
+      onNuiMessage('context:open', (data) => { menu = null; context = data }),
       onNuiMessage('context:close', () => (context = null)),
+      onNuiMessage('menu:open', (data) => { context = null; menu = data }),
+      onNuiMessage('menu:close', () => (menu = null)),
       onNuiMessage('alert:open', (data) => (alert = data)),
       onNuiMessage('alert:close', () => (alert = null)),
       onNuiMessage('input:open', (data) => (input = data)),
@@ -95,7 +99,7 @@
       onNuiMessage('target:left', () => {
         target = { ...target, groups: [], zones: [] }
       }),
-      onNuiMessage('interact:set', (data) => (interact = { entries: Array.isArray(data?.entries) ? data.entries : [], key: String(data?.key || 'E') })),
+      onNuiMessage('interact:set', (data) => (interact = { entries: Array.isArray(data?.entries) ? data.entries : [], key: String(data?.key || 'E'), tiltY: Number(data?.tiltY || 0) })),
       onNuiMessage('interact:clear', () => (interact = { entries: [] })),
       onNuiMessage('skillcheck:open', (data) => (skillcheck = data)),
       onNuiMessage('skillcheck:close', () => (skillcheck = null)),
@@ -108,6 +112,7 @@
     void fetchNui('ui:ready')
 
     const onKey = (e: KeyboardEvent) => {
+      if (menu && !input && !alert) return
       if (e.key !== 'Escape') return
 
       if (input) {
@@ -147,9 +152,10 @@
 
 <div class="pr-root">
   {#if context}<ContextMenu data={context} {visualConfig} />{/if}
+  {#if menu}{#key menu}<ListMenu data={menu} blocked={!!(input || alert || skillcheck)} />{/key}{/if}
   {#if alert}<AlertDialog data={alert} />{/if}
   {#if input}<InputDialog data={input} />{/if}
-  <NotifyStack items={notifies} on:remove={(event) => removeNotify(event.detail)} />
+  <NotifyStack items={notifies} position={visualConfig?.layout?.notify || 'top-right'} on:remove={(event) => removeNotify(event.detail)} />
   {#if textui}<TextUI data={textui} />{/if}
   {#if progress}<ProgressBar data={progress} />{/if}
   {#if radial}<RadialMenu data={radial} />{/if}

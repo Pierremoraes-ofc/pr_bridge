@@ -63,6 +63,9 @@ fivem.addCommand = addCommand
 fivem.command = addCommand
 fivem.commands = addCommand
 fivem.objects = objects
+fivem.proximity = PRCore.load('@pr_bridge/bridge/fivem/proximity/shared', _ENV)(objects, 'client', setmetatable({}, {
+    __index = function(_, key) return (Bridge or pr_lib or {}).cache and (Bridge or pr_lib).cache[key] end,
+}))
 fivem.raycast = raycast
 fivem.ui = ui
 fivem.nui = nui

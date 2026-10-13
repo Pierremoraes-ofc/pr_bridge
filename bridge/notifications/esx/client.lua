@@ -3,12 +3,12 @@ local notifications = {}
 
 if ActiveBridges["notification"] ~= "esx" then return end
 
-local ESX = exports["es_extended"]:getSharedObject()
-
 --- Notification
 ---@param data NotificationData
 function notifications.Notify(data)
     assert(data.description or data.title, "Invalid Arguments passed for Notify function. Either 'description' or 'title' must be provided.")
+    -- A server-started backend may still be loading its client environments.
+    local ESX = exports["es_extended"]:getSharedObject()
     if data.type == "inform" then
         data.type = "info"
     end

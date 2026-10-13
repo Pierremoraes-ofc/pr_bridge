@@ -1,11 +1,15 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte'
-  import { notifyTone } from '../lib/forgebox'
+  import { notifyTone, iconName } from '../lib/forgebox'
+  import { notificationGroups, cssStyle } from '../../../shared/notify.mjs'
+  import '../../../shared/notify.css'
   import BootstrapIcon from '../components/BootstrapIcon.svelte'
 
-  type NotifyItem = { id?: string | number; __renderId: string; title?: string; description?: string; type?: string; duration?: number }
+  type NotifyItem = { id?: string | number; __renderId: string; title?: string; description?: string; type?: string; duration?: number; icon?: any; iconColor?: string; iconAnimation?: string; alignIcon?: string; style?: any; showDuration?: boolean; position?: string }
 
   export let items: NotifyItem[] = []
+  export let position = 'top-right'
+  $: groups = notificationGroups(items, position)
   const dispatch = createEventDispatcher<{ remove: string }>()
   const timers = new Map<string, number>()
   let progress: Record<string, number> = {}
@@ -36,19 +40,21 @@
   onDestroy(() => timers.forEach((handle) => window.clearInterval(handle)))
 </script>
 
-<div class="notify-stack">
-  {#each items as item (item.__renderId)}
+{#each groups as group (group.position)}
+<div class={`notify-stack position-${group.position}`}>
+  {#each group.items as item (item.__renderId)}
     {@const tone = notifyTone(item.type)}
-    <div class="notify" style={`border-left-color: ${tone.border}; box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px ${tone.glow};`}>
-      <span class="notify__icon" style={`color: ${tone.border}`}><BootstrapIcon name={icon(item.type)} /></span>
+    <div class="notify" style={`border-left-color: ${tone.border}; box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px ${tone.glow};${cssStyle(item.style)}`}>
+      <span class={`notify__icon animation-${item.iconAnimation || 'none'} ${item.alignIcon === 'top' ? 'align-top' : ''}`} style={`color: ${item.iconColor || tone.border}`}><BootstrapIcon name={item.icon ? iconName(item.icon) : icon(item.type)} /></span>
       <div class="notify__content">
         {#if item.title}<strong class="notify__title">{item.title}</strong>{/if}
         <p class="notify__desc">{item.description}</p>
       </div>
-      <div class="notify__progress" style={`width: ${progress[item.__renderId] ?? 100}%; background-color: ${tone.border};`} />
+      {#if item.showDuration !== false}<div class="notify__progress" style={`width: ${progress[item.__renderId] ?? 100}%; background-color: ${tone.border};`}></div>{/if}
     </div>
   {/each}
 </div>
+{/each}
 
 <style>
   .notify-stack { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 12px; width: min(320px, 90vw); pointer-events: none; z-index: 9999; }

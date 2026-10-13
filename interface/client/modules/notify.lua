@@ -40,11 +40,27 @@ return function(Renderer)
             description = data.description or "",
             type = data.type or "info",
             duration = duration,
-            position = data.position or "top-right",
+            position = data.position,
             icon = data.icon,
             iconColor = data.iconColor,
+            iconAnimation = data.iconAnimation,
+            alignIcon = data.alignIcon,
+            style = data.style,
             showDuration = data.showDuration,
         })
+
+        local sound = data.sound
+        if type(sound) == "table" and type(sound.name) == "string" and type(sound.set) == "string"
+            and GetConvar("pr_bridge:ox_compat:notificationAudio", "false") == "true" then
+            if sound.bank then
+                local timeout = GetGameTimer() + 5000
+                while not RequestScriptAudioBank(sound.bank, false) and GetGameTimer() < timeout do Wait(0) end
+            end
+            local soundId = GetSoundId()
+            PlaySoundFrontend(soundId, sound.name, sound.set, true)
+            ReleaseSoundId(soundId)
+            if sound.bank then ReleaseNamedScriptAudioBank(sound.bank) end
+        end
 
         return true
     end

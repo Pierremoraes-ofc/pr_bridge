@@ -22,8 +22,7 @@ return function(Renderer)
         end
 
         if pending then
-            pending.resolve("cancel")
-            pending = nil
+            return nil
         end
 
         local p = promise.new()
@@ -42,7 +41,7 @@ return function(Renderer)
             header = data.header or "Alert",
             content = data.content or "",
             centered = data.centered ~= false,
-            cancel = data.cancel ~= false,
+            cancel = data.cancel == true,
             labels = {
                 cancel = data.labels and data.labels.cancel or "Cancelar",
                 confirm = data.labels and data.labels.confirm or "Confirmar",
@@ -53,9 +52,7 @@ return function(Renderer)
         if timeout and timeout > 0 then
             SetTimeout(timeout, function()
                 if pending and pending.promise == p then
-                    pending.resolve("cancel")
-                    Renderer.send("alert:close")
-                    Renderer.clearFocus()
+                    Alert.CloseAlertDialog("timeout")
                 end
             end)
         end
@@ -79,6 +76,15 @@ return function(Renderer)
 
     function Alert.HandleClose()
         Alert.HandleResult("cancel")
+    end
+
+    function Alert.CloseAlertDialog(reason)
+        if not pending then return end
+        local current = pending
+        pending = nil
+        Renderer.send("alert:close")
+        Renderer.clearFocus()
+        if reason then current.promise:reject(reason) else current.resolve(nil) end
     end
 
     return Alert
