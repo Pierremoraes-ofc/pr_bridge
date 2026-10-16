@@ -1,218 +1,191 @@
--- StateBag-style API for pr_lib. Legacy cache API is deliberately untouched.
--- Server owns custom logical scopes; native OneSync owns player/entity/global state.
+-- PR Bridge cache-backed state facade. No native FiveM State Bags are used.
+-- Both API styles read and write the same cache keys.
 return function(api, cache)
     local server = IsDuplicityVersion()
     local host = GetCurrentResourceName() == 'pr_bridge'
-    local logical = {}
-    local hydrated = {}
-    local pending = {}
-    local revisions = {}
-    local watchers = {}
-    local sequence = 0
-    local EVENT_UPDATE = 'pr_bridge:state:update'
-    local EVENT_SNAPSHOT = 'pr_bridge:state:snapshot'
-    local EVENT_REQUEST = 'pr_bridge:state:request'
+    local UPDATE = 'pr_bridge:state:cacheUpdate'
+    local NET_UPDATE = 'pr_bridge:state:netUpdate'
+    local NET_WRITE = 'pr_bridge:state:netWrite'
+    local SNAPSHOT = 'pr_bridge:state:cacheSnapshot'
+    local REQUEST = 'pr_bridge:state:requestSnapshot'
+    local replicated = {}
+    local versions = {}
+    local remoteWrite = false
+    local MAX_VALUE_BYTES = 16384
 
-    local function makeId(kind, id)
-        assert(type(kind) == 'string' and type(id) == 'string' and id ~= '', 'invalid state scope')
-        return kind .. ':' .. id
+    local function keyFor(kind, id, field)
+        assert(type(field) == 'string' and field ~= '' and #field <= 128, 'state field must be a string (1..128 chars)')
+        if kind == 'global' then return field end
+        if kind == 'local' then return 'player:local:' .. field end
+        return kind .. ':' .. tostring(id) .. ':' .. field
     end
 
-    local function localBag(scope)
-        local bag = logical[scope]
-        if not bag then bag = {}; logical[scope] = bag end
-        return bag
-    end
-
-    local function publishLocal(scope, key, value)
-        local bag = localBag(scope)
-        local previous = bag[key]
-        if previous == value then return false end
-        bag[key] = value
-        local listeners = watchers[scope]
-        if listeners then
-            for _, fn in pairs(listeners) do
-                CreateThread(function()
-                    local ok, err = pcall(fn, key, value, previous)
-                    if not ok then print('[pr_bridge:state] listener error: ' .. tostring(err)) end
-                end)
-            end
-        end
-        return true
-    end
-
-    local function snapshot(scope)
-        local out = {}
-        for k, v in pairs(localBag(scope)) do out[k] = v end
-        return out
-    end
-
-    local function applySnapshot(scope, data, version)
-        if type(data) ~= 'table' then return end
-        local old = localBag(scope)
-        for k in pairs(old) do
-            if data[k] == nil then publishLocal(scope, k, nil) end
-        end
-        for k, v in pairs(data) do publishLocal(scope, k, v) end
-        revisions[scope] = version or revisions[scope] or 0
-        hydrated[scope] = true
-    end
-
-    local function isValid(value, depth, seen)
-        local kind = type(value)
-        if kind == 'nil' or kind == 'boolean' or kind == 'number' or kind == 'string' then
-            return kind ~= 'number' or (value == value and value ~= math.huge and value ~= -math.huge)
-        end
-        if kind ~= 'table' or depth > 8 or seen[value] then return false end
+    local function valid(value, depth, seen)
+        local t = type(value)
+        if t == 'nil' or t == 'string' or t == 'boolean' then return true end
+        if t == 'number' then return value == value and value ~= math.huge and value ~= -math.huge end
+        if t ~= 'table' or depth >= 8 or seen[value] then return false end
         seen[value] = true
         for k, v in pairs(value) do
-            if type(k) ~= 'string' and type(k) ~= 'number' then return false end
-            if not isValid(v, depth + 1, seen) then return false end
+            if (type(k) ~= 'string' and type(k) ~= 'number') or not valid(v, depth + 1, seen) then return false end
         end
         seen[value] = nil
         return true
     end
 
-    local function validate(scope, key, value)
-        assert(type(key) == 'string' and #key > 0 and #key <= 128, 'invalid state key')
-        assert(isValid(value, 0, {}), 'state value must be a serializable primitive/table')
-        local size = #json.encode(value)
-        assert(size <= 16384, 'state value exceeds 16 KiB')
-        assert(#scope <= 256, 'state scope too long')
+    local function check(key, value)
+        assert(type(key) == 'string' and #key > 0 and #key <= 256, 'invalid cache key')
+        assert(valid(value, 0, {}), 'state value must be serializable')
+        if value ~= nil then
+            assert(#json.encode(value) <= MAX_VALUE_BYTES, 'state value exceeds 16 KiB')
+        end
     end
 
-    local function isActivePlayer(src)
-        return type(src) == 'number' and src > 0 and GetPlayerName(src) ~= nil
+    local function apply(key, value)
+        remoteWrite = true
+        local ok, err = pcall(function()
+            if value == nil then cache.clear(key) else cache.set(key, value) end
+        end)
+        remoteWrite = false
+        if not ok then print('[pr_bridge:cache] sync error: ' .. tostring(err)) end
     end
 
-    local function saveCustom(scope, key, value, replicate)
-        validate(scope, key, value)
+    local function publish(key, value, shouldReplicate)
+        check(key, value)
         if not server then
-            -- Never trust client writes for durable logical state.
-            return false, 'server_only'
-        end
-        if not host then
-            local ok, result, reason = pcall(function()
-                return exports.pr_bridge:stateWrite(scope, key, value, replicate == true)
-            end)
-            if not ok then return false, result end
-            if result then publishLocal(scope, key, value) end
-            return result, reason
-        end
-        local changed = publishLocal(scope, key, value)
-        if changed then
-            if replicate == true then pending[scope] = true end
-            revisions[scope] = (revisions[scope] or 0) + 1
-            TriggerEvent(EVENT_UPDATE, scope, key, value, revisions[scope])
-            if replicate == true then
-                TriggerClientEvent(EVENT_UPDATE, -1, scope, key, value, revisions[scope])
+            -- Client writes are local unless explicitly replicated. Only own player keys
+            -- may be sent to the server; server decides whether to accept them.
+            if shouldReplicate then
+                local ownId = GetPlayerServerId(PlayerId())
+                if key:sub(1, #('player:' .. ownId .. ':')) == ('player:' .. ownId .. ':') then
+                    TriggerServerEvent(NET_WRITE, key, value)
+                else
+                    return false, 'client_replication_not_authorized'
+                end
             end
+            if value == nil then cache.clear(key) else cache.set(key, value) end
+            return true
         end
-        return true
+        if host then
+            if value == nil then cache.clear(key) else cache.set(key, value) end
+            if shouldReplicate then
+                replicated[key] = true
+                versions[key] = (versions[key] or 0) + 1
+                TriggerClientEvent(NET_UPDATE, -1, key, value, versions[key])
+            end
+            TriggerEvent(UPDATE, key, value)
+            return true
+        end
+        local ok, result, reason = pcall(function()
+            return exports.pr_bridge:writeCacheState(key, value, shouldReplicate == true)
+        end)
+        if not ok then return false, result end
+        if result then apply(key, value) end
+        return result, reason
     end
 
     if host and server then
-        exports('stateWrite', function(scope, key, value, replicate)
-            if type(scope) ~= 'string' or not scope:match('^(mission|property):') then
-                return false, 'invalid_scope'
-            end
-            return saveCustom(scope, key, value, replicate)
+        exports('writeCacheState', function(key, value, shouldReplicate)
+            if type(key) ~= 'string' then return false, 'invalid_key' end
+            local ok, err = pcall(publish, key, value, shouldReplicate)
+            return ok, ok and nil or tostring(err)
         end)
-        exports('stateSnapshot', function(scope)
-            if type(scope) ~= 'string' then return nil end
-            return snapshot(scope), revisions[scope] or 0
+        exports('readCacheState', function(key)
+            return cache.get(key)
         end)
-        RegisterNetEvent(EVENT_REQUEST, function(scope)
+        RegisterNetEvent(NET_WRITE, function(key, value)
             local src = source
-            if not isActivePlayer(src) or type(scope) ~= 'string' then return end
-            if not scope:match('^(mission|property):') or #scope > 256 then return end
-            -- Custom scopes are server-owned. Explicit replicate=true makes a scope public.
-            if pending[scope] then
-                TriggerClientEvent(EVENT_SNAPSHOT, src, scope, snapshot(scope), revisions[scope] or 0)
+            if type(key) ~= 'string' or key:sub(1, #('player:' .. src .. ':')) ~= ('player:' .. src .. ':') then return end
+            -- Explicit opt-in: default-deny client writes unless a server convar enables them.
+            if GetConvar('pr_bridge:cache:allowClientWrites', 'false') ~= 'true' then return end
+            local ok, err = pcall(publish, key, value, true)
+            if not ok then print('[pr_bridge:cache] rejected client write: ' .. tostring(err)) end
+        end)
+        RegisterNetEvent(REQUEST, function()
+            local src = source
+            local data = {}
+            for key in pairs(replicated) do
+                data[key] = cache.get(key)
+            end
+            TriggerClientEvent(SNAPSHOT, src, data, versions)
+        end)
+        AddEventHandler('playerDropped', function()
+            local prefix = 'player:' .. source .. ':'
+            cache.clearPrefix(prefix)
+            for key in pairs(replicated) do
+                if key:sub(1, #prefix) == prefix then replicated[key] = nil end
             end
         end)
-        AddEventHandler(EVENT_UPDATE, function(scope, key, value, revision)
-            if type(scope) ~= 'string' or not scope:match('^(mission|property):') then return end
-            if revisions[scope] and revision and revision <= revisions[scope] then return end
-            publishLocal(scope, key, value)
-            revisions[scope] = revision or (revisions[scope] or 0) + 1
+    elseif not server then
+        RegisterNetEvent(NET_UPDATE, function(key, value, version)
+            if type(key) ~= 'string' or type(version) ~= 'number' then return end
+            if version <= (versions[key] or 0) then return end
+            versions[key] = version
+            apply(key, value)
         end)
-    elseif server then
-        AddEventHandler(EVENT_UPDATE, function(scope, key, value, revision)
-            if type(scope) ~= 'string' then return end
-            if revision and revision <= (revisions[scope] or 0) then return end
-            publishLocal(scope, key, value)
-            revisions[scope] = revision or (revisions[scope] or 0) + 1
-        end)
-    else
-        RegisterNetEvent(EVENT_UPDATE, function(scope, key, value, version)
-            if type(scope) ~= 'string' then return end
-            if version and version <= (revisions[scope] or 0) then return end
-            publishLocal(scope, key, value)
-            revisions[scope] = version or (revisions[scope] or 0) + 1
-        end)
-        RegisterNetEvent(EVENT_SNAPSHOT, function(scope, data, version)
-            if type(scope) == 'string' and (version or 0) >= (revisions[scope] or 0) then
-                applySnapshot(scope, data, version)
+        RegisterNetEvent(SNAPSHOT, function(data, incomingVersions)
+            if type(data) ~= 'table' or type(incomingVersions) ~= 'table' then return end
+            for key, value in pairs(data) do
+                local version = incomingVersions[key]
+                if type(key) == 'string' and type(version) == 'number' and version > (versions[key] or 0) then
+                    versions[key] = version
+                    apply(key, value)
+                end
             end
+        end)
+        CreateThread(function()
+            while GetResourceState('pr_bridge') ~= 'started' do Wait(250) end
+            TriggerServerEvent(REQUEST)
         end)
     end
 
-    local function customScope(kind, id)
-        local scope = makeId(kind, tostring(id))
-        if server and not host and not hydrated[scope] then
-            local ok, data, version = pcall(function()
-                return exports.pr_bridge:stateSnapshot(scope)
-            end)
-            if ok and type(data) == 'table' then applySnapshot(scope, data, version) end
-        end
+    -- Host broadcasts cache writes to other server resources. They maintain local
+    -- mirrors, preserving existing cache.get semantics in the same runtime.
+    if server then
+        AddEventHandler(UPDATE, function(key, value)
+            if not host and type(key) == 'string' then apply(key, value) end
+        end)
+    end
+
+    local function proxy(kind, id)
         local methods = {}
-        function methods:set(key, value, replicated)
-            return saveCustom(scope, key, value, replicated)
+        function methods:set(field, value, shouldReplicate)
+            return publish(keyFor(kind, id, field), value, shouldReplicate == true)
         end
-        function methods:get(key) return localBag(scope)[key] end
-        function methods:onChange(cb)
-            assert(type(cb) == 'function', 'callback required')
-            sequence = sequence + 1
-            local id = sequence
-            watchers[scope] = watchers[scope] or {}
-            watchers[scope][id] = cb
-            return function() watchers[scope][id] = nil end
+        function methods:get(field, fallback)
+            local key = keyFor(kind, id, field)
+            local value = cache.get(key)
+            if value == nil and server and not host then
+                local ok, remote = pcall(function() return exports.pr_bridge:readCacheState(key) end)
+                if ok and remote ~= nil then apply(key, remote); value = remote end
+            end
+            if value == nil then return fallback end
+            return value
         end
-        if not server and not hydrated[scope] then
-            hydrated[scope] = true
-            TriggerServerEvent(EVENT_REQUEST, scope)
+        function methods:onChange(field, callback)
+            return cache.onChange(keyFor(kind, id, field), callback)
         end
-        local proxy = setmetatable({}, {
-            __index = function(_, key)
-                if methods[key] then return methods[key] end
-                return localBag(scope)[key]
+        return setmetatable({}, {
+            __index = function(_, field)
+                if methods[field] then return methods[field] end
+                return methods:get(field)
             end,
-            __newindex = function(_, key, value)
-                local ok, err = saveCustom(scope, key, value, false)
+            __newindex = function(_, field, value)
+                local ok, err = methods:set(field, value, false)
                 if not ok then error(tostring(err), 2) end
             end,
-            __pairs = function() return next, snapshot(scope) end,
         })
-        return { state = proxy }
     end
 
-    local function native(kind, id)
-        local nativeState
-        if kind == 'player' then
-            nativeState = Player(id).state
-        elseif kind == 'entity' then
-            nativeState = Entity(id).state
-        end
-        return { state = nativeState }
+    local function container(kind, id)
+        assert(id ~= nil and tostring(id) ~= '', 'state identifier is required')
+        return { state = proxy(kind, id) }
     end
 
-    api.Player = function(id) return native('player', id) end
-    api.Entity = function(entity) return native('entity', entity) end
-    if not server then
-        api.LocalPlayer = { state = LocalPlayer.state }
-    end
-    api.GlobalState = GlobalState
-    api.Mission = function(id) return customScope('mission', id) end
-    api.Property = function(id) return customScope('property', id) end
+    api.Player = function(id) return container('player', id) end
+    api.Entity = function(id) return container('entity', id) end
+    api.LocalPlayer = { state = proxy('local') }
+    api.GlobalState = proxy('global')
+    api.Mission = function(id) return container('mission', id) end
+    api.Property = function(id) return container('property', id) end
 end
