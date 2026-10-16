@@ -433,6 +433,20 @@ return function(api, activeBridges)
     end)
     end
 
+
+    -- State-style facade. Legacy cache.set/get/remember and TTL semantics remain unchanged.
+    local function loadStateFacade()
+        local ok, factory = pcall(function()
+            return api.load('@pr_bridge/bridge/cache/state')
+        end)
+        if not ok or type(factory) ~= 'function' then
+            print(('[pr_bridge:state] state facade unavailable: %s'):format(tostring(factory)))
+            return
+        end
+        factory(api, cache)
+    end
+    loadStateFacade()
+
     setmetatable(cache, {
         __call = function(_, key, callback, timeout) return cache.remember(key, callback, timeout) end,
         __index = function(_, key) return values[key] end,
