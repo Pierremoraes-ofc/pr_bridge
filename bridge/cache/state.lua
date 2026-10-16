@@ -10,7 +10,6 @@ return function(api, cache)
     local REQUEST = 'pr_bridge:state:requestSnapshot'
     local replicated = {}
     local versions = {}
-    local remoteWrite = false
     local MAX_VALUE_BYTES = 16384
 
     local function keyFor(kind, id, field)
@@ -42,11 +41,9 @@ return function(api, cache)
     end
 
     local function apply(key, value)
-        remoteWrite = true
         local ok, err = pcall(function()
             if value == nil then cache.clear(key) else cache.set(key, value) end
         end)
-        remoteWrite = false
         if not ok then print('[pr_bridge:cache] sync error: ' .. tostring(err)) end
     end
 
@@ -87,8 +84,9 @@ return function(api, cache)
     if host and server then
         exports('writeCacheState', function(key, value, shouldReplicate)
             if type(key) ~= 'string' then return false, 'invalid_key' end
-            local ok, err = pcall(publish, key, value, shouldReplicate)
-            return ok, ok and nil or tostring(err)
+            local ok, result, reason = pcall(publish, key, value, shouldReplicate)
+            if not ok then return false, tostring(result) end
+            return result, reason
         end)
         exports('readCacheState', function(key)
             return cache.get(key)
