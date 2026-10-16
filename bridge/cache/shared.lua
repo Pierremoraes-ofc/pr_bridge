@@ -235,7 +235,7 @@ return function(api, activeBridges)
 
         record.coords = GetEntityCoords and GetEntityCoords(record.entity) or record.coords
         record.model = GetEntityModel and GetEntityModel(record.entity) or record.model
-        if Entity then record.state = Entity(record.entity).state end
+        record.state = api.Entity and api.Entity(record.netId and record.netId > 0 and record.netId or record.entity).state or nil
         return record
     end
 
