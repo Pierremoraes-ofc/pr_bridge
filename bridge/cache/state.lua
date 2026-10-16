@@ -9,7 +9,6 @@ return function(api, cache)
     local revisions = {}
     local watchers = {}
     local sequence = 0
-    local EVENT_WRITE = 'pr_bridge:state:write'
     local EVENT_UPDATE = 'pr_bridge:state:update'
     local EVENT_SNAPSHOT = 'pr_bridge:state:snapshot'
     local EVENT_REQUEST = 'pr_bridge:state:request'
@@ -102,6 +101,7 @@ return function(api, cache)
         end
         local changed = publishLocal(scope, key, value)
         if changed then
+            if replicate == true then pending[scope] = true end
             revisions[scope] = (revisions[scope] or 0) + 1
             TriggerEvent(EVENT_UPDATE, scope, key, value, revisions[scope])
             if replicate == true then
@@ -178,6 +178,10 @@ return function(api, cache)
             watchers[scope] = watchers[scope] or {}
             watchers[scope][id] = cb
             return function() watchers[scope][id] = nil end
+        end
+        if not server and not hydrated[scope] then
+            hydrated[scope] = true
+            TriggerServerEvent(EVENT_REQUEST, scope)
         end
         local proxy = setmetatable({}, {
             __index = function(_, key)
