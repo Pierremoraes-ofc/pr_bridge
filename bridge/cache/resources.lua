@@ -1,25 +1,36 @@
--- Read-only provider contract. It does not turn arbitrary cache keys into
--- networked globals: each provider owns its transport, authorization and data.
+-- Producers explicitly publish values. Getters never query producer exports.
 return function(cache)
-    local function copy(value)
+    local function key(resource,domain)
+        assert(type(resource)=='string' and resource:match('^[%w_.%-]+$') and #resource<=96,'invalid resource cache owner')
+        assert(type(domain)=='string' and domain~='' and #domain<=128,'invalid resource cache domain')
+        return 'resource:'..resource..':'..domain
+    end
+    local function copy(value,seen)
         if type(value)~='table' then return value end
-        local result={};for key,item in pairs(value) do result[key]=copy(item) end;return result
+        seen=seen or {}
+        if seen[value] then return seen[value] end
+        local result={};seen[value]=result
+        for field,item in pairs(value) do result[field]=copy(item,seen) end
+        return result
+    end
+    function cache.SetResourceState(first,second,third,fourth)
+        local resource,domain,data
+        if first==cache then resource,domain,data=second,third,fourth
+        else resource,domain,data=first,second,third end
+        assert(data==nil or type(data)=='table','resource cache data must be a table or nil')
+        return cache.set(key(resource,domain),copy(data))
     end
     function cache.GetResourceState(first,second,third)
-        local resource,key=first==cache and second or first,first==cache and third or second
-        if type(resource)~='string' or type(key)~='string' or GetResourceState(resource)~='started' then return nil end
-        local ok,record=pcall(function() return exports[resource]:GetCachedState(key) end)
-        if not ok or type(record)~='table' or type(record.data)~='table' then return nil end
-        return copy(record.data)
+        local resource,domain
+        if first==cache then resource,domain=second,third else resource,domain=first,second end
+        if type(resource)~='string' or type(domain)~='string' then return nil end
+        return copy(cache.get(key(resource,domain)))
     end
     function cache.OnResourceState(first,second,third,fourth)
-        local resource,key,fn
-        if first==cache then resource,key,fn=second,third,fourth else resource,key,fn=first,second,third end
-        assert(type(resource)=='string' and type(key)=='string' and type(fn)=='function','Invalid resource cache subscription')
-        local active=true
-        local handler=AddEventHandler('pr_bridge:resourceState:changed',function(owner,domain,record)
-            if active and owner==resource and domain==key then fn(record and copy(record.data) or nil) end
-        end)
-        return function() active=false;RemoveEventHandler(handler) end
+        local resource,domain,callback
+        if first==cache then resource,domain,callback=second,third,fourth
+        else resource,domain,callback=first,second,third end
+        assert(type(callback)=='function','invalid resource cache subscription')
+        return cache.onChange(key(resource,domain),callback)
     end
 end

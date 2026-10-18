@@ -443,6 +443,13 @@ function UI.OpenVisualAdminMenu(parentMenu)
             return
         end
         if not Bridge.settings.get("interface") then
+            -- User-requested recovery only, not a library bootstrap/collector.
+            local records = Bridge.callback.await("pr_bridge:settings:snapshot", 10000)
+            if type(records) == "table" and records.interface then
+                exports.pr_bridge:ApplyVisualConfig(records.interface)
+            end
+        end
+        if not Bridge.settings.get("interface") then
             UI.Notify({ title = "pr_bridge", description = uiText("not_ready"), type = "error" })
             return
         end

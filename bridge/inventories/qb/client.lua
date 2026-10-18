@@ -38,8 +38,12 @@ function inventory.getCurrentWeapon()
     return nil
 end
 
-function inventory.displayMetadata(metadata, value)
-end
+-- Public declaration stays available even without a native QB implementation.
+-- Replace this placeholder with function inventory.displayMetadata(...) ... end
+-- when adding support; the normalizer preserves that implementation.
+inventory.displayMetadata = PRCore.load('@pr_bridge/bridge/runtime/compat_services',_ENV).unavailable(
+    'inventories','qb','displayMetadata','qb-inventory has no equivalent; implement bridge/inventories/qb/client.lua:displayMetadata')
+inventory.DisplayMetadata = inventory.displayMetadata
 
 function inventory.giveItemToTarget(serverId, slotId, count)
 end

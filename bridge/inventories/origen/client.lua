@@ -35,9 +35,11 @@ function inventory.getCurrentWeapon()
     return nil
 end
 
-function inventory.displayMetadata(metadata, value)
-    -- Not in provided docs
-end
+-- Public declaration is retained. Replace the placeholder with a real function
+-- here when implementing Origen support; the normalizer will preserve it.
+inventory.displayMetadata = PRCore.load('@pr_bridge/bridge/runtime/compat_services',_ENV).unavailable(
+    'inventories','origen','displayMetadata','origen_inventory has no equivalent; implement bridge/inventories/origen/client.lua:displayMetadata')
+inventory.DisplayMetadata = inventory.displayMetadata
 
 function inventory.giveItemToTarget(serverId, slotId, count)
     -- Handled by inventory UI

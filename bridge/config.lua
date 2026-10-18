@@ -121,6 +121,28 @@ Config = {
 	Framework = "auto", -- auto | custom | resource/folder name
 	Database = "auto",
 	Target = "native", -- auto | native | ox | core_focus | qb
+	compatOx_lib = true, -- true = instala o adaptador ox_lib; false = nao carrega host, imports, eventos, exports ou aliases lib do compat.
+	-- Alterar exige reiniciar pr_bridge e consumidores (preferencialmente a cidade).
+	-- provide('ox_lib') / provide('ox_target') no manifest sao declaracoes estaticas:
+	-- com false e bibliotecas originais, comente os provide correspondentes no manifest.
+	compatFramework = 'forge', -- Destino: forge/auto (backend ativo), qbx, qb, esx, nd, ox, tmc, custom, default; false = desliga.
+	compatQBCore = true, -- Origem QB: preserva QB/QBX nativo; fachada redireciona nos demais destinos.
+	compatQBAccounts = { cash = 'cash', bank = 'bank' }, -- carteiras reais no adaptador selecionado.
+	compatQBConfig = {}, -- campos legados opcionais; nao copia credenciais/configuracao privada do core.
+	-- Contas ESX sem equivalente exigem mapeamento explicito (nao inventa black_money).
+	compatESXAccounts = { money = 'cash', bank = 'bank' },
+	-- Opcional, apenas quando dois itens nativos representam o mesmo componente:
+	-- { WEAPON_PISTOL = { flashlight = 'at_flashlight' } }. O hash e validado.
+	compatESXComponentItems = {},
+	-- APIs auxiliares com contrato normalizado. Nunca aponta AddItems para AddItem:
+	-- AddItems registra DEFINICOES; AddItem entrega uma unidade ao jogador.
+	-- Cada entrada: false (desliga) ou { resource='meu_adapter', export='MinhaFuncao' }.
+	-- Consulte bridge/frameworks/COMPAT.md para assinaturas e exemplos.
+	compatServices = { frameworks = {}, inventories = {} },
+	compatCommitJobs = false, -- somente QBX sem registry auxiliar: persiste em shared/jobs.lua quando true.
+	compatMetadata = { ssn = 'ssn' }, -- SSN real; nunca substituido por citizenid/license.
+	compatPickupAccounts = { money = 'money' }, -- banco/contas extras exigem item equivalente explicito.
+	compatDiscordWebhookConvars = {}, -- { canal = 'meu_discord_webhook' }; URL em convar privada (set, nunca setr).
 	VersionCheck = true,
 	Fivem = {
 		VehiclePropertiesStateBag = false,

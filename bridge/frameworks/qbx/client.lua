@@ -16,20 +16,22 @@ local function setPlayerData(value)
     bankAmount = money.bank or 0
 end
 
-local function syncPlayerData()
-    -- On connection the resource state can already be "started", while the
-    -- QBX client environments/exports have not run. Never abort the PR host
-    -- here: QBX itself needs our ox_lib provider to finish initialising.
-    local ok, value = pcall(function() return qbx_core:GetPlayerData() end)
-    if ok and type(value) == 'table' then setPlayerData(value) end
+-- An explicit getter reads the snapshot already delivered by QBX. No startup
+-- pull from the framework, polling, listener dispatch or producer discovery.
+local function currentPlayerData()
+    local cache = Bridge and Bridge.cache or pr_lib and pr_lib.cache
+    if cache then
+        local session = cache.GetResourceState('qbx_core', 'session')
+        if session and session.authenticated == false then return {} end
+        local data = cache.get('playerData')
+        if type(data) == 'table' then return data end
+    end
+    return QBX.PlayerData or {}
 end
 
-syncPlayerData()
-AddEventHandler('onClientResourceStart', function(resource)
-    if resource == 'qbx_core' then SetTimeout(0, syncPlayerData) end
-end)
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    SetTimeout(0, syncPlayerData)
+-- Only consume data delivered by the producer; never pull a startup snapshot.
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function(value)
+    if type(value) == 'table' then setPlayerData(value.PlayerData or value) end
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
@@ -78,7 +80,7 @@ end)
 ---Get Player data
 ---@return table
 function framework.GetPlayer()
-    local playerData = QBX.PlayerData
+    local playerData = currentPlayerData()
     if not playerData or not playerData.charinfo then return {} end
 
     local player = playerData.charinfo
@@ -94,17 +96,16 @@ function framework.GetPlayer()
 end
 
 function framework.GetPlayerData()
-    return QBX.PlayerData or {}
+    return currentPlayerData()
 end
 
 ---Get any money/accounts
 ---@param type string
 ---@return number
 function framework.GetMoney(type)
-    if QBX.PlayerData and QBX.PlayerData.money then
-        cashAmount = QBX.PlayerData.money.cash or cashAmount
-        bankAmount = QBX.PlayerData.money.bank or bankAmount
-    end
+    local data = currentPlayerData()
+    cashAmount = data.money and data.money.cash or 0
+    bankAmount = data.money and data.money.bank or 0
 
     if type == "cash" then
         return cashAmount
@@ -124,7 +125,7 @@ end
 ---Get all job info for the player
 ---@return table
 function framework.GetJobInfo()
-    local player = QBX.PlayerData
+    local player = currentPlayerData()
     if not player or not player.job then return {} end
 
     local job = player.job
@@ -137,11 +138,11 @@ function framework.GetJobInfo()
 end
 
 function framework.GetPlayerJob()
-    return QBX.PlayerData and QBX.PlayerData.job or nil
+    return currentPlayerData().job
 end
 
 function framework.PlayerHasJob(jobName, grade)
-    local job = QBX.PlayerData and QBX.PlayerData.job
+    local job = currentPlayerData().job
     if not job or job.name ~= tostring(jobName or ''):lower() then return false end
 
     if grade == nil then return true end
@@ -155,8 +156,8 @@ end
 function framework.IsPlayerLoaded()
     -- Preserve the existing authenticated-character contract: the spawn UI
     -- and appearance may run before the world-ready notification.
-    return type(QBX.PlayerData) == "table"
-        and next(QBX.PlayerData) ~= nil
+    local data = currentPlayerData()
+    return type(data) == 'table' and (data.citizenid ~= nil or data.identifier ~= nil)
 end
 
 function framework.IsSessionReady()
@@ -170,7 +171,7 @@ end
 ---@param meta string
 ---@return any
 function framework.getPlayerMetadata(meta)
-    local playerData = QBX.PlayerData
+    local playerData = currentPlayerData()
     if not playerData or not playerData.metadata then return nil end
 
     local metadata = playerData.metadata[meta]
@@ -181,7 +182,7 @@ end
 ---@param outfits table
 function framework.toggleOutfit(wear, outfits)
     if wear then
-        local playerData = QBX.PlayerData
+        local playerData = currentPlayerData()
         if not playerData then return end
         local gender = playerData.charinfo.gender
         local outfit = gender == 1 and outfits.Female or outfits.Male

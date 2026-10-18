@@ -52,9 +52,11 @@ function inventory.getCurrentWeapon()
     return qs_inventory:GetCurrentWeapon()
 end
 
-function inventory.displayMetadata(metadata, value)
-    -- Quasar might not have direct metadata display export
-end
+-- Public declaration is retained. Replace the placeholder with a real function
+-- here when implementing Quasar support; the normalizer will preserve it.
+inventory.displayMetadata = PRCore.load('@pr_bridge/bridge/runtime/compat_services',_ENV).unavailable(
+    'inventories','quasar','displayMetadata','qs-inventory has no equivalent; implement bridge/inventories/quasar/client.lua:displayMetadata')
+inventory.DisplayMetadata = inventory.displayMetadata
 
 function inventory.giveItemToTarget(serverId, slotId, count)
     -- Usually handled by inventory UI

@@ -302,5 +302,9 @@ return function(framework, context, inventory, banking, notify, textui, activeFr
         local inventoryResource = inventory and inventory.GetResourceName and inventory.GetResourceName()
         if inventory and inventoryResource ~= "framework" then framework.GetItemCount=framework.GetItemCount or inventory.GetItemCount; framework.HasItem=framework.HasItem or inventory.HasItem; framework.GetPlayerInventory=framework.GetPlayerInventory or inventory.GetPlayerItems or inventory.GetPlayerInventory end
     end
+    local createCompat = PRCore.load('@pr_bridge/bridge/frameworks/compat_install',_ENV)
+    local nativeCompat = PRCore.load(('@pr_bridge/bridge/frameworks/%s/compat'):format(activeFramework or 'default'),_ENV)
+    createCompat(framework, context, inventory, activeFramework or 'default', nativeCompat(framework, context))
+    PRCore.load('@pr_bridge/bridge/frameworks/qb_adapter_install',_ENV)(framework,context,inventory,activeFramework or 'default')
     return framework
 end

@@ -5,6 +5,22 @@
 
 A camada integrada de compatibilidade, a ordem de inicialização e os limites de homologação estão em [docs/OX_COMPATIBILITY.md](docs/OX_COMPATIBILITY.md). Não há recurso adicional de compatibilidade. Builds e testes offline aprovados; validação dentro do FiveM ainda pendente.
 
+Os adaptadores e idiomas estão organizados em `bridge/compat/ox_lib/`.
+`Config.compatOx_lib = true` mantém a compatibilidade ativa nesta base;
+`false` impede a inicialização do host e a instalação nos consumidores.
+Os caminhos públicos de `imports/` foram preservados. Veja o
+[guia de ativação/desativação](bridge/compat/ox_lib/README.md), inclusive o
+ajuste dos `provide` estáticos necessário para usar as bibliotecas originais.
+### Fachada ESX
+
+`compatFramework` seleciona o destino das chamadas ESX (`forge`/`auto`, `qbx`,
+`qb`, `esx` ou `false`). A implementação está em `bridge/compat/esx/` e aceita
+o objeto/export ESX e `@es_extended/imports.lua` sem exigir bridge no consumidor.
+É uma implementação **parcial**, com erros explícitos para contratos ainda não
+suportados; não é uma promessa de executar qualquer script ESX sem ajustes.
+Veja [configuração e limites](bridge/compat/esx/README.md) e
+[cobertura por função](bridge/compat/esx/COVERAGE.md).
+
 ### Usage as a library
 
 `pr_bridge` core is standalone. It does not require `ox_lib`, `qb-core`, `qbx_core`, or any other resource to load. Those resources are only used by optional adapters when they are running.

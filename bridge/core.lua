@@ -13,7 +13,7 @@ function PRCore.noop() end
 -- A provided legacy alias is not an independent backend. Selecting it would
 -- send PR's own adapters back into PR and can create recursive exports.
 function PRCore.isResourceStarted(resource)
-    if (resource == "ox_lib" or resource == "ox_target")
+    if (resource == "ox_lib" or resource == "ox_target" or resource == "es_extended" or resource == "qb-core")
         and GetResourceMetadata(resource, "name", 0) == "pr_bridge" then return false end
     local state = GetResourceState(resource)
     return state == "started" or (resource == "pr_bridge" and state == "starting")

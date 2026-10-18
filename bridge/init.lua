@@ -142,6 +142,7 @@ Bridge.name = "pr_bridge"
 Bridge.context = PRCore.context
 Bridge.activeBridges = ActiveBridges
 Bridge.config = Config
+Bridge.frameworkRouting = PRCore.load('bridge.compat.framework_routing')(ActiveBridges, Config)
 Bridge.locale = Locale.init
 Bridge.load = PRCore.load
 Bridge.loadFile = PRCore.loadFile
@@ -420,153 +421,16 @@ if PRCore.context == "server" then
     end
 end
 
-local cacheStore = {}
-local cacheEvents = {}
-
-local bridgeCache = {
-    resource = GetCurrentResourceName(),
-    context = PRCore.context,
-    activeBridges = ActiveBridges,
-}
-
-local function dispatchCacheEvent(key, value, oldValue)
-    local events = cacheEvents[key]
-    if not events then return end
-
-    for i = 1, #events do
-        CreateThread(function()
-            events[i](value, oldValue)
-        end)
-    end
-end
-
-function bridgeCache.set(key, value)
-    local oldValue = cacheStore[key]
-    cacheStore[key] = value
-    dispatchCacheEvent(key, value, oldValue)
-    return value
-end
-
-function bridgeCache.get(key, fallback)
-    local value = cacheStore[key]
-    if value == nil then return fallback end
-    return value
-end
-
-function bridgeCache.clear(key)
-    if key == nil then
-        for cacheKey in pairs(cacheStore) do
-            bridgeCache.clear(cacheKey)
-        end
-
-        return
-    end
-
-    local oldValue = cacheStore[key]
-    cacheStore[key] = nil
-    dispatchCacheEvent(key, nil, oldValue)
-end
-
-function bridgeCache.clearPrefix(prefix)
-    for key in pairs(cacheStore) do
-        if key:sub(1, #prefix) == prefix then
-            bridgeCache.clear(key)
-        end
-    end
-end
-
-function bridgeCache.remember(key, callback, timeout)
-    local value = cacheStore[key]
-    if value ~= nil then return value end
-
-    value = callback()
-    bridgeCache.set(key, value)
-
-    if timeout then
-        SetTimeout(timeout, function()
-            if cacheStore[key] == value then
-                bridgeCache.clear(key)
-            end
-        end)
-    end
-
-    return value
-end
-
-bridgeCache.call = bridgeCache.remember
-
-function bridgeCache.onChange(key, callback)
-    cacheEvents[key] = cacheEvents[key] or {}
-    cacheEvents[key][#cacheEvents[key] + 1] = callback
-end
-
-function bridgeCache.GetPlayer(source, timeout)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" then return nil end
-
-        return bridgeCache.remember(("player:%s"):format(source), function()
-            return Bridge.framework.GetPlayer and Bridge.framework.GetPlayer(source)
-        end, timeout or 1000)
-    end
-
-    return bridgeCache.remember("player:self", function()
-        return Bridge.framework.GetPlayer and Bridge.framework.GetPlayer()
-    end, source or 1000)
-end
-
-function bridgeCache.GetMetadata(source, metadata, timeout)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" or type(metadata) ~= "string" then return nil end
-
-        return bridgeCache.remember(("metadata:%s:%s"):format(source, metadata), function()
-            return Bridge.framework.getPlayerMetadata and Bridge.framework.getPlayerMetadata(source, metadata)
-        end, timeout or 1000)
-    end
-
-    local metadataName = source
-    if type(metadataName) ~= "string" then return nil end
-
-    return bridgeCache.remember(("metadata:self:%s"):format(metadataName), function()
-        return Bridge.framework.getPlayerMetadata and Bridge.framework.getPlayerMetadata(metadataName)
-    end, metadata or 1000)
-end
-
-function bridgeCache.InvalidatePlayer(source)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" then return end
-
-        bridgeCache.clear(("player:%s"):format(source))
-        bridgeCache.clearPrefix(("metadata:%s:"):format(source))
-        return
-    end
-
-    bridgeCache.clear("player:self")
-    bridgeCache.clearPrefix("metadata:self:")
-end
-
-setmetatable(bridgeCache, {
-    __call = function(_, key, callback, timeout)
-        return bridgeCache.remember(key, callback, timeout)
-    end,
-})
-
+local createPassiveCache = assert(PRCore.load('bridge.cache.shared'), 'PR Bridge passive cache module unavailable')
+local bridgeCache = createPassiveCache(Bridge, ActiveBridges)
 Bridge.cache = bridgeCache
-local createAutomaticCache = PRCore.load("bridge.cache.shared")
-if createAutomaticCache then
-    bridgeCache = createAutomaticCache(Bridge, ActiveBridges)
-    local centralizeCache = PRCore.load("bridge.cache.central")
-    if centralizeCache then centralizeCache(bridgeCache) end
-    local resourceCache = PRCore.load("bridge.cache.resources")
-    if resourceCache then resourceCache(bridgeCache) end
-    Bridge.cache = bridgeCache
-    Bridge.onCache = bridgeCache.onChange
-    Bridge.getCacheMetrics = bridgeCache.getMetrics
-end
+PRCore.load('bridge.cache.state')(Bridge, bridgeCache)
+PRCore.load('bridge.cache.central')(bridgeCache)
+PRCore.load('bridge.cache.resources')(bridgeCache)
+Bridge.onCache = bridgeCache.onChange
+Bridge.getCacheMetrics = bridgeCache.getMetrics
 Bridge.settings = PRCore.load("bridge.settings")(Bridge)
 if rawget(_ENV, "cache") == nil then cache = bridgeCache end
-if PRCore.context == "server" then
-    Bridge.settings.publish("locale", { name = Locale.getConfiguredName() })
-end
 if PRCore.context == "client" then
     local normalizeEntities = PRCore.load("bridge.compat.entities_client")
     if normalizeEntities then normalizeEntities(Bridge) end
@@ -616,6 +480,9 @@ end
 
 exports("getCacheSnapshot", function()
     return Bridge.cache and Bridge.cache.getSnapshot and Bridge.cache.getSnapshot() or {}
+end)
+exports('accessCacheState', function(operation, key, value, ttl)
+    return Bridge.cache.accessStateCache(operation, key, value, ttl)
 end)
 exports("GetResourceState", function(resource,key)
     return Bridge.cache.GetResourceState(resource,key)

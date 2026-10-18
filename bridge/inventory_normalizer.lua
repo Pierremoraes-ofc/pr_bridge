@@ -337,5 +337,14 @@ return function(inventory, context, activeInventory)
         addClientHelpers(inventory)
     end
 
+    if context == 'server' then
+        local install = PRCore.load('@pr_bridge/bridge/inventories/compat_install',_ENV)
+        local native = PRCore.load(('@pr_bridge/bridge/inventories/%s/compat'):format(activeInventory or 'default'),_ENV)
+        install(inventory, activeInventory or 'default', native(inventory))
+    else
+        local install = PRCore.load('@pr_bridge/bridge/inventories/compat_client_install',_ENV)
+        local native = PRCore.load(('@pr_bridge/bridge/inventories/%s/compat_client'):format(activeInventory or 'default'),_ENV)
+        install(inventory, activeInventory or 'default', native(inventory))
+    end
     return inventory
 end

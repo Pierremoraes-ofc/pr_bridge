@@ -1,6 +1,6 @@
 -- Pre-v3 syntax becomes a native command definition; no second parser.
 local native = lib.__native('bridge/addCommand/server')
-local adapt = PRCore.load('@pr_bridge/bridge/compat/ox_command', _ENV)(native)
+local adapt = PRCore.load('@pr_bridge/bridge/compat/ox_lib/ox_command', _ENV)(native)
 function lib.__addCommand(group, name, callback, parameters, help)
     local params = {}
     for i, spec in ipairs(parameters or {}) do

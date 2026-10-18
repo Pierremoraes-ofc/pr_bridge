@@ -30,7 +30,10 @@ return function(api, catalog, active, selectPath, onRefresh)
             end
         end
     end
-    AddEventHandler(IsDuplicityVersion() and "onResourceStart" or "onClientResourceStart", function(resource)
+    -- onResourceStart runs inside Resource::Start, before the resource state
+    -- necessarily becomes 'started'. Selection deliberately rejects 'starting'
+    -- backends, so use the queued notification after the start has completed.
+    AddEventHandler(IsDuplicityVersion() and "onServerResourceStart" or "onClientResourceStart", function(resource)
         if resource ~= "pr_bridge" then refresh(resource) end
     end)
     return refresh

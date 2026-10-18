@@ -32,8 +32,13 @@ if not PRCore then
 end
 
 if legacyOxImport then
+    local compatConfig = {}
+    PRCore.load('@pr_bridge/bridge/config', compatConfig)
+    if compatConfig.Config.compatOx_lib ~= true then
+        error('PR Bridge ox_lib compatibility is disabled (Config.compatOx_lib=false). Start the original ox_lib and remove its provide alias from pr_bridge/fxmanifest.lua.', 2)
+    end
     if lib and lib.bridge == bridgeResource and lib.runtimeInstalled then return end
-    return PRCore.load("@pr_bridge/bridge/compat/ox_bootstrap", _ENV)(_ENV, resourceName)
+    return PRCore.load("@pr_bridge/bridge/compat/ox_lib/ox_bootstrap", _ENV)(_ENV, resourceName)
 end
 
 local public = {
@@ -441,6 +446,7 @@ PRCore.load("@pr_bridge/bridge/notifications/cl_events", env)
 
 public.activeBridges = env.ActiveBridges
 public.config = env.Config
+public.frameworkRouting = PRCore.load('@pr_bridge/bridge/compat/framework_routing', env)(env.ActiveBridges, env.Config)
 
 public.inventories = public.inventory
 if PRCore.context == "server" then
@@ -702,181 +708,15 @@ if PRCore.context == "server" then
     end
 end
 
-local cacheStore = {}
-local cacheEvents = {}
-
-local prCache = {
-    resource = resourceName,
-    context = PRCore.context,
-    activeBridges = env.ActiveBridges,
-}
-
-local function dispatchCacheEvent(key, value, oldValue)
-    local events = cacheEvents[key]
-    if not events then return end
-
-    for i = 1, #events do
-        CreateThread(function()
-            events[i](value, oldValue)
-        end)
-    end
-end
-
-function prCache.set(key, value)
-    local oldValue = cacheStore[key]
-    if oldValue == value then return value end
-    cacheStore[key] = value
-    dispatchCacheEvent(key, value, oldValue)
-    return value
-end
-
-function prCache.get(key, fallback)
-    local value = cacheStore[key]
-    if value == nil then return fallback end
-    return value
-end
-
-function prCache.clear(key)
-    if key == nil then
-        for cacheKey in pairs(cacheStore) do
-            prCache.clear(cacheKey)
-        end
-
-        return
-    end
-
-    local oldValue = cacheStore[key]
-    cacheStore[key] = nil
-    dispatchCacheEvent(key, nil, oldValue)
-end
-
-function prCache.clearPrefix(prefix)
-    for key in pairs(cacheStore) do
-        if key:sub(1, #prefix) == prefix then
-            prCache.clear(key)
-        end
-    end
-end
-
-function prCache.remember(key, callback, timeout)
-    local value = cacheStore[key]
-    if value ~= nil then return value end
-
-    value = callback()
-    prCache.set(key, value)
-
-    if timeout then
-        SetTimeout(timeout, function()
-            if cacheStore[key] == value then
-                prCache.clear(key)
-            end
-        end)
-    end
-
-    return value
-end
-
-prCache.call = prCache.remember
-
-function prCache.onChange(key, callback)
-    cacheEvents[key] = cacheEvents[key] or {}
-    cacheEvents[key][#cacheEvents[key] + 1] = callback
-end
-
-local playerStatusKeys = { "health", "armor", "hunger", "thirst", "stress", "oxygen" }
-
-local function cachePlayerStatus(status)
-    if type(status) ~= "table" then return end
-    local snapshot = {}
-    for i = 1, #playerStatusKeys do
-        local key = playerStatusKeys[i]
-        if status[key] ~= nil then
-            local value = math.max(0, math.min(100, tonumber(status[key]) or 0))
-            snapshot[key] = value
-            prCache.set(key, value)
-        end
-    end
-    if next(snapshot) then prCache.set("playerStatus", snapshot) end
-end
-
-if PRCore.context == "client" then
-    AddEventHandler("qbx_core:client:statusChanged", cachePlayerStatus)
-    SetTimeout(0, function()
-        if GetResourceState("qbx_core") ~= "started" then return end
-        local ok, status = pcall(function() return exports.qbx_core:GetStatusSnapshot() end)
-        if ok then cachePlayerStatus(status) end
-    end)
-end
-
-function prCache.GetPlayer(source, timeout)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" then return nil end
-
-        return prCache.remember(("player:%s"):format(source), function()
-            return public.framework.GetPlayer and public.framework.GetPlayer(source)
-        end, timeout or 1000)
-    end
-
-    return prCache.remember("player:self", function()
-        return public.framework.GetPlayer and public.framework.GetPlayer()
-    end, source or 1000)
-end
-
-function prCache.GetMetadata(source, metadata, timeout)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" or type(metadata) ~= "string" then return nil end
-
-        return prCache.remember(("metadata:%s:%s"):format(source, metadata), function()
-            return public.framework.getPlayerMetadata and public.framework.getPlayerMetadata(source, metadata)
-        end, timeout or 1000)
-    end
-
-    local metadataName = source
-    if type(metadataName) ~= "string" then return nil end
-
-    return prCache.remember(("metadata:self:%s"):format(metadataName), function()
-        return public.framework.getPlayerMetadata and public.framework.getPlayerMetadata(metadataName)
-    end, metadata or 1000)
-end
-
-function prCache.InvalidatePlayer(source)
-    if PRCore.context == "server" then
-        if type(source) ~= "number" then return end
-
-        prCache.clear(("player:%s"):format(source))
-        prCache.clearPrefix(("metadata:%s:"):format(source))
-        return
-    end
-
-    prCache.clear("player:self")
-    prCache.clearPrefix("metadata:self:")
-end
-
-setmetatable(prCache, {
-    __call = function(_, key, callback, timeout)
-        return prCache.remember(key, callback, timeout)
-    end,
-    __index = function(_, key)
-        return cacheStore[key]
-    end,
-})
-
+local createPassiveCache = assert(PRCore.load('@pr_bridge/bridge/cache/shared', env), 'PR Bridge passive cache module unavailable')
+local prCache = createPassiveCache(public, env.ActiveBridges)
 public.cache = prCache
+PRCore.load('@pr_bridge/bridge/cache/state', env)(public, prCache)
+PRCore.load('@pr_bridge/bridge/cache/central', env)(prCache)
+PRCore.load('@pr_bridge/bridge/cache/resources', env)(prCache)
 public.onCache = prCache.onChange
-local createAutomaticCache = PRCore.load("@pr_bridge/bridge/cache/shared", env)
-if createAutomaticCache then
-    prCache = createAutomaticCache(public, env.ActiveBridges)
-    local centralizeCache = PRCore.load("@pr_bridge/bridge/cache/central", env)
-    if centralizeCache then centralizeCache(prCache) end
-    local resourceCache = PRCore.load("@pr_bridge/bridge/cache/resources", env)
-    if resourceCache then resourceCache(prCache) end
-    public.cache = prCache
-    public.onCache = prCache.onChange
-    public.getCacheMetrics = prCache.getMetrics
-end
-if PRCore.context == "client" then
-    -- The facade captures the provider cache: initialize it only after the
-    -- automatic cache and resource subscriptions have replaced the fallback.
+public.getCacheMetrics = prCache.getMetrics
+if PRCore.context == 'client' then
     public.player = PRCore.load('@pr_bridge/bridge/cache/player_client', env)(public)
 end
 public.settings = PRCore.load("@pr_bridge/bridge/settings", env)(public)
@@ -890,61 +730,7 @@ if PRCore.context == "client" then
     public.points, public.zones = spatial.points, spatial.zones
 end
 
-if PRCore.context == "client" then
-    CreateThread(function()
-        while true do
-            local playerId = PlayerId()
-            local ped = PlayerPedId()
-            local vehicle = GetVehiclePedIsIn(ped, false)
-            if vehicle == 0 then vehicle = nil end
-
-            local seat
-            if vehicle then
-                for index = -2, GetVehicleMaxNumberOfPassengers(vehicle) do
-                    if GetPedInVehicleSeat(vehicle, index) == ped then
-                        seat = index
-                        break
-                    end
-                end
-            end
-
-            local playerData = public.framework.GetPlayerData and public.framework.GetPlayerData() or {}
-            if type(playerData) ~= "table" then playerData = {} end
-
-            local loaded = next(playerData) ~= nil
-            if public.framework.IsPlayerLoaded then
-                local ok, result = pcall(public.framework.IsPlayerLoaded)
-                if ok then loaded = result == true end
-            end
-
-            local metadata = type(playerData.metadata) == "table" and playerData.metadata or {}
-            local money = type(playerData.money) == "table" and playerData.money or {}
-            local function account(name)
-                if public.framework.GetMoney then
-                    local ok, value = pcall(public.framework.GetMoney, name)
-                    if ok and value ~= nil then return tonumber(value) or 0 end
-                end
-                return tonumber(money[name]) or 0
-            end
-
-            prCache.set("resource", resourceName)
-            prCache.set("playerId", playerId)
-            prCache.set("serverId", GetPlayerServerId(playerId))
-            prCache.set("ped", ped)
-            prCache.set("vehicle", vehicle)
-            prCache.set("seat", seat)
-            prCache.set("playerLoaded", loaded)
-            prCache.set("playerData", playerData)
-            prCache.set("job", playerData.job)
-            prCache.set("gang", playerData.gang)
-            prCache.set("cash", account("cash"))
-            prCache.set("bank", account("bank"))
-            prCache.set("dirtyMoney", account("black"))
-            prCache.set("isDead", IsEntityDead(ped) or metadata.isdead == true or metadata.inlaststand == true)
-            Wait(100)
-        end
-    end)
-end
+-- Cache data is published by producers, never gathered per consumer.
 
 pr_lib = public
 if _G then
@@ -984,10 +770,9 @@ if type(public.notify) == "table" then
     setmetatable(public.notify, notifyMetatable)
 end
 
-local installOxCompatibility = PRCore.load("@pr_bridge/bridge/compat/ox_phase1", env, true)
 PRCore.load('@pr_bridge/bridge/library/init', env)(public, _ENV)
-if type(installOxCompatibility) == "function" then
+if env.Config.compatOx_lib == true then
+    local installOxCompatibility = PRCore.load("@pr_bridge/bridge/compat/ox_lib/ox_phase1", env)
     installOxCompatibility(public, { existing = rawget(_ENV, "lib") })
-    local installOxRuntime = PRCore.load("@pr_bridge/bridge/compat/ox_runtime", env, true)
-    if type(installOxRuntime) == "function" then installOxRuntime(public, _ENV) end
+    PRCore.load("@pr_bridge/bridge/compat/ox_lib/ox_runtime", env)(public, _ENV)
 end

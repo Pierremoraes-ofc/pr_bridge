@@ -7,5 +7,5 @@
 ]]
 
 -- PR Bridge integration: shared protocol implementation with request cleanup.
-return assert(load(LoadResourceFile("pr_bridge", "bridge/compat/ox_callback.lua"),
-    "@@pr_bridge/bridge/compat/ox_callback.lua", "t", _ENV))()
+return assert(load(LoadResourceFile("pr_bridge", "bridge/compat/ox_lib/ox_callback.lua"),
+    "@@pr_bridge/bridge/compat/ox_lib/ox_callback.lua", "t", _ENV))()

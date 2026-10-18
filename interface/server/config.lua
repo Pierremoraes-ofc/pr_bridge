@@ -304,7 +304,13 @@ local function isAdmin(source)
 end
 
 local current = loadConfig()
-Bridge.settings.publish("interface", current)
+local function publishVisualConfig()
+    local record = Bridge.settings.publish("interface", current)
+    -- The owning configuration service announces a committed change. The cache
+    -- itself remains passive; Forge Core owns delivery to connected clients.
+    TriggerEvent("pr_bridge:ui:configCommitted", record)
+end
+publishVisualConfig()
 
 Bridge.callback.register("pr_bridge:ui:isAdmin", function(source)
     return isAdmin(source)
@@ -329,7 +335,7 @@ Bridge.callback.register("pr_bridge:ui:saveConfig", function(source, input)
     if not saveConfig(nextConfig) then return false, "save_failed" end
 
     current = nextConfig
-    Bridge.settings.publish("interface", current)
+    publishVisualConfig()
     return true, current
 end)
 
@@ -340,7 +346,7 @@ Bridge.callback.register("pr_bridge:ui:resetConfig", function(source)
     if not saveConfig(nextConfig) then return false, "save_failed" end
 
     current = nextConfig
-    Bridge.settings.publish("interface", current)
+    publishVisualConfig()
     return true, current
 end)
 

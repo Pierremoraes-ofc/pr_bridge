@@ -57,6 +57,11 @@ return function(options)
             else options.reply(player, owner, key, table.unpack(values,2,values.n)) end
         end)
     end
+    function api.unregister(name)
+        local handler=registered[name]
+        if handler then RemoveEventHandler(handler);registered[name]=nil end
+        return handler~=nil
+    end
     function api.cancel(key) local entry=pending[key]; pending[key]=nil; if entry then fail(entry,'cancelled') end end
     function api.getPending() return pending end
     if options.server then AddEventHandler('playerDropped', function()

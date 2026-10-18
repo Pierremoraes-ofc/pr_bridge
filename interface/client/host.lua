@@ -316,8 +316,18 @@ CreateThread(function()
     applyGlobalConfig(Bridge.settings.get("interface"))
 end)
 
-Bridge.cache.OnResourceState("pr_bridge", "interface", function(value)
-    applyGlobalConfig(value)
+-- Explicit delivery/application by the city's configuration producer. No
+-- bootstrap, network listener or generic cache observer is installed here.
+exports("ApplyVisualConfig", function(record)
+    if not Bridge.settings.receive("interface", record) then
+        -- A consumer restart can explicitly redeliver the current revision.
+        -- Reapply the stored value, never the unaccepted caller's data.
+        local current = Bridge.settings.snapshot("interface")
+        if type(record) ~= "table" or not current or current.epoch ~= record.epoch
+            or current.revision ~= record.revision then return false end
+    end
+    applyGlobalConfig(Bridge.settings.get("interface"))
+    return true
 end)
 
 local NativeUI = PRCore.load("@pr_bridge/interface/client/ui", _ENV)
