@@ -1,5 +1,8 @@
 # PR Bridge — Catálogo detalhado de funções
 
+> **Atualização (PR Bridge 1.4.8):** este arquivo é um catálogo histórico anterior. Para assinaturas revisadas, módulos novos, tags e exemplos completos com impressão dos resultados, consulte [API_CATALOG_1_4_8.md](API_CATALOG_1_4_8.md). A disponibilidade depende do provider e do contexto.
+
+
 **Versão atual:** 1.4.2 · **Total de funções documentadas:** 953 caminhos de API únicos · **Entradas por assinatura/contexto:** 1117
 
 **Conferido em:** 2026-10-09. O total considera os caminhos presentes nas entradas Function, normaliza chamadas com ponto/dois-pontos e não soma novamente os aliases de módulos da tabela final. Caminhos alternativos explicitamente documentados e APIs opt-in fazem parte do catálogo; o total não representa funções disponíveis simultaneamente em todo adapter.

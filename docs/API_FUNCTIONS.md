@@ -1,5 +1,8 @@
 # PR Bridge Functions
 
+> **Atualização (PR Bridge 1.4.8):** este arquivo é um catálogo histórico anterior. Para assinaturas revisadas, módulos novos, tags e exemplos completos com impressão dos resultados, consulte [API_CATALOG_1_4_8.md](API_CATALOG_1_4_8.md). A disponibilidade depende do provider e do contexto.
+
+
 ## NUI própria do consumidor e ACE de recurso (2026-10-06)
 
 - Client: `pr_lib.nui.send(action, data)` envia `{ action, data }` para a NUI do recurso consumidor, não para o host de menus do bridge.
