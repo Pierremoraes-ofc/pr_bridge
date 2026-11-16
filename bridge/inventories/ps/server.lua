@@ -1,4 +1,4 @@
-local factory=PRCore.load("@pr_bridge/bridge/inventories/compat/server",_ENV); local inv=factory("ps-inventory",{}); local api=exports["ps-inventory"]; local qb=exports["qb-core"]:GetCoreObject()
+local factory=PRCore.load("@pr_bridge/bridge/inventories/compat/server",_ENV); local inv=factory("ps-inventory",{}); local api=exports["ps-inventory"]; local qb=PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 function inv.AddItem(src,item,count,metadata,slot) return api:AddItem(src,item,count or 1,slot,metadata)~=false end
 function inv.RemoveItem(src,item,count,metadata,slot) return api:RemoveItem(src,item,count or 1,slot)~=false end
 function inv.CanCarryItem() return true end

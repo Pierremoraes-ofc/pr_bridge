@@ -98,13 +98,14 @@ de jogadores nem novos state bags.
 
 ## Implementar uma operação ausente
 
-Cada destino tem `bridge/frameworks/<destino>/qb_compat.lua`. O instalador comum
-expõe as declarações em `Bridge.framework.QBCore.Functions`, `.Player` e `.Lifecycle`.
+Cada destino tem `bridge/compat/qb/targets/<destino>.lua`. O instalador comum
+expõe as declarações na visão privada do compat em `QBCore.Functions`, `.Player` e `.Lifecycle`.
+O bridge nativo não recebe essa fachada; funções e objetos nativos existentes são preservados.
 O adaptador pode fornecer uma factory de operação, mantendo assinaturas e retornos:
 
 ```lua
 return function(F, context, I)
-    local N = PRCore.load('@pr_bridge/bridge/frameworks/qb_native', _ENV)(F, context, I, 'nd')
+    local N = PRCore.load('@pr_bridge/bridge/compat/qb/native', _ENV)(F, context, I, 'nd')
     N['Player.SetGang'] = function()
         return function(source, name, grade)
             -- Chame aqui a API real de gangs do destino, validando seu resultado.

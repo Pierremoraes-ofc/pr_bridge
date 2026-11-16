@@ -1,6 +1,6 @@
 local framework = {}
 if ActiveBridges["frameworks"] ~= "tmc" then return end
-local TMC=exports.core:getCoreObject()
+local TMC=PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports.core:getCoreObject()end)
 function framework.GetResourceName() return "core" end
 function framework.GetPlayer() return TMC.Functions.GetPlayerData() end
 function framework.GetPlayerData() return framework.GetPlayer() end

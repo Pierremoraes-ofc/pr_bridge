@@ -1,0 +1,2 @@
+-- Keep the nominal compatibility resource visible to the client and server.
+-- The Forge provider publishes the actual export references.

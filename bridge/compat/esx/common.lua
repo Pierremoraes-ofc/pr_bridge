@@ -29,7 +29,7 @@ return function(bridge, context, owner)
     local lastSelection,lastActive,lastTarget
     local aliases = { ['qbx_core']='qbx', ['qbx-core']='qbx', qbxcore='qbx',qbcore='qb', ['qb-core']='qb', ['es_extended']='esx', ['forge-core']='forge',
         ['nd_core']='nd',ndcore='nd',['ox_core']='ox',oxcore='ox',core='tmc' }
-    local valid={qbx=true,qb=true,esx=true,nd=true,ox=true,tmc=true,custom=true,default=true}
+    local valid={forge=true,qbx=true,qb=true,esx=true,nd=true,ox=true,tmc=true,custom=true,default=true}
     function C.target()
         local selection,active=Config.compatFramework,ActiveBridges.frameworks
         if lastTarget and selection==lastSelection and active==lastActive then return lastTarget end
@@ -121,7 +121,7 @@ return function(bridge, context, owner)
                 result[name]=available and 'delegated' or 'unsupported'
             end
             if context=='server' then
-                local contract=PRCore.load('bridge.frameworks.compat_contract')
+                local contract=PRCore.load('bridge.compat.framework.contract')
                 for name in pairs(catalog.player) do
                     local operation=contract.player[name]
                     if operation then

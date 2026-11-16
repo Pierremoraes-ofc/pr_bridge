@@ -2,7 +2,7 @@ local inventory = {}
 if ActiveBridges["inventory"] ~= "qb" then return end
 
 local qbInventory = exports['qb-inventory']
-local QBCore = exports['qb-core']:GetCoreObject()
+local QBCore = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 
 Debug('SUCCESS', Lang:t('Debug.InventoryDetected', { inventory = 'QB Inventory' }))
 

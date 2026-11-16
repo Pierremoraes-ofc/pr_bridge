@@ -1,3 +1,9 @@
+--279: Forge has one QB object in its kernel;the explicit QBX shim is not another core.
+if ActiveBridges.frameworks=='forge'then
+ PRCore.load('@pr_bridge/bridge/compat/qb/forge_host',_ENV)()
+ return
+end
+
 -- Host only. Native QB and QBX already own qb-core: never replace their exports,
 -- callback events, character login or player lifecycle with a second handler.
 if not Config.compatFramework or Config.compatFramework=='off' or Config.compatQBCore==false then return end
@@ -77,7 +83,7 @@ if server then
     state.engine.register('__pr_qb:shared',function(_,namespace)
         local allowed={Jobs=true,Gangs=true,VehicleHashes=true,Vehicles=true}
         assert(allowed[namespace],'Unsupported shared catalog request')
-        return Bridge.framework.QBCore.GetShared(namespace)
+        return getter().GetShared(namespace)
     end)
 else
     state.catalogs={}

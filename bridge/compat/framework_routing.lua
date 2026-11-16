@@ -4,7 +4,7 @@ return function(active, config)
     local routing, declarations = {}, {}
     local aliases = { ['qbx_core']='qbx', ['qbx-core']='qbx', qbxcore='qbx',
         ['qb-core']='qb', qbcore='qb', ['es_extended']='esx',
-        ['nd_core']='nd', ['ox_core']='ox', core='tmc' }
+        ['nd_core']='nd', ['ox_core']='ox', ['forge-core']='forge', core='tmc' }
     local function canonical(name)
         assert(type(name)=='string', '[PR Bridge] framework name must be a string')
         name=name:lower()

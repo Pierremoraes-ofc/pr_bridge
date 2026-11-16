@@ -140,7 +140,7 @@ return function(E, C, catalog)
             fn(name,function(...) TriggerClientEvent('esx:'..name,id,...) end)
         end
         C.attachPlayerWeapons(id,fn,methods)
-        local contract=PRCore.load('bridge.frameworks.compat_contract')
+        local contract=PRCore.load('bridge.compat.framework.contract')
         for legacy,operation in pairs(contract.player) do
             fn(legacy,function(...) return C.invoke(F,operation,id,...) end)
         end

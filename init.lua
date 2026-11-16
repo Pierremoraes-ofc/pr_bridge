@@ -12,6 +12,7 @@ if resourceName == bridgeResource then return end
 
 if pr_lib and pr_lib.name == bridgeResource then
     if legacyOxImport or pr_lib.legacyOxBootstrap then return end
+    if pr_lib.resource==resourceName and PRCore and PRCore.resource==resourceName and not PRCore.forgeCoreBootstrap then return pr_lib end
     error(("Cannot load pr_bridge more than once.\n\tRemove duplicate entries from '@%s/fxmanifest.lua'"):format(resourceName), 2)
 end
 
@@ -31,8 +32,13 @@ if not PRCore then
     fn()
 end
 
+if legacyOxImport and GetConvar('forge:kernel','false')=='true' then
+    PRCore.load('@pr_bridge/init',_ENV)
+    return
+end
+
 if legacyOxImport then
-    local compatConfig = {}
+    local compatConfig = setmetatable({}, {__index=_ENV})
     PRCore.load('@pr_bridge/bridge/config', compatConfig)
     if compatConfig.Config.compatOx_lib ~= true then
         error('PR Bridge ox_lib compatibility is disabled (Config.compatOx_lib=false). Start the original ox_lib and remove its provide alias from pr_bridge/fxmanifest.lua.', 2)
@@ -317,6 +323,10 @@ local function getBridgePath(bridgeType)
     end
 
     if bridgeType == "frameworks" then
+        if env.Config.Framework == "forge" or env.Config.Framework == "forge-core" then
+            setActiveBridge(bridgeType, "forge")
+            return ("@pr_bridge/bridge/frameworks/forge/%s"):format(PRCore.context)
+        end
         local forced = env.Config.Framework
         if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
             if forced == "custom" then
@@ -389,6 +399,10 @@ local function loadBridgeModule(publicName, bridgeType)
     return public[publicName]
 end
 
+local forgeRuntimeConsumer
+if env.Config.Framework=='forge'or env.Config.Framework=='forge-core'then
+    forgeRuntimeConsumer=PRCore.load('@pr_bridge/bridge/runtime/forge/operational_consumer_start',env)({environment=_ENV,callbackEnvironment=env,prCore=PRCore,public=public,config=env.Config})
+end
 loadBridgeModule("framework", "frameworks")
 loadBridgeModule("inventory", "inventories")
 if normalizeInventoryBridge then normalizeInventoryBridge(public.inventory, PRCore.context, env.ActiveBridges.inventories) end
@@ -435,7 +449,7 @@ else
 end
 loadBridgeModule("fuel", "fuel")
 loadBridgeModule("vehicle_key", "vehicle_key")
-local normalizeFramework = PRCore.load("@pr_bridge/bridge/framework_normalizer", env)
+local normalizeFramework = env.ActiveBridges.frameworks ~= "forge" and PRCore.load("@pr_bridge/bridge/framework_normalizer", env) or nil
 if normalizeFramework then normalizeFramework(public.framework, PRCore.context, public.inventory, public.banking, public.notify, public.textuiAdapter, env.ActiveBridges.frameworks) end
 
 if PRCore.context == "server" then
@@ -475,6 +489,8 @@ public.textUIAdapter = public.textuiAdapter
 public.textuiBridge = public.textuiAdapter
 public.textUIBridge = public.textuiAdapter
 public.garage = PRCore.load(("@pr_bridge/bridge/garages/%s"):format(PRCore.context), env)(public)
+public.housing = PRCore.load("@pr_bridge/bridge/housing/api", env)
+public.appearance = PRCore.load("@pr_bridge/bridge/appearance/api", env)
 public.bank = public.banking
 public.adapters = { framework=public.framework, inventory=public.inventory, notification=public.notify, menu=public.menus, target=public.target, interact=public.interact, textui=public.textuiAdapter, banking=public.banking, phone=public.phone, progress=public.progress, weather=public.weather }
 public.vehicleKey = public.vehicle_key
@@ -575,7 +591,7 @@ if PRCore.context == "client" then
         ShowTextUI = public.textuiAdapter and public.textuiAdapter.Show,
         HideTextUI = public.textuiAdapter and public.textuiAdapter.Hide,
         IsTextUIOpen = function()
-            if GetResourceState("ox_lib"):find("start") then
+            if PRCore.isResourceStarted("ox_lib") then
                 return exports.ox_lib:isTextUIOpen()
             end
             return false
@@ -636,8 +652,8 @@ if PRCore.context == "client" then
         public.textUIBridge = NativeTextUI
         if public.adapters then public.adapters.textui = NativeTextUI end
         if public.framework then
-            public.framework.ShowTextUI = UI.ShowTextUI
-            public.framework.HideTextUI = UI.HideTextUI
+            public.framework.ShowTextUI = public.framework.ShowTextUI or UI.ShowTextUI
+            public.framework.HideTextUI = public.framework.HideTextUI or UI.HideTextUI
         end
         public.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
         public.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
@@ -775,4 +791,8 @@ if env.Config.compatOx_lib == true then
     local installOxCompatibility = PRCore.load("@pr_bridge/bridge/compat/ox_lib/ox_phase1", env)
     installOxCompatibility(public, { existing = rawget(_ENV, "lib") })
     PRCore.load("@pr_bridge/bridge/compat/ox_lib/ox_runtime", env)(public, _ENV)
+end
+
+if forgeRuntimeConsumer then
+ forgeRuntimeConsumer.Complete(public)
 end

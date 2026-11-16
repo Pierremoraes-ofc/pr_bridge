@@ -150,3 +150,6 @@ Config = {
 	},
 	OxCirclePosition = "bottom",
 }
+
+-- Migration activation is explicit in the server CFG;the original profile remains available for reversal.
+if GetConvar and GetConvar('forge:kernel','false')=='true'then Config.Framework='forge'end

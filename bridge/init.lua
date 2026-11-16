@@ -54,6 +54,10 @@ local function getBridge(bridgeType)
     end
 
     if bridgeType == "frameworks" then
+        if Config.Framework == "forge" or Config.Framework == "forge-core" then
+            setActiveBridge(bridgeType, "forge")
+            return ("bridge.frameworks.forge.%s"):format(PRCore.context)
+        end
         local forced = Config.Framework
         if type(forced) == "string" and forced ~= "" and forced ~= "auto" then
             if forced == "custom" then
@@ -122,6 +126,10 @@ local function getBridge(bridgeType)
 end
 
 
+local forgeRuntimeConsumer
+if Config.Framework=='forge'or Config.Framework=='forge-core'then
+    forgeRuntimeConsumer=PRCore.load('bridge.runtime.forge.operational_consumer_start')({environment=_ENV,prCore=PRCore,public={},config=Config})
+end
 Bridge = {
     framework = PRCore.load(getBridge("frameworks")),
     inventory = PRCore.load(getBridge("inventories")),
@@ -222,6 +230,8 @@ Bridge.textUIAdapter = Bridge.textuiAdapter
 Bridge.textuiBridge = Bridge.textuiAdapter
 Bridge.textUIBridge = Bridge.textuiAdapter
 Bridge.garage = PRCore.load(("bridge.garages.%s"):format(PRCore.context))(Bridge)
+Bridge.housing = PRCore.load("bridge.housing.api")
+Bridge.appearance = PRCore.load("bridge.appearance.api")
 Bridge.bank = Bridge.banking
 Bridge.adapters = { framework=Bridge.framework, inventory=Bridge.inventory, notification=Bridge.notify, menu=Bridge.menus, target=Bridge.target, textui=Bridge.textuiAdapter, banking=Bridge.banking, phone=Bridge.phone, progress=Bridge.progress, weather=Bridge.weather }
 Bridge.vehicleKey = Bridge.vehicle_key
@@ -264,7 +274,7 @@ if PRCore.context == "server" then
 end
 if normalizeInventoryBridge then normalizeInventoryBridge(Bridge.inventory, PRCore.context, ActiveBridges.inventories) end
 if normalizeApi then normalizeApi.target(Bridge.target, ActiveBridges.target); normalizeApi.textui(Bridge.textuiAdapter); normalizeApi.banking(Bridge.banking); normalizeApi.notification(Bridge.notify, PRCore.context, ActiveBridges.notification); normalizeApi.database(Bridge.database) end
-local normalizeFramework = PRCore.load("bridge.framework_normalizer")
+local normalizeFramework = ActiveBridges.frameworks ~= "forge" and PRCore.load("bridge.framework_normalizer") or nil
 if normalizeFramework then normalizeFramework(Bridge.framework, PRCore.context, Bridge.inventory, Bridge.banking, Bridge.notify, Bridge.textuiAdapter, ActiveBridges.frameworks) end
 
 Bridge.db = Bridge.database
@@ -356,8 +366,8 @@ if PRCore.context == "client" then
         Bridge.textUIBridge = NativeTextUI
         if Bridge.adapters then Bridge.adapters.textui = NativeTextUI end
         if Bridge.framework then
-            Bridge.framework.ShowTextUI = UI.ShowTextUI
-            Bridge.framework.HideTextUI = UI.HideTextUI
+            Bridge.framework.ShowTextUI = Bridge.framework.ShowTextUI or UI.ShowTextUI
+            Bridge.framework.HideTextUI = Bridge.framework.HideTextUI or UI.HideTextUI
         end
         Bridge.OpenVisualAdminMenu = UI.OpenVisualAdminMenu
         Bridge.openVisualAdminMenu = UI.openVisualAdminMenu or UI.OpenVisualAdminMenu
@@ -523,3 +533,5 @@ PRCore.load("bridge.runtime.backends")(Bridge, ConfigBridge, ActiveBridges, getB
         end
     end
 end)
+
+if forgeRuntimeConsumer then forgeRuntimeConsumer.Complete(Bridge)end

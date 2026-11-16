@@ -35,7 +35,8 @@ local function get(owner)
     if original() then return exports.es_extended:getSharedObject() end
     routing.assertAllowed('esx',owner)
     if instances[owner] then return instances[owner].E end
-    local E={};local C=PRCore.load('bridge.compat.esx.common')(Bridge,context,owner)
+    local view=PRCore.load('bridge.compat.framework.view')(Bridge,context,ActiveBridges.frameworks,false)
+    local E={};local C=PRCore.load('bridge.compat.esx.common')(view,context,owner)
     C.state=state
     C.routing=routing
     if not server then

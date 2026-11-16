@@ -1,6 +1,6 @@
 name("pr_bridge")
 description("Adicione compatibilidade com frameworks, targets, inventarios, notificacoes, telefones e mais.")
-version("1.4.6")
+version("1.4.8")
 repository("https://github.com/Pierremoraes-ofc/pr_bridge")
 author("Pierremoraes-ofc")
 
@@ -15,9 +15,10 @@ provide("ox_lib")
 provide("ox_target")
 -- ESX facade: comment this alias when starting the original es_extended core.
 provide("es_extended")
--- QBX already provides qb-core in this base. Do NOT enable a second alias here.
--- For an ESX/ND/Ox destination without QB/QBX, uncomment for legacy dependencies:
--- provide("qb-core")
+-- Legacy names are PR compatibility identities in this Forge deployment.
+-- Disable these provides when deploying alongside their original frameworks.
+provide("qb-core")
+provide("qbx_core")
 
 use_experimental_fxv2_oal("yes")
 
@@ -59,6 +60,7 @@ files({
 	"shared/progression.lua",
 	"shared/locale.lua", -- optional @qb-core/shared/locale.lua when PR owns qb-core
 	"init.lua",
+	"modules/*.lua", -- PR-owned QBX public import compatibility
 	"imports.lua", -- @es_extended/imports.lua public entrypoint
 	"imports/**/*.lua",
 	"imports/**/**/*.lua",

@@ -1,7 +1,7 @@
 local framework = {}
 if ActiveBridges["frameworks"] ~= "esx" then return end
 
-local ESX = exports["es_extended"]:getSharedObject()
+local ESX = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['es_extended']:getSharedObject()end)
 
 ---Get Player data
 ---@return table

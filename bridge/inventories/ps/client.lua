@@ -1,5 +1,5 @@
 local inventory={}
-local api=exports["ps-inventory"]; local qb=exports["qb-core"]:GetCoreObject()
+local api=exports["ps-inventory"]; local qb=PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 function inventory.GetResourceName() return "ps-inventory" end
 function inventory.GetItemCount(item,metadata,strict) local total=0; for _,entry in pairs(qb.Functions.GetPlayerData().items or {}) do if entry.name==item then total=total+(entry.amount or 0) end end; return total end
 function inventory.HasItem(item,count,metadata,strict) return api:HasItem(item,count or 1)==true end

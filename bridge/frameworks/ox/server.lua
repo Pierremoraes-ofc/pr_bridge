@@ -1,7 +1,7 @@
 local framework = {}
 if ActiveBridges["frameworks"] ~= "ox" then return end
 
-local Ox = require '@ox_core.lib.init'
+local Ox = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return require '@ox_core.lib.init'end)
 
 Debug('SUCCESS', Lang:t('Debug.FrameworkDetected', { framework = 'OX Core' }))
 

@@ -2,7 +2,7 @@ local inventory = {}
 if ActiveBridges["inventory"] ~= "qb" then return end
 
 local qb = exports['qb-inventory']
-local QBCore = exports['qb-core']:GetCoreObject()
+local QBCore = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 
 function inventory.openInventory(invType, data)
     if invType == "stash" then

@@ -2,7 +2,7 @@ local progress = {}
 
 if ActiveBridges["progressbar"] ~= "esx" then return end
 
-local ESX = exports["es_extended"]:getSharedObject()
+local ESX = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['es_extended']:getSharedObject()end)
 
 function progress.doProgressbar(duration, label, anim)
     ESX.Progressbar(label, duration, {

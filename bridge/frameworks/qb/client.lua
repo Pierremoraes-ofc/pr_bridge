@@ -1,7 +1,7 @@
 local framework = {}
 if ActiveBridges["frameworks"] ~= "qb" then return end
 
-local QBCore = exports["qb-core"]:GetCoreObject()
+local QBCore = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 
 ---Get Player data
 ---@return table

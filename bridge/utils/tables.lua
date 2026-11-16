@@ -52,7 +52,9 @@ function tables.clone(value, seen)
     seen = seen or {}; if seen[value] then return seen[value] end
     local copy = {}; seen[value] = copy
     for key, item in pairs(value) do copy[tables.clone(key, seen)] = tables.clone(item, seen) end
-    return setmetatable(copy, tables.clone(getmetatable(value), seen))
+    local meta=getmetatable(value)
+    if type(meta)=='table'then setmetatable(copy,tables.clone(meta,seen))end
+    return copy
 end
 
 function tables.shuffle(source, copy, random)

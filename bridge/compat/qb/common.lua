@@ -1,5 +1,5 @@
 local S=PRCore.load('@pr_bridge/bridge/runtime/compat_services',_ENV)
-local H=PRCore.load('@pr_bridge/bridge/frameworks/compat_helpers',_ENV)
+local H=PRCore.load('@pr_bridge/bridge/compat/framework/helpers',_ENV)
 return function(owner,context)
     local C={owner=owner,context=context,supported={},copy=H.copy,callable=S.callable}
     function C.target()
@@ -13,10 +13,19 @@ return function(owner,context)
         local active=ActiveBridges.frameworks
         if selected=='forge' or selected=='auto' then selected=active end
         assert(selected==active,'[PR Bridge QB] compatFramework does not match selected destination')
-        assert(Bridge.framework.QBCore,'[PR Bridge QB] destination QB contract unavailable')
         return active
     end
-    function C.api() C.target();return Bridge.framework.QBCore end
+    local native,contract,backend
+    function C.api()
+        local selected=C.target()
+        if Bridge.framework.QBCore then return Bridge.framework.QBCore end
+        if native~=Bridge.framework or backend~=selected then
+            local view=PRCore.load('@pr_bridge/bridge/compat/framework/view',_ENV)(Bridge,context,selected,true)
+            contract=assert(view.framework.QBCore,'[PR Bridge QB] destination QB contract unavailable')
+            native,backend=Bridge.framework,selected
+        end
+        return contract
+    end
     function C.define(root,name,fn)
         root[name]=function(...) C.target();return fn(...) end
         C.supported[name]='adapted'

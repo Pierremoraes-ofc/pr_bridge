@@ -2,7 +2,7 @@ local progress = {}
 
 if ActiveBridges["progressbar"] ~= "qb" then return end
 
-local QBCore = exports["qb-core"]:GetCoreObject()
+local QBCore = PRCore.load('@pr_bridge/bridge/runtime/native_object',_ENV)(function()return exports['qb-core']:GetCoreObject()end)
 
 function progress.doProgressbar(duration, label, anim)
     QBCore.Functions.Progressbar(label, label, duration, false, true, {

@@ -1,0 +1,50 @@
+{
+    "ch": {
+        "Sobrenome": "Apuyidu",
+        "Menu com tradutor": "Menu yan i manma'translada",
+        "Nome": "Na'an",
+        "seja bem vindo(a) a cidade teste!": "Magof na matto gi i siudåt prublema!",
+        "Seja muito bem-vindo à nossa cidade de testes! Este script foi desenvolvido como um exemplo de tradução automática dinâmica em tempo real para múltiplos idiomas usando a API pública gratuita do Google Translate.": "Magof na matto gi i siudå-ta ni' para ta prubåba! Este na script ma fa'tinas komo un ehemplon dinanña' na tinige' gi i tiempon-måmi para meggai na lengguåhi siha ni' ma usa i libre na Google Translate API.",
+        "Mensagem de Boas-vindas": "Mensahi ni' Ma'å'ñao",
+        "Nacionalidade": "Nasion",
+        "Idade": "Idat"
+    },
+    "en": {
+        "Sobrenome": "Surname",
+        "Nome": "Name",
+        "seja bem vindo(a) a cidade teste!": "Welcome to the test city!",
+        "Fechar": "To close",
+        "Perfil do Cidadão": "Citizen Profile",
+        "Nacionalidade": "Nationality",
+        "Idade": "Age"
+    },
+    "cz": {
+        "Sobrenome": "Surname",
+        "Menu com tradutor": "Menu with translator",
+        "Nome": "Name",
+        "seja bem vindo(a) a cidade teste!": "Welcome to the test city!",
+        "Seja muito bem-vindo à nossa cidade de testes! Este script foi desenvolvido como um exemplo de tradução automática dinâmica em tempo real para múltiplos idiomas usando a API pública gratuita do Google Translate.": "Welcome to our testing city! This script was developed as an example of real-time dynamic machine translation for multiple languages ​​using the free public Google Translate API.",
+        "Mensagem de Boas-vindas": "Welcome Message",
+        "Nacionalidade": "Nationality",
+        "Idade": "Age"
+    },
+    "es": {
+        "Sobrenome": "Apellido",
+        "Menu com tradutor": "Menú con traductor",
+        "Nome": "Nombre",
+        "seja bem vindo(a) a cidade teste!": "¡Bienvenidos a la ciudad de prueba!",
+        "Seja muito bem-vindo à nossa cidade de testes! Este script foi desenvolvido como um exemplo de tradução automática dinâmica em tempo real para múltiplos idiomas usando a API pública gratuita do Google Translate.": "¡Bienvenido a nuestra ciudad de pruebas! Este script se desarrolló como un ejemplo de traducción automática dinámica en tiempo real para varios idiomas utilizando la API pública y gratuita de Google Translate.",
+        "Mensagem de Boas-vindas": "Mensaje de bienvenida",
+        "Nacionalidade": "Nacionalidad",
+        "Idade": "Edad"
+    },
+    "fr": {
+        "Sobrenome": "Nom de famille",
+        "Nome": "Nom",
+        "seja bem vindo(a) a cidade teste!": "Bienvenue dans la ville test !",
+        "Fechar": "Pour fermer",
+        "Perfil do Cidadão": "Profil de citoyen",
+        "Nacionalidade": "Nationalité",
+        "Idade": "Âge"
+    }
+}
