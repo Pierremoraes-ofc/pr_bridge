@@ -1,7 +1,4 @@
 # pr_bridge
-
-**Versão de referência: 1.4.8** · [Catálogo atualizado de funções e Providers](docs/API_CATALOG_1_4_8.md) · [Documentação interativa no portfólio](https://pierremoraes-ofc.github.io/portifolio/#docs/pr_bridge)
-
 ---
 
 ### Compatibilidade ox_lib / ox_target
